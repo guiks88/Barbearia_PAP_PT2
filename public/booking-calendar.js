@@ -307,7 +307,7 @@ function createDayElement(day, isOtherMonth, isToday, dateStr, availableSlots = 
   
   dayElement.innerHTML = `
     <span class="day-number">${day}</span>
-    ${!isOtherMonth && !isPast && availableSlots > 0 ? `<span class="slots-badge">${availableSlots} slots</span>` : ''}
+    ${!isOtherMonth && !isPast && availableSlots > 0 ? `<span class="slots-badge">${availableSlots} espaços livres</span>` : ''}
   `
   
   if (!isOtherMonth && !isPast && dateStr) {
@@ -376,6 +376,28 @@ function renderTimeSlots(dateStr) {
     
     timeSlotsList.appendChild(timeSlot)
   })
+}
+
+function setupBarberAccess() {
+  const links = document.querySelectorAll('.barber-link')
+  if (!links.length) return
+
+  links.forEach((link) => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault()
+      const email = window.prompt('Email do barbeiro:')
+      if (email === null) return
+      const password = window.prompt('Password do barbeiro:')
+      if (password === null) return
+      window.alert('Credenciais recebidas. Acesso de barbeiro será validado pelo sistema.')
+    })
+  })
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', setupBarberAccess)
+} else {
+  setupBarberAccess()
 }
 
 function selectTime(time) {

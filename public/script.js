@@ -248,3 +248,25 @@ if (document.readyState === 'loading') {
 
 // Also initialize on load
 window.addEventListener('load', initTabs);
+
+function setupBarberAccess() {
+  const links = document.querySelectorAll('.barber-link')
+  if (!links.length) return
+
+  links.forEach((link) => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault()
+      const email = window.prompt('Email do barbeiro:')
+      if (email === null) return
+      const password = window.prompt('Password do barbeiro:')
+      if (password === null) return
+      window.alert('Credenciais recebidas. Acesso de barbeiro será validado pelo sistema.')
+    })
+  })
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', setupBarberAccess)
+} else {
+  setupBarberAccess()
+}
