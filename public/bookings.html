@@ -18,8 +18,36 @@
 
     <main class="container">
         <div class="booking-steps">
+            <!-- Step 0: Autenticação do Cliente -->
+            <div class="card" id="step-auth">
+                <h2>Autenticação do Cliente</h2>
+                <p style="color: var(--color-text-secondary);">Introduza o seu nome e número de telemóvel. Iremos enviar um código por SMS.</p>
+
+                <form id="clientPhoneForm" class="auth-form">
+                    <div class="form-group">
+                        <label for="clientAuthName">Nome Completo *</label>
+                        <input type="text" id="clientAuthName" required minlength="3" placeholder="João Silva">
+                    </div>
+                    <div class="form-group">
+                        <label for="clientAuthPhone">Telemóvel *</label>
+                        <input type="tel" id="clientAuthPhone" required maxlength="9" placeholder="912345678">
+                        <small style="color: var(--color-text-secondary); font-size: 0.85rem;">Formato: 9 dígitos (ex: 912345678)</small>
+                    </div>
+                    <div id="recaptcha-container" style="margin: 1rem 0;"></div>
+                    <button type="button" class="btn btn-primary" id="sendCodeBtn">Enviar Código</button>
+
+                    <div id="codeSection" class="hidden" style="margin-top: 1rem;">
+                        <div class="form-group">
+                            <label for="smsCode">Código SMS *</label>
+                            <input type="text" id="smsCode" placeholder="123456">
+                        </div>
+                        <button type="button" class="btn btn-primary" id="verifyCodeBtn">Confirmar Código</button>
+                    </div>
+                </form>
+            </div>
+
             <!-- Step 1: Serviços -->
-            <div class="card" id="step-services">
+            <div class="card hidden" id="step-services">
                 <h2>1. Escolha o Serviço</h2>
                 <div class="services-grid">
                     <div class="service-card" data-service="corte" data-price="15" data-duration="30">
@@ -160,9 +188,9 @@
     <footer class="footer">
         <div class="container">
             <p>&copy; 2026 Barbearia João Castro. Todos os direitos reservados.</p>
-            <a href="admin-login.html" class="admin-link">Área Administrativa</a>
+            <a href="barber-login.html" class="admin-link">Barbeiros</a>
             <span class="admin-link">|</span>
-            <a href="#" class="admin-link barber-link" aria-label="Acesso de barbeiros">Barbeiros</a>
+            <a href="admin-login.html" class="admin-link">Área Administrativa</a>
         </div>
     </footer>
 

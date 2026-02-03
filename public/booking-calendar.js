@@ -1,18 +1,7 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js"
-import { getDatabase, ref, get, push, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
-
-const firebaseConfig = {
-  apiKey: "AIzaSyDicOe3s-45mfnNvk7SiZ90pq2MhtPwzcM",
-  authDomain: "barbearia-sistema-a9d1a.firebaseapp.com",
-  databaseURL: "https://barbearia-sistema-a9d1a-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "barbearia-sistema-a9d1a",
-  storageBucket: "barbearia-sistema-a9d1a.firebasestorage.app",
-  messagingSenderId: "981942161598",
-  appId: "1:981942161598:web:483d0698428296d20fceef",
-}
-
-const app = initializeApp(firebaseConfig)
-const database = getDatabase(app)
+import { auth, database } from "./firebase-config.js"
+import { ref, get, push, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
+import { RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
+import { showSuccess, showError } from "./utils.js"
 
 // Estado da marcação
 const bookingState = {
@@ -24,14 +13,136 @@ const bookingState = {
   barberName: '',
   date: null,
   time: null,
+  client: null,
   currentMonth: new Date().getMonth(),
   currentYear: new Date().getFullYear(),
   availableSlots: {},
   bookings: []
 }
 
+let confirmationResult = null
+
 // Horários de trabalho (9h às 19h)
 const workingHours = ['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00']
+
+function normalizePhone(phone) {
+  const trimmed = phone.replace(/\s+/g, '')
+  if (trimmed.startsWith('+')) return trimmed
+  if (trimmed.startsWith('351')) return `+${trimmed}`
+  return `+351${trimmed}`
+}
+
+function showBookingSteps() {
+  document.getElementById('step-auth').classList.add('hidden')
+  document.getElementById('step-services').classList.remove('hidden')
+}
+
+function showAuthStep() {
+  document.getElementById('step-auth').classList.remove('hidden')
+  document.getElementById('step-services').classList.add('hidden')
+}
+
+function initClientAuth() {
+  const sendCodeBtn = document.getElementById('sendCodeBtn')
+  const verifyCodeBtn = document.getElementById('verifyCodeBtn')
+  const codeSection = document.getElementById('codeSection')
+
+  if (!sendCodeBtn || !verifyCodeBtn) return
+
+  let appVerifier = null
+
+  const getVerifier = () => {
+    if (!appVerifier) {
+      appVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'normal' })
+    }
+    return appVerifier
+  }
+
+  sendCodeBtn.addEventListener('click', async () => {
+    const name = document.getElementById('clientAuthName').value.trim()
+    const phone = document.getElementById('clientAuthPhone').value.trim()
+
+    if (!name || name.length < 3) {
+      showError('Indique o seu nome completo.')
+      return
+    }
+
+    if (!phone || phone.length < 9) {
+      showError('Indique um número de telemóvel válido.')
+      return
+    }
+
+    try {
+      const verifier = getVerifier()
+      const fullPhone = normalizePhone(phone)
+      confirmationResult = await signInWithPhoneNumber(auth, fullPhone, verifier)
+      codeSection.classList.remove('hidden')
+      showSuccess('Código enviado por SMS.')
+    } catch (error) {
+      showError('Erro ao enviar o código: ' + error.message)
+    }
+  })
+
+  verifyCodeBtn.addEventListener('click', async () => {
+    const code = document.getElementById('smsCode').value.trim()
+    const name = document.getElementById('clientAuthName').value.trim()
+    const phone = document.getElementById('clientAuthPhone').value.trim()
+
+    if (!confirmationResult) {
+      showError('Primeiro envie o código SMS.')
+      return
+    }
+
+    if (!code) {
+      showError('Introduza o código SMS.')
+      return
+    }
+
+    try {
+      const result = await confirmationResult.confirm(code)
+      const uid = result.user.uid
+      const fullPhone = normalizePhone(phone)
+
+      await set(ref(database, `clients/${uid}`), {
+        name,
+        phone: fullPhone,
+        createdAt: new Date().toISOString(),
+      })
+
+      bookingState.client = { uid, name, phone: fullPhone }
+      bookingState.clientName = name
+      bookingState.clientCountry = 'PT'
+      bookingState.clientPhone = phone
+      bookingState.clientPhoneComplete = fullPhone
+      showSuccess('Autenticado com sucesso!')
+      showBookingSteps()
+    } catch (error) {
+      showError('Código inválido ou expirado.')
+    }
+  })
+
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      showAuthStep()
+      return
+    }
+
+    const clientRef = ref(database, `clients/${user.uid}`)
+    const snapshot = await get(clientRef)
+
+    if (snapshot.exists()) {
+      const client = snapshot.val()
+      bookingState.client = { uid: user.uid, name: client.name, phone: client.phone }
+      bookingState.clientName = client.name
+      bookingState.clientCountry = 'PT'
+      bookingState.clientPhone = client.phone.replace(/^\+351/, '')
+      bookingState.clientPhoneComplete = client.phone
+      showBookingSteps()
+    } else {
+      showAuthStep()
+    }
+  })
+}
 
 // ===== STEP 1: SERVIÇOS =====
 function initServiceSelection() {
@@ -378,28 +489,6 @@ function renderTimeSlots(dateStr) {
   })
 }
 
-function setupBarberAccess() {
-  const links = document.querySelectorAll('.barber-link')
-  if (!links.length) return
-
-  links.forEach((link) => {
-    link.addEventListener('click', (e) => {
-      e.preventDefault()
-      const email = window.prompt('Email do barbeiro:')
-      if (email === null) return
-      const password = window.prompt('Password do barbeiro:')
-      if (password === null) return
-      window.alert('Credenciais recebidas. Acesso de barbeiro será validado pelo sistema.')
-    })
-  })
-}
-
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', setupBarberAccess)
-} else {
-  setupBarberAccess()
-}
-
 function selectTime(time) {
   bookingState.time = time
   
@@ -487,28 +576,49 @@ function showClientDataForm() {
   // Mostrar formulário
   clientDataStep.classList.remove('hidden')
   clientDataStep.scrollIntoView({ behavior: 'smooth', block: 'start' })
+
+  if (bookingState.client && bookingState.clientName && bookingState.clientPhone) {
+    const nameInput = document.getElementById('clientName')
+    const phoneInput = document.getElementById('clientPhone')
+    const countrySelect = document.getElementById('clientCountry')
+    const countryCodeDisplay = document.getElementById('countryCodeDisplay')
+
+    nameInput.value = bookingState.clientName
+    phoneInput.value = bookingState.clientPhone
+    if (countrySelect) {
+      countrySelect.value = bookingState.clientCountry || 'PT'
+      countrySelect.disabled = true
+    }
+    if (countryCodeDisplay) {
+      countryCodeDisplay.value = (bookingState.clientPhoneComplete || '').startsWith('+351') ? '+351' : countryCodeDisplay.value
+    }
+    nameInput.disabled = true
+    phoneInput.disabled = true
+  }
   
   // Adicionar event listener ao formulário
   const form = document.getElementById('clientDataForm')
   form.addEventListener('submit', async (e) => {
     e.preventDefault()
     
-    const clientName = document.getElementById('clientName').value.trim()
-    const clientCountry = document.getElementById('clientCountry').value
-    const clientPhone = document.getElementById('clientPhone').value.trim()
-    const countryCode = countryPhoneCodes[clientCountry].code
-    
-    // Validar telefone
-    if (!/^[0-9]{9}$/.test(clientPhone)) {
-      alert('❌ Número de telefone inválido. Use exatamente 9 dígitos.')
-      return
+    if (!bookingState.client) {
+      const clientName = document.getElementById('clientName').value.trim()
+      const clientCountry = document.getElementById('clientCountry').value
+      const clientPhone = document.getElementById('clientPhone').value.trim()
+      const countryCode = countryPhoneCodes[clientCountry].code
+      
+      // Validar telefone
+      if (!/^[0-9]{9}$/.test(clientPhone)) {
+        alert('❌ Número de telefone inválido. Use exatamente 9 dígitos.')
+        return
+      }
+      
+      // Guardar dados do cliente com código do país
+      bookingState.clientName = clientName
+      bookingState.clientCountry = clientCountry
+      bookingState.clientPhone = clientPhone
+      bookingState.clientPhoneComplete = `${countryCode} ${clientPhone}`
     }
-    
-    // Guardar dados do cliente com código do país
-    bookingState.clientName = clientName
-    bookingState.clientCountry = clientCountry
-    bookingState.clientPhone = clientPhone
-    bookingState.clientPhoneComplete = `${countryCode} ${clientPhone}`
     
     // Confirmar marcação
     await confirmBooking()
@@ -536,6 +646,7 @@ async function confirmBooking() {
       serviceDuration: bookingState.serviceDuration,
       date: bookingState.date,
       time: bookingState.time,
+      clientUid: bookingState.client ? bookingState.client.uid : null,
       clientName: bookingState.clientName,
       clientCountry: bookingState.clientCountry,
       clientPhone: bookingState.clientPhone,
@@ -623,6 +734,7 @@ function resetBooking() {
 
 // Inicializar quando o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', () => {
+  initClientAuth()
   initServiceSelection()
   initBookingConfirmation()
 })

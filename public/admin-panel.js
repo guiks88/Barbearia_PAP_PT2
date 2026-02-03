@@ -1,5 +1,7 @@
-import { database } from "./firebase-config.js"
+import { auth, database, firebaseConfig } from "./firebase-config.js"
 import { ref, push, set, onValue, remove, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js"
+import { getAuth, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
 import {
   formatPhoneNumber,
   validatePhoneNumber,
@@ -10,37 +12,26 @@ import {
   SERVICE_DURATION,
 } from "./utils.js"
 
-const adminId = sessionStorage.getItem("adminId")
-const adminName = sessionStorage.getItem("adminName")
-const isAdmin = sessionStorage.getItem("isAdmin")
+const secondaryApp = initializeApp(firebaseConfig, "secondary")
+const secondaryAuth = getAuth(secondaryApp)
 
-if (!adminId || !isAdmin || isAdmin !== "true") {
-  window.location.href = "admin-login.html"
-}
-
-async function verifyAdminAccess() {
+async function verifyAdminAccess(user) {
   try {
-    const adminsRef = ref(database, "admins")
-    const snapshot = await get(adminsRef)
+    const adminRef = ref(database, `admins/${user.uid}`)
+    const snapshot = await get(adminRef)
 
     if (!snapshot.exists()) {
+      await signOut(auth)
       sessionStorage.clear()
       window.location.href = "admin-login.html"
       return false
     }
 
-    let adminExists = false
-    snapshot.forEach((childSnapshot) => {
-      if (childSnapshot.key === adminId) {
-        adminExists = true
-      }
-    })
-
-    if (!adminExists) {
-      sessionStorage.clear()
-      window.location.href = "admin-login.html"
-      return false
-    }
+    const adminData = snapshot.val()
+    sessionStorage.setItem("adminId", user.uid)
+    sessionStorage.setItem("adminName", adminData.name)
+    sessionStorage.setItem("isAdmin", "true")
+    document.getElementById("adminNameDisplay").textContent = `Olá, ${adminData.name}`
 
     return true
   } catch (error) {
@@ -49,13 +40,20 @@ async function verifyAdminAccess() {
   }
 }
 
-verifyAdminAccess()
-
-document.getElementById("adminNameDisplay").textContent = `Olá, ${adminName}`
+onAuthStateChanged(auth, (user) => {
+  if (!user) {
+    sessionStorage.clear()
+    window.location.href = "admin-login.html"
+    return
+  }
+  verifyAdminAccess(user)
+})
 
 document.getElementById("logoutBtn").addEventListener("click", () => {
-  sessionStorage.clear()
-  window.location.href = "index.html"
+  signOut(auth).finally(() => {
+    sessionStorage.clear()
+    window.location.href = "index.html"
+  })
 })
 
 document.querySelectorAll(".tab-btn").forEach((btn) => {
@@ -75,30 +73,42 @@ setupPhoneValidation("barberPhone")
 document.getElementById("barberForm").addEventListener("submit", async (e) => {
   e.preventDefault()
 
+  const email = document.getElementById("barberEmail").value
   const phone = document.getElementById("barberPhone").value
+  const password = document.getElementById("barberPassword").value
 
   if (!validatePhoneNumber(phone)) {
     showError("Número de telefone inválido. Use 9 dígitos começando com 9.")
     return
   }
 
-  const barbersRef = ref(database, "barbers")
-  const newBarberRef = push(barbersRef)
-
-  const newBarber = {
-    name: document.getElementById("barberName").value,
-    email: document.getElementById("barberEmail").value,
-    phone: formatPhoneNumber(phone),
-    specialty: document.getElementById("barberSpecialty").value,
-    createdAt: new Date().toISOString(),
+  if (!password || password.length < 6) {
+    showError("A senha deve ter pelo menos 6 caracteres.")
+    return
   }
 
   try {
-    await set(newBarberRef, newBarber)
+    const barberCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password)
+    const barberUid = barberCredential.user.uid
+
+    const newBarber = {
+      name: document.getElementById("barberName").value,
+      email,
+      phone: formatPhoneNumber(phone),
+      specialty: document.getElementById("barberSpecialty").value,
+      createdAt: new Date().toISOString(),
+    }
+
+    await set(ref(database, `barbers/${barberUid}`), newBarber)
+    await signOut(secondaryAuth)
     e.target.reset()
     showSuccess("Barbeiro adicionado com sucesso!")
   } catch (error) {
-    showError("Erro ao adicionar barbeiro: " + error.message)
+    if (error.code === "auth/email-already-in-use") {
+      showError("Este email já está registado no Firebase Auth.")
+    } else {
+      showError("Erro ao adicionar barbeiro: " + error.message)
+    }
   }
 })
 
