@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registo Admin - Barbearia João Castro</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <h1 class="logo">✂️ Registo Administrador</h1>
+            <p class="subtitle">Criar conta de administrador</p>
+            
+            <form id="adminRegisterForm">
+                <div class="form-group">
+                    <label for="adminName">Nome Completo *</label>
+                    <input type="text" id="adminName" required placeholder="Nome do administrador">
+                </div>
+                
+                <div class="form-group">
+                    <label for="adminEmail">Email *</label>
+                    <input type="email" id="adminEmail" required placeholder="admin@barbershop.pt">
+                </div>
+                
+                <div class="form-group">
+                    <label for="adminPhone">Telefone *</label>
+                    <input type="tel" id="adminPhone" placeholder="912345678" maxlength="9" required>
+                    <small style="color: var(--color-text-secondary); font-size: 0.85rem;">Formato: 9 dígitos (ex: 912345678)</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="adminPassword">Senha *</label>
+                    <input type="password" id="adminPassword" required minlength="6" placeholder="••••••••">
+                    <small style="color: var(--color-text-secondary); font-size: 0.85rem;">Mínimo 6 caracteres</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="adminPasswordConfirm">Confirmar Senha *</label>
+                    <input type="password" id="adminPasswordConfirm" required minlength="6" placeholder="••••••••">
+                </div>
+                
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Registar</button>
+            </form>
+            
+            <div class="auth-footer">
+                <p>Já tem conta? <a href="admin-login.html">Fazer Login</a></p>
+                <a href="index.html">← Voltar à página inicial</a>
+            </div>
+        </div>
+    </div>
+    
+    <script type="module" src="admin-register.js"></script>
+</body>
+</html>

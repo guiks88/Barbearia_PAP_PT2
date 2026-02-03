@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marcações - Barbearia João Castro</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <h1 class="logo">✂️ Barbearia João Castro</h1>
+            <nav class="nav">
+                <a href="index.html" class="btn btn-secondary">← Voltar</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="booking-steps">
+            <!-- Step 1: Serviços -->
+            <div class="card" id="step-services">
+                <h2>1. Escolha o Serviço</h2>
+                <div class="services-grid">
+                    <div class="service-card" data-service="corte" data-price="15" data-duration="30">
+                        <h3>Corte de Cabelo</h3>
+                        <p class="price">15€</p>
+                        <p style="color: var(--color-text-secondary); font-size: 0.875rem;">⏱️ 30 minutos</p>
+                        <button class="btn btn-primary btn-small select-service">Selecionar</button>
+                    </div>
+                    <div class="service-card" data-service="barba" data-price="10" data-duration="20">
+                        <h3>Barba</h3>
+                        <p class="price">10€</p>
+                        <p style="color: var(--color-text-secondary); font-size: 0.875rem;">⏱️ 20 minutos</p>
+                        <button class="btn btn-primary btn-small select-service">Selecionar</button>
+                    </div>
+                    <div class="service-card" data-service="corte-barba" data-price="22" data-duration="45">
+                        <h3>Corte + Barba</h3>
+                        <p class="price">22€</p>
+                        <p style="color: var(--color-text-secondary); font-size: 0.875rem;">⏱️ 45 minutos</p>
+                        <button class="btn btn-primary btn-small select-service">Selecionar</button>
+                    </div>
+                    <div class="service-card" data-service="sobrancelha" data-price="5" data-duration="10">
+                        <h3>Sobrancelha</h3>
+                        <p class="price">5€</p>
+                        <p style="color: var(--color-text-secondary); font-size: 0.875rem;">⏱️ 10 minutos</p>
+                        <button class="btn btn-primary btn-small select-service">Selecionar</button>
+                    </div>
+                    <div class="service-card" data-service="completo" data-price="35" data-duration="60">
+                        <h3>Pacote Completo</h3>
+                        <p class="price">35€</p>
+                        <p style="color: var(--color-text-secondary); font-size: 0.875rem;">⏱️ 60 minutos</p>
+                        <button class="btn btn-primary btn-small select-service">Selecionar</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Barbeiro -->
+            <div class="card hidden" id="step-barber">
+                <h2>2. Escolha o Barbeiro</h2>
+                <div class="selected-info">
+                    <p><strong>Serviço selecionado:</strong> <span id="selected-service-name"></span> - <span id="selected-service-price"></span>€</p>
+                </div>
+                <div id="barbersList" class="barbers-list"></div>
+            </div>
+
+            <!-- Step 3: Data e Hora -->
+            <div class="card hidden" id="step-datetime">
+                <h2>3. Escolha a Data e Hora</h2>
+                <div class="selected-info">
+                    <p><strong>Serviço:</strong> <span id="selected-service-name2"></span> - <span id="selected-service-price2"></span>€</p>
+                    <p><strong>Barbeiro:</strong> <span id="selected-barber-name"></span></p>
+                </div>
+
+                <!-- Calendário -->
+                <div class="calendar-container">
+                    <div class="calendar-header">
+                        <button class="btn-icon" id="prevMonth">‹</button>
+                        <div class="calendar-title">
+                            <select id="monthSelect" class="calendar-select">
+                                <option value="0">Janeiro</option>
+                                <option value="1">Fevereiro</option>
+                                <option value="2">Março</option>
+                                <option value="3">Abril</option>
+                                <option value="4">Maio</option>
+                                <option value="5">Junho</option>
+                                <option value="6">Julho</option>
+                                <option value="7">Agosto</option>
+                                <option value="8">Setembro</option>
+                                <option value="9">Outubro</option>
+                                <option value="10">Novembro</option>
+                                <option value="11">Dezembro</option>
+                            </select>
+                            <select id="yearSelect" class="calendar-select"></select>
+                        </div>
+                        <button class="btn-icon" id="nextMonth">›</button>
+                    </div>
+
+                    <div class="calendar-weekdays">
+                        <div>Dom</div>
+                        <div>Seg</div>
+                        <div>Ter</div>
+                        <div>Qua</div>
+                        <div>Qui</div>
+                        <div>Sex</div>
+                        <div>Sáb</div>
+                    </div>
+
+                    <div class="calendar-days" id="calendarDays"></div>
+                </div>
+
+                <!-- Horários Disponíveis -->
+                <div class="time-slots-container hidden" id="timeSlotsContainer">
+                    <h3 class="slots-title">Horários Disponíveis - <span id="selectedDateDisplay"></span></h3>
+                    <div id="timeSlotsList" class="time-slots-list"></div>
+                </div>
+
+                <div class="no-slots-message hidden" id="noSlotsMessage">
+                    <p>❌ Não há horários disponíveis para este dia</p>
+                </div>
+            </div>
+
+            <!-- Step 4: Confirmação de Sucesso -->
+            <div class="card hidden" id="step-success">
+                <div class="success-message">
+                    <h2>✅ Marcação Confirmada!</h2>
+                    <div class="booking-summary">
+                        <h3>Resumo da Marcação</h3>
+                        <div class="summary-item">
+                            <span>Serviço:</span>
+                            <strong id="success-service"></strong>
+                        </div>
+                        <div class="summary-item">
+                            <span>Barbeiro:</span>
+                            <strong id="success-barber"></strong>
+                        </div>
+                        <div class="summary-item">
+                            <span>Data:</span>
+                            <strong id="success-date"></strong>
+                        </div>
+                        <div class="summary-item">
+                            <span>Hora:</span>
+                            <strong id="success-time"></strong>
+                        </div>
+                        <div class="summary-item total">
+                            <span>Total a Pagar:</span>
+                            <strong id="success-price"></strong>
+                        </div>
+                    </div>
+
+                    <div class="success-actions">
+                        <button class="btn btn-primary" id="newBookingBtn">📅 Fazer Outra Marcação</button>
+                        <button class="btn btn-secondary" id="exitBtn">🏠 Sair do Site</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2026 Barbearia João Castro. Todos os direitos reservados.</p>
+            <a href="admin-login.html" class="admin-link">Área Administrativa</a>
+        </div>
+    </footer>
+
+    <script type="module" src="booking-calendar.js"></script>
+</body>
+</html>

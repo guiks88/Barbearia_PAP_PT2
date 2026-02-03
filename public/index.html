@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barbearia João Castro - Marcações Online</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Header com cover image e logo -->
+    <div class="hero-section">
+        <div class="hero-cover">
+            <div class="hero-overlay"></div>
+            <img src="https://images.unsplash.com/photo-1585747860715-2ba37e788b70?q=80&w=1200&h=400&fit=crop" alt="Barbearia" class="hero-image">
+        </div>
+        
+        <div class="profile-section">
+            <div class="container">
+                <div class="profile-card">
+                    <div class="profile-avatar">
+                        <img src="https://images.unsplash.com/photo-1621605815971-fbc98d665033?q=80&w=150&h=150&fit=crop" alt="Nelson Coutinho Barbershop">
+                    </div>
+                    <div class="profile-info">
+                        <h1 class="profile-name">Barbearia João Castro</h1>
+                        <div class="profile-meta">
+                            <span class="rating">★ 4.9</span>
+                            <span class="divider">·</span>
+                            <span class="location">📍 Rua das Flores, Póvoa de Varzim, Portugal</span>
+                            <span class="divider">·</span>
+                            <span class="status status-open">Aberto</span>
+                        </div>
+                    </div>
+                    <div class="profile-actions">
+                        <a href="bookings.html" class="btn btn-book">Marcar</a>
+                        <button class="btn-icon" title="Favorito">♡</button>
+                        <button class="btn-icon" title="Partilhar">⋯</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="tabs-nav">
+        <div class="container">
+            <button class="tab-link active" data-tab="team">As pessoas</button>
+            <button class="tab-link" data-tab="about">Sobre</button>
+            <button class="tab-link" data-tab="location">Localização</button>
+        </div>
+    </nav>
+
+    <!-- Tab Content -->
+    <main class="main-content">
+        <div class="container">
+            <!-- Team Tab -->
+            <div id="team" class="tab-content active">
+                <h2 class="section-title">Nossa Equipa</h2>
+                <div class="team-grid">
+                    <div class="team-member">
+                        <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120&h=120&fit=crop" alt="Manuel" class="member-avatar">
+                        <h3>Manuel</h3>
+                        <p class="member-role">Barba e Sobrancelha</p>
+                    </div>
+                    <div class="team-member">
+                        <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=120&h=120&fit=crop" alt="Ana" class="member-avatar">
+                        <h3>Ana</h3>
+                        <p class="member-role">Cortes Modernos</p>
+                    </div>
+                    <div class="team-member">
+                        <img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=120&h=120&fit=crop" alt="João Pedro" class="member-avatar">
+                        <h3>João Pedro</h3>
+                        <p class="member-role">Degradé</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- About Tab -->
+            <div id="about" class="tab-content">
+                <h2 class="section-title">Sobre Nós</h2>
+                <div class="about-section">
+                    <p class="about-text">
+                        <strong>Estilo e elegância em cada corte 🍃</strong>
+                    </p>
+                    <p class="about-text">
+                        Barbearia João Castro, fundada a 21 de setembro de 2025, nasce da paixão pelo estilo, pela tradição e pela confiança que um bom corte transmite. Localizada na Rua das Flores, Póvoa de Varzim, Portugal, a barbearia oferece um ambiente moderno e acolhedor, onde cada cliente é tratado com atenção ao detalhe, profissionalismo e dedicação. Dos cortes clássicos às tendências mais atuais, passando pelo cuidado da barba, a Barbearia João Castro é o espaço ideal para quem valoriza qualidade, atitude e identidade própria.
+                    </p>
+                    <p class="about-text">
+                        <strong>Instagram:</strong> <a href="#" class="link-gold">@joaocastro.barbearia</a>
+                    </p>
+                    <p class="about-text">
+                        <strong>Telefone:</strong> <a href="tel:9372727447" class="link-gold">937 272 7447</a>
+                    </p>
+                    <p class="about-text">
+                        <strong>Email:</strong> <a href="mailto:joaoguilhermesftc88@gmail.com" class="link-gold">joaoguilhermesftc88@gmail.com</a>
+                    </p>
+                    
+                    <h3 class="subsection-title">Nossos Serviços</h3>
+                    <div class="services-list">
+                        <div class="service-item">
+                            <div class="service-info">
+                                <h4>Corte de Cabelo</h4>
+                                <p class="service-duration">30 minutos</p>
+                            </div>
+                            <p class="service-price">15€</p>
+                        </div>
+                        <div class="service-item">
+                            <div class="service-info">
+                                <h4>Barba</h4>
+                                <p class="service-duration">20 minutos</p>
+                            </div>
+                            <p class="service-price">10€</p>
+                        </div>
+                        <div class="service-item">
+                            <div class="service-info">
+                                <h4>Corte + Barba</h4>
+                                <p class="service-duration">45 minutos</p>
+                            </div>
+                            <p class="service-price">22€</p>
+                        </div>
+                        <div class="service-item">
+                            <div class="service-info">
+                                <h4>Sobrancelha</h4>
+                                <p class="service-duration">10 minutos</p>
+                            </div>
+                            <p class="service-price">5€</p>
+                        </div>
+                        <div class="service-item">
+                            <div class="service-info">
+                                <h4>Pacote Completo</h4>
+                                <p class="service-duration">60 minutos</p>
+                            </div>
+                            <p class="service-price">35€</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Location Tab -->
+            <div id="location" class="tab-content">
+                <h2 class="section-title">Localização</h2>
+                <div class="location-section">
+                    <div class="map-container">
+                        <iframe 
+                            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3004.5!2d-8.5!3d41.2!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNDHCsDEyJzAwLjAiTiA4wrAzMCcwMC4wIlc!5e0!3m2!1spt-PT!2spt!4v1234567890"
+                            width="100%" 
+                            height="400" 
+                            style="border:0; border-radius: 12px;" 
+                            allowfullscreen="" 
+                            loading="lazy">
+                        </iframe>
+                    </div>
+                    <div class="location-details">
+                        <h3>📍 Morada</h3>
+                        <p>Rua das Flores</p>
+                        <p>Póvoa de Varzim, Portugal</p>
+                        <a href="https://www.google.com/maps" target="_blank" class="btn btn-secondary" style="margin-top: 1rem;">Ver no Google Maps</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer com acesso admin -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2026 Barbearia João Castro. Todos os direitos reservados.</p>
+            <a href="admin-login.html" class="admin-link">Área Administrativa</a>
+        </div>
+    </footer>
+
+    <script type="module" src="script.js"></script>
+</body>
+</html>
