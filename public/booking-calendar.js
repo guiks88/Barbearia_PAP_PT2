@@ -113,6 +113,11 @@ function initClientAuth() {
       showSuccess('Autenticado com sucesso!')
       showBookingSteps()
     } catch (error) {
+      if (error.code === 'auth/operation-not-allowed') {
+        showError('Email/Senha não está ativado no Firebase Auth. Ative em Authentication > Sign-in method.')
+        return
+      }
+
       if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
         try {
           const newUser = await createUserWithEmailAndPassword(auth, email, password)
@@ -135,6 +140,10 @@ function initClientAuth() {
           showSuccess('Conta criada e autenticada com sucesso!')
           showBookingSteps()
         } catch (createError) {
+          if (createError.code === 'auth/operation-not-allowed') {
+            showError('Email/Senha não está ativado no Firebase Auth. Ative em Authentication > Sign-in method.')
+            return
+          }
           if (createError.code === 'auth/email-already-in-use') {
             showError('Email já existe. Verifique a senha.')
             return
