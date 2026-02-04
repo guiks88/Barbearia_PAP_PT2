@@ -91,11 +91,18 @@ document.getElementById("barberForm").addEventListener("submit", async (e) => {
     const barberCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password)
     const barberUid = barberCredential.user.uid
 
+    const startTime = document.getElementById("barberStartTime").value
+    const endTime = document.getElementById("barberEndTime").value
+
     const newBarber = {
       name: document.getElementById("barberName").value,
       email,
       phone: formatPhoneNumber(phone),
       specialty: document.getElementById("barberSpecialty").value,
+      workingHours: {
+        start: startTime,
+        end: endTime
+      },
       createdAt: new Date().toISOString(),
     }
 
@@ -134,6 +141,7 @@ function loadBarbers() {
             <p><strong>Email:</strong> ${barber.email}</p>
             <p><strong>Telefone:</strong> ${barber.phone}</p>
             ${barber.specialty ? `<p><strong>Especialidade:</strong> ${barber.specialty}</p>` : ""}
+            ${barber.workingHours ? `<p><strong>Horário:</strong> ${barber.workingHours.start} - ${barber.workingHours.end}</p>` : ""}
           </div>
           <button class="btn btn-danger" onclick="deleteBarber('${id}')">Eliminar</button>
         </div>

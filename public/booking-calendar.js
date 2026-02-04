@@ -11,6 +11,7 @@ const bookingState = {
   serviceDuration: 0,
   barber: null,
   barberName: '',
+  barberWorkingHours: [],
   date: null,
   time: null,
   client: null,
@@ -22,8 +23,23 @@ const bookingState = {
 
 let confirmationResult = null
 
-// Horários de trabalho (9h às 19h)
-const workingHours = ['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00']
+// Horários de trabalho padrão (9h às 19h)
+const defaultWorkingHours = ['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00']
+
+// Função para gerar horários do barbeiro
+function generateWorkingHours(startTime, endTime) {
+  const hours = []
+  const [startHour] = startTime.split(':').map(Number)
+  const [endHour] = endTime.split(':').map(Number)
+  
+  for (let hour = startHour; hour <= endHour; hour++) {
+    // Pular hora do almoço (13h)
+    if (hour === 13) continue
+    hours.push(`${hour.toString().padStart(2, '0')}:00`)
+  }
+  
+  return hours
+}
 
 function normalizePhone(phone) {
   const trimmed = phone.replace(/\s+/g, '')
@@ -249,6 +265,26 @@ async function selectBarber(barberId, barberName) {
   bookingState.barber = barberId
   bookingState.barberName = barberName
   
+  // Carregar horários do barbeiro
+  try {
+    const barberRef = ref(database, `barbers/${barberId}`)
+    const snapshot = await get(barberRef)
+    
+    if (snapshot.exists()) {
+      const barberData = snapshot.val()
+      if (barberData.workingHours && barberData.workingHours.start && barberData.workingHours.end) {
+        bookingState.barberWorkingHours = generateWorkingHours(barberData.workingHours.start, barberData.workingHours.end)
+      } else {
+        bookingState.barberWorkingHours = defaultWorkingHours
+      }
+    } else {
+      bookingState.barberWorkingHours = defaultWorkingHours
+    }
+  } catch (error) {
+    console.error('Erro ao carregar horários do barbeiro:', error)
+    bookingState.barberWorkingHours = defaultWorkingHours
+  }
+  
   // Atualizar UI
   document.querySelectorAll('.barber-card').forEach(c => c.classList.remove('selected'))
   document.querySelector(`[data-barber-id="${barberId}"]`).classList.add('selected')
@@ -433,6 +469,7 @@ function calculateAvailableSlots(dateStr) {
     .filter(b => b.date === dateStr)
     .map(b => b.time)
   
+  const workingHours = bookingState.barberWorkingHours.length > 0 ? bookingState.barberWorkingHours : defaultWorkingHours
   return workingHours.filter(hour => !bookedSlots.includes(hour)).length
 }
 
@@ -470,6 +507,8 @@ function renderTimeSlots(dateStr) {
   const bookedSlots = bookingState.bookings
     .filter(b => b.date === dateStr)
     .map(b => b.time)
+  
+  const workingHours = bookingState.barberWorkingHours.length > 0 ? bookingState.barberWorkingHours : defaultWorkingHours
   
   workingHours.forEach(hour => {
     const isBooked = bookedSlots.includes(hour)

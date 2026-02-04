@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel do Barbeiro - Barbearia João Castro</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .barber-panel {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .barber-header {
+            background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+            color: white;
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .barber-header h1 {
+            margin: 0 0 0.5rem 0;
+            font-size: 2rem;
+        }
+
+        .barber-header p {
+            margin: 0;
+            opacity: 0.9;
+        }
+
+        .schedule-container {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+
+        .schedule-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .schedule-header h2 {
+            margin: 0;
+            color: var(--color-primary);
+        }
+
+        .date-selector {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .date-selector input[type="date"] {
+            padding: 0.5rem 1rem;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        .appointments-grid {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .appointment-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.25rem;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background: #f9f9f9;
+            transition: all 0.3s ease;
+        }
+
+        .appointment-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .appointment-time {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--color-primary);
+            min-width: 80px;
+        }
+
+        .appointment-details {
+            flex: 1;
+            padding: 0 1.5rem;
+        }
+
+        .appointment-details h3 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.1rem;
+            color: #333;
+        }
+
+        .appointment-details p {
+            margin: 0.25rem 0;
+            color: #666;
+            font-size: 0.95rem;
+        }
+
+        .appointment-service {
+            padding: 0.4rem 1rem;
+            background: var(--color-primary);
+            color: white;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            white-space: nowrap;
+        }
+
+        .no-appointments {
+            text-align: center;
+            padding: 3rem;
+            color: #999;
+        }
+
+        .no-appointments p {
+            font-size: 1.1rem;
+            margin: 1rem 0;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            margin: 0 0 0.5rem 0;
+            font-size: 2rem;
+            color: var(--color-primary);
+        }
+
+        .stat-card p {
+            margin: 0;
+            color: #666;
+            font-size: 0.95rem;
+        }
+
+        .logout-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 0.5rem 1.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: #c82333;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #999;
+        }
+
+        @media (max-width: 768px) {
+            .barber-panel {
+                padding: 1rem;
+            }
+
+            .schedule-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .appointment-card {
+                flex-direction: column;
+                text-align: center;
+                gap: 1rem;
+            }
+
+            .appointment-details {
+                padding: 0;
+            }
+
+            .appointment-time {
+                min-width: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="barber-panel">
+        <div class="barber-header">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <h1>✂️ <span id="barberNameDisplay">Barbeiro</span></h1>
+                    <p id="barberEmailDisplay"></p>
+                </div>
+                <button class="logout-btn" id="logoutBtn">Sair</button>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3 id="todayCount">0</h3>
+                <p>Marcações Hoje</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="weekCount">0</h3>
+                <p>Marcações esta Semana</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="monthCount">0</h3>
+                <p>Marcações este Mês</p>
+            </div>
+        </div>
+
+        <div class="schedule-container">
+            <div class="schedule-header">
+                <h2>📅 Meu Horário</h2>
+                <div class="date-selector">
+                    <label for="dateFilter">Data:</label>
+                    <input type="date" id="dateFilter">
+                </div>
+            </div>
+
+            <div id="appointmentsContainer" class="appointments-grid">
+                <div class="loading">
+                    <p>A carregar marcações...</p>
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 2rem;">
+            <a href="index.html" class="btn btn-secondary">← Voltar à página inicial</a>
+        </div>
+    </div>
+
+    <script type="module" src="barber-panel.js"></script>
+</body>
+</html>

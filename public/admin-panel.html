@@ -49,6 +49,16 @@
                         <label for="barberSpecialty">Especialidade</label>
                         <input type="text" id="barberSpecialty" placeholder="Ex: Cortes modernos">
                     </div>
+                    <div class="form-group">
+                        <label for="barberStartTime">Horário de Início *</label>
+                        <input type="time" id="barberStartTime" required value="09:00">
+                        <small style="color: var(--color-text-secondary); font-size: 0.85rem;">Horário de início do trabalho</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="barberEndTime">Horário de Fim *</label>
+                        <input type="time" id="barberEndTime" required value="19:00">
+                        <small style="color: var(--color-text-secondary); font-size: 0.85rem;">Horário de fim do trabalho</small>
+                    </div>
                     <button type="submit" class="btn btn-primary" style="width: 100%;">Adicionar Barbeiro</button>
                 </form>
             </div>

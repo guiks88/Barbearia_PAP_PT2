@@ -6,7 +6,7 @@ import { showSuccess, showError } from "./utils.js"
 document.getElementById("barberLoginForm").addEventListener("submit", async (e) => {
   e.preventDefault()
 
-  const email = document.getElementById("barberEmail").value
+  const email = document.getElementById("barberSelect").value
   const password = document.getElementById("barberPassword").value
 
   try {
@@ -23,15 +23,18 @@ document.getElementById("barberLoginForm").addEventListener("submit", async (e) 
     }
 
     const barberFound = snapshot.val()
+    const barberSelect = document.getElementById("barberSelect")
+    const selectedBarberName = barberSelect.options[barberSelect.selectedIndex].text
 
     sessionStorage.setItem("barberId", uid)
-    sessionStorage.setItem("barberName", barberFound.name)
+    sessionStorage.setItem("barberName", selectedBarberName)
+    sessionStorage.setItem("barberEmail", email)
     sessionStorage.setItem("isBarber", "true")
 
     showSuccess("Login efetuado com sucesso!")
 
     setTimeout(() => {
-      window.location.href = "bookings.html"
+      window.location.href = "barber-panel.html"
     }, 1500)
   } catch (error) {
     if (error.code === "auth/invalid-credential" || error.code === "auth/wrong-password") {
