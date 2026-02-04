@@ -1,6 +1,6 @@
 import { auth, database } from "./firebase-config.js"
 import { ref, get, push, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
-import { RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
 import { showSuccess, showError } from "./utils.js"
 
 const isBarberSession = sessionStorage.getItem("isBarber") === "true"
@@ -20,13 +20,12 @@ const bookingState = {
   date: null,
   time: null,
   client: null,
+  clientEmail: null,
   currentMonth: new Date().getMonth(),
   currentYear: new Date().getFullYear(),
   availableSlots: {},
   bookings: []
 }
-
-let confirmationResult = null
 
 // Horários de trabalho padrão (9h às 19h)
 const defaultWorkingHours = ['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00']
@@ -46,13 +45,6 @@ function generateWorkingHours(startTime, endTime) {
   return hours
 }
 
-function normalizePhone(phone) {
-  const trimmed = phone.replace(/\s+/g, '')
-  if (trimmed.startsWith('+')) return trimmed
-  if (trimmed.startsWith('351')) return `+${trimmed}`
-  return `+351${trimmed}`
-}
-
 function showBookingSteps() {
   document.getElementById('step-auth').classList.add('hidden')
   document.getElementById('step-services').classList.remove('hidden')
@@ -64,23 +56,15 @@ function showAuthStep() {
 }
 
 function initClientAuth() {
-  const sendCodeBtn = document.getElementById('sendCodeBtn')
-  const verifyCodeBtn = document.getElementById('verifyCodeBtn')
-  const codeSection = document.getElementById('codeSection')
+  const form = document.getElementById('clientAuthForm')
+  if (!form) return
 
-  if (!sendCodeBtn || !verifyCodeBtn) return
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault()
 
-  let appVerifier = null
-
-  const getVerifier = () => {
-    if (!appVerifier) {
-      appVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'normal' })
-    }
-    return appVerifier
-  }
-
-  sendCodeBtn.addEventListener('click', async () => {
     const name = document.getElementById('clientAuthName').value.trim()
+    const email = document.getElementById('clientAuthEmail').value.trim()
+    const password = document.getElementById('clientAuthPassword').value
     const phone = document.getElementById('clientAuthPhone').value.trim()
 
     if (!name || name.length < 3) {
@@ -88,57 +72,80 @@ function initClientAuth() {
       return
     }
 
-    if (!phone || phone.length < 9) {
-      showError('Indique um número de telemóvel válido.')
+    if (!email) {
+      showError('Indique um email válido.')
+      return
+    }
+
+    if (!password || password.length < 6) {
+      showError('A senha deve ter pelo menos 6 caracteres.')
+      return
+    }
+
+    if (!/^[0-9]{9}$/.test(phone)) {
+      showError('Indique um número de telemóvel válido (9 dígitos).')
       return
     }
 
     try {
-      const verifier = getVerifier()
-      const fullPhone = normalizePhone(phone)
-      confirmationResult = await signInWithPhoneNumber(auth, fullPhone, verifier)
-      codeSection.classList.remove('hidden')
-      showSuccess('Código enviado por SMS.')
-    } catch (error) {
-      showError('Erro ao enviar o código: ' + error.message)
-    }
-  })
+      const userCredential = await signInWithEmailAndPassword(auth, email, password)
+      const uid = userCredential.user.uid
 
-  verifyCodeBtn.addEventListener('click', async () => {
-    const code = document.getElementById('smsCode').value.trim()
-    const name = document.getElementById('clientAuthName').value.trim()
-    const phone = document.getElementById('clientAuthPhone').value.trim()
+      const clientRef = ref(database, `clients/${uid}`)
+      const snapshot = await get(clientRef)
 
-    if (!confirmationResult) {
-      showError('Primeiro envie o código SMS.')
-      return
-    }
+      if (!snapshot.exists()) {
+        await set(clientRef, {
+          name,
+          email,
+          phone,
+          createdAt: new Date().toISOString(),
+        })
+      }
 
-    if (!code) {
-      showError('Introduza o código SMS.')
-      return
-    }
-
-    try {
-      const result = await confirmationResult.confirm(code)
-      const uid = result.user.uid
-      const fullPhone = normalizePhone(phone)
-
-      await set(ref(database, `clients/${uid}`), {
-        name,
-        phone: fullPhone,
-        createdAt: new Date().toISOString(),
-      })
-
-      bookingState.client = { uid, name, phone: fullPhone }
+      bookingState.client = { uid, name, email, phone }
       bookingState.clientName = name
+      bookingState.clientEmail = email
       bookingState.clientCountry = 'PT'
       bookingState.clientPhone = phone
-      bookingState.clientPhoneComplete = fullPhone
+      bookingState.clientPhoneComplete = `+351 ${phone}`
+
       showSuccess('Autenticado com sucesso!')
       showBookingSteps()
     } catch (error) {
-      showError('Código inválido ou expirado.')
+      if (error.code === 'auth/user-not-found') {
+        try {
+          const newUser = await createUserWithEmailAndPassword(auth, email, password)
+          const uid = newUser.user.uid
+
+          await set(ref(database, `clients/${uid}`), {
+            name,
+            email,
+            phone,
+            createdAt: new Date().toISOString(),
+          })
+
+          bookingState.client = { uid, name, email, phone }
+          bookingState.clientName = name
+          bookingState.clientEmail = email
+          bookingState.clientCountry = 'PT'
+          bookingState.clientPhone = phone
+          bookingState.clientPhoneComplete = `+351 ${phone}`
+
+          showSuccess('Conta criada e autenticada com sucesso!')
+          showBookingSteps()
+        } catch (createError) {
+          showError('Erro ao criar conta: ' + createError.message)
+        }
+        return
+      }
+
+      if (error.code === 'auth/wrong-password') {
+        showError('Senha incorreta.')
+        return
+      }
+
+      showError('Erro ao autenticar: ' + error.message)
     }
   })
 
@@ -153,11 +160,12 @@ function initClientAuth() {
 
     if (snapshot.exists()) {
       const client = snapshot.val()
-      bookingState.client = { uid: user.uid, name: client.name, phone: client.phone }
+      bookingState.client = { uid: user.uid, name: client.name, email: client.email, phone: client.phone }
       bookingState.clientName = client.name
+      bookingState.clientEmail = client.email
       bookingState.clientCountry = 'PT'
-      bookingState.clientPhone = client.phone.replace(/^\+351/, '')
-      bookingState.clientPhoneComplete = client.phone
+      bookingState.clientPhone = (client.phone || '').replace(/^\+351\s?/, '')
+      bookingState.clientPhoneComplete = client.phone || `+351 ${bookingState.clientPhone}`
       showBookingSteps()
     } else {
       showAuthStep()
@@ -591,6 +599,10 @@ function showClientDataForm() {
           <input type="text" id="clientName" required minlength="3" placeholder="João Silva">
         </div>
         <div class="form-group">
+          <label for="clientEmail">Email *</label>
+          <input type="email" id="clientEmail" required placeholder="cliente@email.pt">
+        </div>
+        <div class="form-group">
           <label for="clientCountry">País *</label>
           <select id="clientCountry" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-border); border-radius: 6px; font-size: 0.95rem;">
             ${countryOptions}
@@ -623,11 +635,15 @@ function showClientDataForm() {
 
   if (bookingState.client && bookingState.clientName && bookingState.clientPhone) {
     const nameInput = document.getElementById('clientName')
+    const emailInput = document.getElementById('clientEmail')
     const phoneInput = document.getElementById('clientPhone')
     const countrySelect = document.getElementById('clientCountry')
     const countryCodeDisplay = document.getElementById('countryCodeDisplay')
 
     nameInput.value = bookingState.clientName
+    if (emailInput) {
+      emailInput.value = bookingState.clientEmail || ''
+    }
     phoneInput.value = bookingState.clientPhone
     if (countrySelect) {
       countrySelect.value = bookingState.clientCountry || 'PT'
@@ -637,6 +653,9 @@ function showClientDataForm() {
       countryCodeDisplay.value = (bookingState.clientPhoneComplete || '').startsWith('+351') ? '+351' : countryCodeDisplay.value
     }
     nameInput.disabled = true
+    if (emailInput) {
+      emailInput.disabled = true
+    }
     phoneInput.disabled = true
   }
   
@@ -647,6 +666,7 @@ function showClientDataForm() {
     
     if (!bookingState.client) {
       const clientName = document.getElementById('clientName').value.trim()
+      const clientEmail = document.getElementById('clientEmail').value.trim()
       const clientCountry = document.getElementById('clientCountry').value
       const clientPhone = document.getElementById('clientPhone').value.trim()
       const countryCode = countryPhoneCodes[clientCountry].code
@@ -656,9 +676,15 @@ function showClientDataForm() {
         alert('❌ Número de telefone inválido. Use exatamente 9 dígitos.')
         return
       }
+
+      if (!clientEmail) {
+        alert('❌ Email inválido. Indique um email válido.')
+        return
+      }
       
       // Guardar dados do cliente com código do país
       bookingState.clientName = clientName
+      bookingState.clientEmail = clientEmail
       bookingState.clientCountry = clientCountry
       bookingState.clientPhone = clientPhone
       bookingState.clientPhoneComplete = `${countryCode} ${clientPhone}`
@@ -692,6 +718,7 @@ async function confirmBooking() {
       time: bookingState.time,
       clientUid: bookingState.client ? bookingState.client.uid : null,
       clientName: bookingState.clientName,
+      clientEmail: bookingState.clientEmail || (bookingState.client ? bookingState.client.email : null),
       clientCountry: bookingState.clientCountry,
       clientPhone: bookingState.clientPhone,
       clientPhoneComplete: bookingState.clientPhoneComplete,
@@ -726,10 +753,64 @@ function showSuccessScreen() {
   document.getElementById('success-date').textContent = formattedDate
   document.getElementById('success-time').textContent = bookingState.time
   document.getElementById('success-price').textContent = `${bookingState.servicePrice}€`
+
+  const reportText = buildBookingReport(formattedDate)
+  const reportEl = document.getElementById('bookingReportText')
+  if (reportEl) {
+    reportEl.textContent = reportText
+  }
+  setupReportActions(reportText)
   
   // Mostrar tela de sucesso
   document.getElementById('step-success').classList.remove('hidden')
   document.getElementById('step-success').scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+function buildBookingReport(formattedDate) {
+  const clientEmail = bookingState.clientEmail || (bookingState.client ? bookingState.client.email : '')
+  return `Relatório da Marcação\n\n` +
+    `Cliente: ${bookingState.clientName}\n` +
+    `Email: ${clientEmail}\n` +
+    `Telefone: ${bookingState.clientPhoneComplete || bookingState.clientPhone || ''}\n\n` +
+    `Serviço: ${bookingState.serviceName} (${bookingState.serviceDuration} min)\n` +
+    `Barbeiro: ${bookingState.barberName}\n` +
+    `Data: ${formattedDate}\n` +
+    `Hora: ${bookingState.time}\n` +
+    `Preço: ${bookingState.servicePrice}€\n\n` +
+    `Estado: Confirmada\n` +
+    `Criado em: ${new Date().toLocaleString('pt-PT')}`
+}
+
+function setupReportActions(reportText) {
+  const copyBtn = document.getElementById('copyReportBtn')
+  const downloadBtn = document.getElementById('downloadReportBtn')
+
+  if (copyBtn && !copyBtn.dataset.bound) {
+    copyBtn.dataset.bound = 'true'
+    copyBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(reportText)
+        showSuccess('Relatório copiado para a área de transferência!')
+      } catch (error) {
+        showError('Não foi possível copiar o relatório.')
+      }
+    })
+  }
+
+  if (downloadBtn && !downloadBtn.dataset.bound) {
+    downloadBtn.dataset.bound = 'true'
+    downloadBtn.addEventListener('click', () => {
+      const blob = new Blob([reportText], { type: 'text/plain;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'relatorio-marcacao.txt'
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+    })
+  }
 }
 
 // ===== STEP 4: CONFIRMAÇÃO =====

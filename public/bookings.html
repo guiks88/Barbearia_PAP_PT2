@@ -21,28 +21,28 @@
             <!-- Step 0: Autenticação do Cliente -->
             <div class="card" id="step-auth">
                 <h2>Autenticação do Cliente</h2>
-                <p style="color: var(--color-text-secondary);">Introduza o seu nome e número de telemóvel. Iremos enviar um código por SMS.</p>
+                <p style="color: var(--color-text-secondary);">Introduza o seu nome, email e telemóvel. A autenticação será feita com email e senha.</p>
 
-                <form id="clientPhoneForm" class="auth-form">
+                <form id="clientAuthForm" class="auth-form">
                     <div class="form-group">
                         <label for="clientAuthName">Nome Completo *</label>
                         <input type="text" id="clientAuthName" required minlength="3" placeholder="João Silva">
+                    </div>
+                    <div class="form-group">
+                        <label for="clientAuthEmail">Email *</label>
+                        <input type="email" id="clientAuthEmail" required placeholder="cliente@email.pt">
+                    </div>
+                    <div class="form-group">
+                        <label for="clientAuthPassword">Senha *</label>
+                        <input type="password" id="clientAuthPassword" required minlength="6" placeholder="••••••••">
+                        <small style="color: var(--color-text-secondary); font-size: 0.85rem;">Mínimo 6 caracteres</small>
                     </div>
                     <div class="form-group">
                         <label for="clientAuthPhone">Telemóvel *</label>
                         <input type="tel" id="clientAuthPhone" required maxlength="9" placeholder="912345678">
                         <small style="color: var(--color-text-secondary); font-size: 0.85rem;">Formato: 9 dígitos (ex: 912345678)</small>
                     </div>
-                    <div id="recaptcha-container" style="margin: 1rem 0;"></div>
-                    <button type="button" class="btn btn-primary" id="sendCodeBtn">Enviar Código</button>
-
-                    <div id="codeSection" class="hidden" style="margin-top: 1rem;">
-                        <div class="form-group">
-                            <label for="smsCode">Código SMS *</label>
-                            <input type="text" id="smsCode" placeholder="123456">
-                        </div>
-                        <button type="button" class="btn btn-primary" id="verifyCodeBtn">Confirmar Código</button>
-                    </div>
+                    <button type="submit" class="btn btn-primary" id="clientAuthSubmit">Entrar / Registar</button>
                 </form>
             </div>
 
@@ -179,6 +179,15 @@
                     <div class="success-actions">
                         <button class="btn btn-primary" id="newBookingBtn">📅 Fazer Outra Marcação</button>
                         <button class="btn btn-secondary" id="exitBtn">🏠 Sair do Site</button>
+                    </div>
+
+                    <div style="margin-top: 2rem; text-align: left;">
+                        <h3>📄 Relatório da Marcação</h3>
+                        <pre id="bookingReportText" style="background: #f7f7f7; padding: 1rem; border-radius: 8px; white-space: pre-wrap; font-size: 0.95rem;"></pre>
+                        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.75rem;">
+                            <button class="btn btn-secondary" id="copyReportBtn">📋 Copiar Relatório</button>
+                            <button class="btn btn-secondary" id="downloadReportBtn">⬇️ Download Relatório</button>
+                        </div>
                     </div>
                 </div>
             </div>
