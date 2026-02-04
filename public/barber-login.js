@@ -6,7 +6,7 @@ import { showSuccess, showError } from "./utils.js"
 document.getElementById("barberLoginForm").addEventListener("submit", async (e) => {
   e.preventDefault()
 
-  const email = document.getElementById("barberSelect").value
+  const email = document.getElementById("barberEmail").value
   const password = document.getElementById("barberPassword").value
 
   try {
@@ -23,11 +23,9 @@ document.getElementById("barberLoginForm").addEventListener("submit", async (e) 
     }
 
     const barberFound = snapshot.val()
-    const barberSelect = document.getElementById("barberSelect")
-    const selectedBarberName = barberSelect.options[barberSelect.selectedIndex].text
 
     sessionStorage.setItem("barberId", uid)
-    sessionStorage.setItem("barberName", selectedBarberName)
+    sessionStorage.setItem("barberName", barberFound.name)
     sessionStorage.setItem("barberEmail", email)
     sessionStorage.setItem("isBarber", "true")
 
