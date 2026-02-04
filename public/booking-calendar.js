@@ -113,7 +113,7 @@ function initClientAuth() {
       showSuccess('Autenticado com sucesso!')
       showBookingSteps()
     } catch (error) {
-      if (error.code === 'auth/user-not-found') {
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
         try {
           const newUser = await createUserWithEmailAndPassword(auth, email, password)
           const uid = newUser.user.uid
@@ -135,6 +135,10 @@ function initClientAuth() {
           showSuccess('Conta criada e autenticada com sucesso!')
           showBookingSteps()
         } catch (createError) {
+          if (createError.code === 'auth/email-already-in-use') {
+            showError('Email já existe. Verifique a senha.')
+            return
+          }
           showError('Erro ao criar conta: ' + createError.message)
         }
         return
@@ -142,6 +146,11 @@ function initClientAuth() {
 
       if (error.code === 'auth/wrong-password') {
         showError('Senha incorreta.')
+        return
+      }
+
+      if (error.code === 'auth/invalid-email') {
+        showError('Email inválido.')
         return
       }
 
