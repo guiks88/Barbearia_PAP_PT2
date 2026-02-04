@@ -342,6 +342,50 @@ body {
   margin-bottom: 1rem;
 }
 
+/* ===== CUTS SECTION ===== */
+.cuts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
+}
+
+.cut-card {
+  background: white;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+}
+
+.cut-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.cut-card img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  display: block;
+}
+
+.cut-info {
+  padding: 1rem 1.25rem 1.25rem;
+}
+
+.cut-info h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+  color: var(--color-text-primary);
+}
+
+.cut-info p {
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+}
+
 /* ===== ABOUT SECTION ===== */
 .about-section {
   background: white;
@@ -854,6 +898,10 @@ body {
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   }
 
+  .cuts-grid {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+
   .location-section {
     grid-template-columns: 1fr;
   }
@@ -899,6 +947,14 @@ body {
 
   .team-grid {
     grid-template-columns: 1fr;
+  }
+
+  .cuts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cut-card img {
+    height: 160px;
   }
 }
 
