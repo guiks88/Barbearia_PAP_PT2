@@ -3,6 +3,11 @@ import { ref, get, push, set } from "https://www.gstatic.com/firebasejs/10.8.0/f
 import { RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
 import { showSuccess, showError } from "./utils.js"
 
+const isBarberSession = sessionStorage.getItem("isBarber") === "true"
+if (isBarberSession) {
+  window.location.href = "barber-panel.html"
+}
+
 // Estado da marcação
 const bookingState = {
   service: null,
