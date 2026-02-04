@@ -118,7 +118,11 @@ function initClientAuth() {
         return
       }
 
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+      if (
+        error.code === 'auth/user-not-found' ||
+        error.code === 'auth/invalid-credential' ||
+        error.code === 'auth/invalid-login-credentials'
+      ) {
         try {
           const newUser = await createUserWithEmailAndPassword(auth, email, password)
           const uid = newUser.user.uid
@@ -155,6 +159,11 @@ function initClientAuth() {
 
       if (error.code === 'auth/wrong-password') {
         showError('Senha incorreta.')
+        return
+      }
+
+      if (error.code === 'auth/invalid-login-credentials') {
+        showError('Credenciais inválidas. Verifique o email e a senha.')
         return
       }
 
