@@ -240,43 +240,43 @@ function initTabs() {
 }
 
 function initActionMenu() {
-  const menuWrapper = document.querySelector('.action-menu')
   const menuButton = document.getElementById('actionMenuButton')
-  const menuDropdown = document.getElementById('actionMenu')
+  const actionSheet = document.getElementById('actionSheet')
+  const actionSheetBackdrop = document.getElementById('actionSheetBackdrop')
+  const actionSheetClose = document.getElementById('actionSheetClose')
+  const actionSheetCancel = document.getElementById('actionSheetCancel')
 
-  if (!menuWrapper || !menuButton || !menuDropdown) return
+  if (!menuButton || !actionSheet || !actionSheetBackdrop || !actionSheetClose || !actionSheetCancel) return
 
-  const closeMenu = () => {
-    menuWrapper.classList.remove('open')
+  const closeSheet = () => {
+    actionSheet.classList.remove('active')
+    actionSheet.setAttribute('aria-hidden', 'true')
     menuButton.setAttribute('aria-expanded', 'false')
-    menuDropdown.setAttribute('aria-hidden', 'true')
   }
 
-  const openMenu = () => {
-    menuWrapper.classList.add('open')
+  const openSheet = () => {
+    actionSheet.classList.add('active')
+    actionSheet.setAttribute('aria-hidden', 'false')
     menuButton.setAttribute('aria-expanded', 'true')
-    menuDropdown.setAttribute('aria-hidden', 'false')
   }
 
   menuButton.addEventListener('click', (e) => {
     e.preventDefault()
     e.stopPropagation()
-    if (menuWrapper.classList.contains('open')) {
-      closeMenu()
+    if (actionSheet.classList.contains('active')) {
+      closeSheet()
     } else {
-      openMenu()
+      openSheet()
     }
   })
 
-  document.addEventListener('click', (e) => {
-    if (!menuWrapper.contains(e.target)) {
-      closeMenu()
-    }
-  })
+  actionSheetBackdrop.addEventListener('click', closeSheet)
+  actionSheetClose.addEventListener('click', closeSheet)
+  actionSheetCancel.addEventListener('click', closeSheet)
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      closeMenu()
+      closeSheet()
     }
   })
 }

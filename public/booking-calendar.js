@@ -246,6 +246,12 @@ const barberImages = {
   'João Pedro': 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=120&h=120&fit=crop',
 }
 
+const fallbackBarbers = [
+  { id: 'manuel', name: 'Manuel', specialty: 'Barba e Sobrancelha' },
+  { id: 'ana', name: 'Ana', specialty: 'Cortes Modernos' },
+  { id: 'joao-pedro', name: 'João Pedro', specialty: 'Degradé' },
+]
+
 async function loadBarbers() {
   const barbersList = document.getElementById('barbersList')
   barbersList.innerHTML = '<p style="text-align: center; color: var(--color-text-secondary);">A carregar barbeiros...</p>'
@@ -261,8 +267,7 @@ async function loadBarbers() {
       const barberEntries = Object.entries(barbers).filter(([, barber]) => barber)
 
       if (barberEntries.length === 0) {
-        barbersList.innerHTML = '<p style="text-align: center; color: var(--color-text-secondary);">Nenhum barbeiro disponível no momento.</p>'
-        return
+        barberEntries.push(...fallbackBarbers.map((barber) => [barber.id, barber]))
       }
       
       barberEntries.forEach(([barberId, barber], index) => {

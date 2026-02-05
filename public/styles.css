@@ -224,41 +224,95 @@ body {
   border-color: var(--color-text-secondary);
 }
 
-.action-menu {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-}
-
-.action-menu-dropdown {
-  position: absolute;
-  top: calc(100% + 0.5rem);
-  right: 0;
-  min-width: 260px;
-  background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  box-shadow: var(--shadow-md);
-  padding: 0.5rem;
+.action-sheet {
+  position: fixed;
+  inset: 0;
   display: none;
-  z-index: 200;
+  z-index: 1000;
 }
 
-.action-menu-dropdown a {
+.action-sheet.active {
   display: block;
-  padding: 0.6rem 0.75rem;
+}
+
+.action-sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+}
+
+.action-sheet-panel {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(420px, 92vw);
+  background: #1b1b1f;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  padding: 1rem;
+}
+
+.action-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.25rem 0.25rem 0.75rem;
+}
+
+.action-sheet-header h3 {
+  font-size: 1.1rem;
+  color: #fff;
+}
+
+.action-sheet-close {
+  width: 32px;
+  height: 32px;
   border-radius: 8px;
-  color: var(--color-text-primary);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: transparent;
+  color: #fff;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.action-sheet-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.action-sheet-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
   text-decoration: none;
-  font-size: 0.95rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.action-menu-dropdown a:hover {
-  background: var(--color-bg-secondary);
+.action-sheet-item:hover {
+  background: rgba(255, 255, 255, 0.12);
 }
 
-.action-menu.open .action-menu-dropdown {
-  display: block;
+.action-sheet-cancel {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+
+.action-sheet-cancel:hover {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 /* ===== TABS NAVIGATION ===== */

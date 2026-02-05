@@ -33,14 +33,7 @@
                     <div class="profile-actions">
                         <a href="bookings.html" class="btn btn-book">Marcar</a>
                         <button class="btn-icon" title="Favorito">♡</button>
-                        <div class="action-menu">
-                            <button class="btn-icon" id="actionMenuButton" title="Mais opções" aria-expanded="false" aria-controls="actionMenu">⋯</button>
-                            <div class="action-menu-dropdown" id="actionMenu" role="menu" aria-hidden="true">
-                                <a href="https://www.instagram.com/joaocastro.barbearia" target="_blank" rel="noopener" role="menuitem">Instagram: @joaocastro.barbearia</a>
-                                <a href="tel:9372727447" role="menuitem">Telefone: 937 272 7447</a>
-                                <a href="mailto:joaoguilhermesftc88@gmail.com" role="menuitem">Email: joaoguilhermesftc88@gmail.com</a>
-                            </div>
-                        </div>
+                        <button class="btn-icon" id="actionMenuButton" title="Mais opções" aria-expanded="false" aria-controls="actionSheet">⋯</button>
                     </div>
                 </div>
             </div>
@@ -68,15 +61,6 @@
                     </p>
                     <p class="about-text">
                         Barbearia João Castro, fundada a 21 de setembro de 2025, nasce da paixão pelo estilo, pela tradição e pela confiança que um bom corte transmite. Localizada na Rua das Flores, Póvoa de Varzim, Portugal, a barbearia oferece um ambiente moderno e acolhedor, onde cada cliente é tratado com atenção ao detalhe, profissionalismo e dedicação. Dos cortes clássicos às tendências mais atuais, passando pelo cuidado da barba, a Barbearia João Castro é o espaço ideal para quem valoriza qualidade, atitude e identidade própria.
-                    </p>
-                    <p class="about-text">
-                        <strong>Instagram:</strong> <a href="#" class="link-gold">@joaocastro.barbearia</a>
-                    </p>
-                    <p class="about-text">
-                        <strong>Telefone:</strong> <a href="tel:9372727447" class="link-gold">937 272 7447</a>
-                    </p>
-                    <p class="about-text">
-                        <strong>Email:</strong> <a href="mailto:joaoguilhermesftc88@gmail.com" class="link-gold">joaoguilhermesftc88@gmail.com</a>
                     </p>
                 </div>
 
@@ -201,6 +185,22 @@
             </div>
         </div>
     </main>
+
+    <div class="action-sheet" id="actionSheet" aria-hidden="true" role="dialog" aria-label="Contactos">
+        <div class="action-sheet-backdrop" id="actionSheetBackdrop"></div>
+        <div class="action-sheet-panel" role="document">
+            <div class="action-sheet-header">
+                <h3>Barbearia João Castro</h3>
+                <button class="action-sheet-close" id="actionSheetClose" aria-label="Fechar">×</button>
+            </div>
+            <div class="action-sheet-actions">
+                <a href="tel:9372727447" class="action-sheet-item">📞 Telefonar</a>
+                <a href="mailto:joaoguilhermesftc88@gmail.com" class="action-sheet-item">✉️ Mensagem</a>
+                <a href="https://www.instagram.com/joaocastro.barbearia" target="_blank" rel="noopener" class="action-sheet-item">📷 Instagram</a>
+            </div>
+            <button class="action-sheet-cancel" id="actionSheetCancel">Cancelar</button>
+        </div>
+    </div>
 
     <!-- Footer com acesso admin -->
     <footer class="footer">
