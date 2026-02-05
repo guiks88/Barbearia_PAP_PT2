@@ -257,14 +257,22 @@ async function loadBarbers() {
     if (snapshot.exists()) {
       const barbers = snapshot.val()
       barbersList.innerHTML = ''
+
+      const barberEntries = Object.entries(barbers).filter(([, barber]) => barber)
+
+      if (barberEntries.length === 0) {
+        barbersList.innerHTML = '<p style="text-align: center; color: var(--color-text-secondary);">Nenhum barbeiro disponível no momento.</p>'
+        return
+      }
       
-      Object.keys(barbers).forEach((barberId, index) => {
-        const barber = barbers[barberId]
+      barberEntries.forEach(([barberId, barber], index) => {
+        const barberName = barber.name || barber.nome || barber.fullName || 'Barbeiro'
+        const barberSpecialty = barber.specialty || barber.especialidade || 'Barbeiro'
         
         const barberCard = document.createElement('div')
         barberCard.className = 'barber-card'
         barberCard.dataset.barberId = barberId
-        barberCard.dataset.barberName = barber.name
+        barberCard.dataset.barberName = barberName
         
         // Lista de imagens para cada barbeiro (usando índice como fallback)
         const imagesList = [
@@ -274,7 +282,7 @@ async function loadBarbers() {
         ]
         
         // Tentar usar imagem específica, senão usar por índice
-        let imageUrl = barberImages[barber.name]
+        let imageUrl = barberImages[barberName]
         if (!imageUrl && index < imagesList.length) {
           imageUrl = imagesList[index]
         }
@@ -283,12 +291,12 @@ async function loadBarbers() {
         }
         
         barberCard.innerHTML = `
-          <img src="${imageUrl}" alt="${barber.name}" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover;">
-          <h3>${barber.name}</h3>
-          <p>${barber.specialty || 'Barbeiro'}</p>
+          <img src="${imageUrl}" alt="${barberName}" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover;">
+          <h3>${barberName}</h3>
+          <p>${barberSpecialty}</p>
         `
         
-        barberCard.addEventListener('click', () => selectBarber(barberId, barber.name))
+        barberCard.addEventListener('click', () => selectBarber(barberId, barberName))
         
         barbersList.appendChild(barberCard)
       })

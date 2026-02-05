@@ -239,12 +239,57 @@ function initTabs() {
   });
 }
 
+function initActionMenu() {
+  const menuWrapper = document.querySelector('.action-menu')
+  const menuButton = document.getElementById('actionMenuButton')
+  const menuDropdown = document.getElementById('actionMenu')
+
+  if (!menuWrapper || !menuButton || !menuDropdown) return
+
+  const closeMenu = () => {
+    menuWrapper.classList.remove('open')
+    menuButton.setAttribute('aria-expanded', 'false')
+    menuDropdown.setAttribute('aria-hidden', 'true')
+  }
+
+  const openMenu = () => {
+    menuWrapper.classList.add('open')
+    menuButton.setAttribute('aria-expanded', 'true')
+    menuDropdown.setAttribute('aria-hidden', 'false')
+  }
+
+  menuButton.addEventListener('click', (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (menuWrapper.classList.contains('open')) {
+      closeMenu()
+    } else {
+      openMenu()
+    }
+  })
+
+  document.addEventListener('click', (e) => {
+    if (!menuWrapper.contains(e.target)) {
+      closeMenu()
+    }
+  })
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeMenu()
+    }
+  })
+}
+
 // Initialize tabs when DOM is ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initTabs);
+  document.addEventListener('DOMContentLoaded', initActionMenu);
 } else {
   initTabs();
+  initActionMenu();
 }
 
 // Also initialize on load
 window.addEventListener('load', initTabs);
+window.addEventListener('load', initActionMenu);
