@@ -21,7 +21,7 @@
             <!-- Step 0: Autenticação do Cliente -->
             <div class="card" id="step-auth">
                 <h2>Autenticação do Cliente</h2>
-                <p style="color: var(--color-text-secondary);">Introduza o seu nome, email e telemóvel. A autenticação será feita com email e senha.</p>
+                <p style="color: var(--color-text-secondary);">Introduza o seu nome e telemóvel para começar. O email será pedido no final da marcação.</p>
 
                 <form id="clientAuthForm" class="auth-form">
                     <div class="form-group">
@@ -29,20 +29,11 @@
                         <input type="text" id="clientAuthName" required minlength="3" placeholder="João Silva">
                     </div>
                     <div class="form-group">
-                        <label for="clientAuthEmail">Email *</label>
-                        <input type="email" id="clientAuthEmail" required placeholder="cliente@email.pt">
-                    </div>
-                    <div class="form-group">
-                        <label for="clientAuthPassword">Senha *</label>
-                        <input type="password" id="clientAuthPassword" required minlength="6" placeholder="••••••••">
-                        <small style="color: var(--color-text-secondary); font-size: 0.85rem;">Mínimo 6 caracteres</small>
-                    </div>
-                    <div class="form-group">
                         <label for="clientAuthPhone">Telemóvel *</label>
                         <input type="tel" id="clientAuthPhone" required maxlength="9" placeholder="912345678">
                         <small style="color: var(--color-text-secondary); font-size: 0.85rem;">Formato: 9 dígitos (ex: 912345678)</small>
                     </div>
-                    <button type="submit" class="btn btn-primary" id="clientAuthSubmit">Entrar / Registar</button>
+                    <button type="submit" class="btn btn-primary" id="clientAuthSubmit">Continuar</button>
                 </form>
             </div>
 

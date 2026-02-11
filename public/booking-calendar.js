@@ -1,6 +1,5 @@
 import { auth, database } from "./firebase-config.js"
 import { ref, get, push, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
 import { showSuccess, showError } from "./utils.js"
 
 const isBarberSession = sessionStorage.getItem("isBarber") === "true"
@@ -17,6 +16,7 @@ const bookingState = {
   barber: null,
   barberName: '',
   barberWorkingHours: [],
+  barberWorkingDays: [1, 2, 3, 4, 5], // Seg-Sex por defeito
   date: null,
   time: null,
   client: null,
@@ -63,22 +63,10 @@ function initClientAuth() {
     e.preventDefault()
 
     const name = document.getElementById('clientAuthName').value.trim()
-    const email = document.getElementById('clientAuthEmail').value.trim()
-    const password = document.getElementById('clientAuthPassword').value
     const phone = document.getElementById('clientAuthPhone').value.trim()
 
     if (!name || name.length < 3) {
       showError('Indique o seu nome completo.')
-      return
-    }
-
-    if (!email) {
-      showError('Indique um email válido.')
-      return
-    }
-
-    if (!password || password.length < 6) {
-      showError('A senha deve ter pelo menos 6 caracteres.')
       return
     }
 
@@ -87,116 +75,15 @@ function initClientAuth() {
       return
     }
 
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password)
-      const uid = userCredential.user.uid
+    // Guardar dados básicos do cliente (email será pedido no final)
+    bookingState.client = { name, phone }
+    bookingState.clientName = name
+    bookingState.clientPhone = phone
+    bookingState.clientPhoneComplete = `+351 ${phone}`
+    bookingState.clientCountry = 'PT'
 
-      const clientRef = ref(database, `clients/${uid}`)
-      const snapshot = await get(clientRef)
-
-      if (!snapshot.exists()) {
-        await set(clientRef, {
-          name,
-          email,
-          phone,
-          createdAt: new Date().toISOString(),
-        })
-      }
-
-      bookingState.client = { uid, name, email, phone }
-      bookingState.clientName = name
-      bookingState.clientEmail = email
-      bookingState.clientCountry = 'PT'
-      bookingState.clientPhone = phone
-      bookingState.clientPhoneComplete = `+351 ${phone}`
-
-      showSuccess('Autenticado com sucesso!')
-      showBookingSteps()
-    } catch (error) {
-      if (error.code === 'auth/operation-not-allowed') {
-        showError('Email/Senha não está ativado no Firebase Auth. Ative em Authentication > Sign-in method.')
-        return
-      }
-
-      if (
-        error.code === 'auth/user-not-found' ||
-        error.code === 'auth/invalid-credential' ||
-        error.code === 'auth/invalid-login-credentials'
-      ) {
-        try {
-          const newUser = await createUserWithEmailAndPassword(auth, email, password)
-          const uid = newUser.user.uid
-
-          await set(ref(database, `clients/${uid}`), {
-            name,
-            email,
-            phone,
-            createdAt: new Date().toISOString(),
-          })
-
-          bookingState.client = { uid, name, email, phone }
-          bookingState.clientName = name
-          bookingState.clientEmail = email
-          bookingState.clientCountry = 'PT'
-          bookingState.clientPhone = phone
-          bookingState.clientPhoneComplete = `+351 ${phone}`
-
-          showSuccess('Conta criada e autenticada com sucesso!')
-          showBookingSteps()
-        } catch (createError) {
-          if (createError.code === 'auth/operation-not-allowed') {
-            showError('Email/Senha não está ativado no Firebase Auth. Ative em Authentication > Sign-in method.')
-            return
-          }
-          if (createError.code === 'auth/email-already-in-use') {
-            showError('Email já existe. Verifique a senha.')
-            return
-          }
-          showError('Erro ao criar conta: ' + createError.message)
-        }
-        return
-      }
-
-      if (error.code === 'auth/wrong-password') {
-        showError('Senha incorreta.')
-        return
-      }
-
-      if (error.code === 'auth/invalid-login-credentials') {
-        showError('Credenciais inválidas. Verifique o email e a senha.')
-        return
-      }
-
-      if (error.code === 'auth/invalid-email') {
-        showError('Email inválido.')
-        return
-      }
-
-      showError('Erro ao autenticar: ' + error.message)
-    }
-  })
-
-  onAuthStateChanged(auth, async (user) => {
-    if (!user) {
-      showAuthStep()
-      return
-    }
-
-    const clientRef = ref(database, `clients/${user.uid}`)
-    const snapshot = await get(clientRef)
-
-    if (snapshot.exists()) {
-      const client = snapshot.val()
-      bookingState.client = { uid: user.uid, name: client.name, email: client.email, phone: client.phone }
-      bookingState.clientName = client.name
-      bookingState.clientEmail = client.email
-      bookingState.clientCountry = 'PT'
-      bookingState.clientPhone = (client.phone || '').replace(/^\+351\s?/, '')
-      bookingState.clientPhoneComplete = client.phone || `+351 ${bookingState.clientPhone}`
-      showBookingSteps()
-    } else {
-      showAuthStep()
-    }
+    showSuccess('Dados confirmados! Escolha o serviço.')
+    showBookingSteps()
   })
 }
 
@@ -239,11 +126,29 @@ function initServiceSelection() {
 }
 
 // ===== STEP 2: BARBEIROS =====
-// Mapeamento de imagens por nome de barbeiro
+// Mapeamento de imagens por nome de barbeiro (homem=foto de homem, mulher=foto de mulher)
+const maleBarberImage = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120&h=120&fit=crop'
+const femaleBarberImage = 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=120&h=120&fit=crop'
+
 const barberImages = {
-  'Manuel': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120&h=120&fit=crop',
-  'Ana': 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=120&h=120&fit=crop',
+  'Manuel': maleBarberImage,
+  'Ana': femaleBarberImage,
   'João Pedro': 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=120&h=120&fit=crop',
+}
+
+// Nomes femininos comuns em português
+const femaleNames = ['ana', 'maria', 'joana', 'sara', 'sofia', 'inês', 'catarina', 'beatriz', 'mariana', 'carolina', 'rita', 'daniela', 'patrícia', 'sandra', 'paula', 'cláudia', 'teresa', 'helena', 'raquel', 'filipa', 'marta', 'isabel', 'lúcia', 'carla', 'susana', 'cristina', 'alexandra', 'fernanda', 'rosa', 'diana']
+
+function getBarberImage(barberName) {
+  // Primeiro verificar se existe imagem específica
+  if (barberImages[barberName]) return barberImages[barberName]
+  
+  // Determinar género pelo primeiro nome
+  const firstName = barberName.split(' ')[0].toLowerCase()
+  if (femaleNames.includes(firstName)) {
+    return femaleBarberImage
+  }
+  return maleBarberImage
 }
 
 const fallbackBarbers = [
@@ -279,21 +184,8 @@ async function loadBarbers() {
         barberCard.dataset.barberId = barberId
         barberCard.dataset.barberName = barberName
         
-        // Lista de imagens para cada barbeiro (usando índice como fallback)
-        const imagesList = [
-          'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120&h=120&fit=crop',
-          'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=120&h=120&fit=crop',
-          'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=120&h=120&fit=crop'
-        ]
-        
-        // Tentar usar imagem específica, senão usar por índice
-        let imageUrl = barberImages[barberName]
-        if (!imageUrl && index < imagesList.length) {
-          imageUrl = imagesList[index]
-        }
-        if (!imageUrl) {
-          imageUrl = imagesList[0]
-        }
+        // Obter imagem adequada ao género do barbeiro
+        const imageUrl = getBarberImage(barberName)
         
         barberCard.innerHTML = `
           <img src="${imageUrl}" alt="${barberName}" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover;">
@@ -330,8 +222,15 @@ async function selectBarber(barberId, barberName) {
       } else {
         bookingState.barberWorkingHours = defaultWorkingHours
       }
+      // Carregar dias de trabalho
+      if (barberData.workingDays && Array.isArray(barberData.workingDays)) {
+        bookingState.barberWorkingDays = barberData.workingDays
+      } else {
+        bookingState.barberWorkingDays = [1, 2, 3, 4, 5] // Seg-Sex por defeito
+      }
     } else {
       bookingState.barberWorkingHours = defaultWorkingHours
+      bookingState.barberWorkingDays = [1, 2, 3, 4, 5]
     }
   } catch (error) {
     console.error('Erro ao carregar horários do barbeiro:', error)
@@ -468,10 +367,14 @@ function renderCalendar() {
     const isToday = dateStr === todayStr
     const isPast = new Date(dateStr) < new Date(todayStr)
     
-    // Calcular slots disponíveis
-    const availableSlots = calculateAvailableSlots(dateStr)
+    // Verificar se o barbeiro trabalha neste dia da semana
+    const dayOfWeek = new Date(year, month, day).getDay()
+    const isWorkingDay = bookingState.barberWorkingDays.includes(dayOfWeek)
     
-    const dayElement = createDayElement(day, false, isToday, dateStr, availableSlots, isPast)
+    // Calcular slots disponíveis (0 se não é dia de trabalho)
+    const availableSlots = isWorkingDay ? calculateAvailableSlots(dateStr) : 0
+    
+    const dayElement = createDayElement(day, false, isToday, dateStr, availableSlots, isPast || !isWorkingDay)
     calendarDays.appendChild(dayElement)
   }
   
@@ -641,20 +544,21 @@ function showClientDataForm() {
         <div class="form-group">
           <label for="clientEmail">Email *</label>
           <input type="email" id="clientEmail" required placeholder="cliente@email.pt">
+          <small style="color: var(--color-text-secondary); font-size: 0.85rem;">O email é necessário para receber a confirmação da marcação</small>
         </div>
         <div class="form-group">
           <label for="clientCountry">País *</label>
-          <select id="clientCountry" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-border); border-radius: 6px; font-size: 0.95rem;">
+          <select id="clientCountry" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-border); border-radius: 6px; font-size: 0.95rem; color: #1a1a2e; background: white;">
             ${countryOptions}
           </select>
         </div>
         <div class="form-group">
           <label for="clientPhone">Telefone *</label>
           <div style="display: flex; gap: 0.5rem;">
-            <input type="text" id="countryCodeDisplay" disabled style="width: 70px; padding: 0.75rem; background: var(--color-bg-secondary); border: 1px solid var(--color-border); border-radius: 6px; font-size: 0.95rem;" value="+351">
-            <input type="tel" id="clientPhone" required maxlength="9" inputmode="numeric" placeholder="912345678" style="flex: 1; padding: 0.75rem; border: 1px solid var(--color-border); border-radius: 6px; font-size: 0.95rem;">
+            <input type="text" id="countryCodeDisplay" disabled style="width: 70px; padding: 0.75rem; background: var(--color-bg-secondary); border: 1px solid var(--color-border); border-radius: 6px; font-size: 0.95rem; color: var(--color-text-primary);" value="+351">
+            <input type="tel" id="clientPhone" required maxlength="9" inputmode="numeric" placeholder="912345678" style="flex: 1; padding: 0.75rem; border: 1px solid var(--color-border); border-radius: 6px; font-size: 0.95rem; color: #1a1a2e; background: white;">
           </div>
-          <small>9 dígitos, sem espaços</small>
+          <small style="color: var(--color-text-secondary); font-size: 0.85rem;">9 dígitos, sem espaços</small>
         </div>
         <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">✅ Confirmar Marcação</button>
       </form>
@@ -681,22 +585,17 @@ function showClientDataForm() {
     const countryCodeDisplay = document.getElementById('countryCodeDisplay')
 
     nameInput.value = bookingState.clientName
-    if (emailInput) {
-      emailInput.value = bookingState.clientEmail || ''
-    }
     phoneInput.value = bookingState.clientPhone
     if (countrySelect) {
       countrySelect.value = bookingState.clientCountry || 'PT'
-      countrySelect.disabled = true
     }
     if (countryCodeDisplay) {
-      countryCodeDisplay.value = (bookingState.clientPhoneComplete || '').startsWith('+351') ? '+351' : countryCodeDisplay.value
+      countryCodeDisplay.value = '+351'
     }
-    nameInput.disabled = true
-    if (emailInput) {
-      emailInput.disabled = true
+    // Email fica sempre editável pois é pedido no final
+    if (emailInput && bookingState.clientEmail) {
+      emailInput.value = bookingState.clientEmail
     }
-    phoneInput.disabled = true
   }
   
   // Adicionar event listener ao formulário
@@ -878,6 +777,7 @@ function resetBooking() {
   bookingState.serviceDuration = 0
   bookingState.barber = null
   bookingState.barberName = ''
+  bookingState.barberWorkingDays = [1, 2, 3, 4, 5]
   bookingState.date = null
   bookingState.time = null
   
@@ -886,6 +786,10 @@ function resetBooking() {
   document.getElementById('step-barber').classList.add('hidden')
   document.getElementById('step-datetime').classList.add('hidden')
   document.getElementById('step-success').classList.add('hidden')
+  
+  // Remover formulário de dados do cliente se existir
+  const clientDataStep = document.getElementById('step-client-data')
+  if (clientDataStep) clientDataStep.remove()
   
   // Limpar seleções
   document.querySelectorAll('.service-card').forEach(c => c.classList.remove('selected'))
