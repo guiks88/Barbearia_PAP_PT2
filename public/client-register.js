@@ -1,5 +1,6 @@
-import { database } from "./firebase-config.js"
+import { database, firestore } from "./firebase-config.js"
 import { ref, push, set, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
+import { doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"
 import { formatPhoneNumber, validatePhoneNumber, setupPhoneValidation, showSuccess, showError } from "./utils.js"
 
 setupPhoneValidation("clientPhone")
@@ -47,6 +48,22 @@ document.getElementById("clientRegisterForm").addEventListener("submit", async (
     }
 
     await set(newClientRef, newClient)
+
+    const clientUid = newClientRef.key
+    const userDoc = {
+      uid: clientUid,
+      email: email,
+      fullName: name,
+      role: "client",
+      roles: ["client"],
+      birthDate: null,
+      phone: formatPhoneNumber(phone),
+      isActive: true,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }
+
+    await setDoc(doc(firestore, "users", clientUid), userDoc)
 
     showSuccess("Cliente registado com sucesso! Redirecionando...")
 

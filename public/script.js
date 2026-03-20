@@ -25,7 +25,7 @@ const helpTexts = {
           <ul>
             <li>Nome completo</li>
             <li>Email (será usado para login)</li>
-            <li>Telefone (9 dígitos, ex: 912345678)</li>
+            <li>Telefone (9 dígitos)</li>
             <li>Senha (mínimo 6 caracteres)</li>
           </ul>
         </li>

@@ -15,29 +15,29 @@
             <form id="adminRegisterForm">
                 <div class="form-group">
                     <label for="adminName">Nome Completo *</label>
-                    <input type="text" id="adminName" required placeholder="Nome do administrador">
+                    <input type="text" id="adminName" required>
                 </div>
                 
                 <div class="form-group">
                     <label for="adminEmail">Email *</label>
-                    <input type="email" id="adminEmail" required placeholder="admin@barbershop.pt">
+                    <input type="email" id="adminEmail" required>
                 </div>
                 
                 <div class="form-group">
                     <label for="adminPhone">Telefone *</label>
-                    <input type="tel" id="adminPhone" placeholder="912345678" maxlength="9" required>
-                    <small style="color: var(--color-text-secondary); font-size: 0.85rem;">Formato: 9 dígitos (ex: 912345678)</small>
+                    <input type="tel" id="adminPhone" maxlength="9" required>
+                    <small style="color: var(--color-text-secondary); font-size: 0.85rem;">Formato: 9 dígitos</small>
                 </div>
                 
                 <div class="form-group">
                     <label for="adminPassword">Senha *</label>
-                    <input type="password" id="adminPassword" required minlength="6" placeholder="••••••••">
+                    <input type="password" id="adminPassword" required minlength="6">
                     <small style="color: var(--color-text-secondary); font-size: 0.85rem;">Mínimo 6 caracteres</small>
                 </div>
                 
                 <div class="form-group">
                     <label for="adminPasswordConfirm">Confirmar Senha *</label>
-                    <input type="password" id="adminPasswordConfirm" required minlength="6" placeholder="••••••••">
+                    <input type="password" id="adminPasswordConfirm" required minlength="6">
                 </div>
                 
                 <button type="submit" class="btn btn-primary" style="width: 100%;">Registar</button>

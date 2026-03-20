@@ -1,7 +1,8 @@
-import { auth, database, firebaseConfig } from "./firebase-config.js"
+import { auth, database, firebaseConfig, firestore } from "./firebase-config.js"
 import { ref, push, set, onValue, remove, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js"
 import { getAuth, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
+import { doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"
 import {
   formatPhoneNumber,
   validatePhoneNumber,
@@ -117,6 +118,21 @@ document.getElementById("barberForm").addEventListener("submit", async (e) => {
     }
 
     await set(ref(database, `barbers/${barberUid}`), newBarber)
+
+    const userDoc = {
+      uid: barberUid,
+      email,
+      fullName: newBarber.name,
+      role: "barber",
+      roles: ["barber"],
+      birthDate: null,
+      phone: newBarber.phone,
+      isActive: true,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }
+
+    await setDoc(doc(firestore, "users", barberUid), userDoc)
     await signOut(secondaryAuth)
     e.target.reset()
     showSuccess("Barbeiro adicionado com sucesso!")

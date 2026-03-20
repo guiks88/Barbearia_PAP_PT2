@@ -1,6 +1,7 @@
-import { auth, database } from "./firebase-config.js"
+k  import { auth, database, firestore } from "./firebase-config.js"
 import { ref, set, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
 import { createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
+import { doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"
 import { formatPhoneNumber, validatePhoneNumber, setupPhoneValidation, showSuccess, showError } from "./utils.js"
 
 setupPhoneValidation("adminPhone")
@@ -15,7 +16,7 @@ document.getElementById("adminRegisterForm").addEventListener("submit", async (e
   const name = document.getElementById("adminName").value
 
   if (!validatePhoneNumber(phone)) {
-    showError("Número de telefone inválido. Use 9 dígitos começando com 9.")
+    showError("Número de telefone inv                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 gálido. Use 9 dígitos começando com 9.")
     return
   }
 
@@ -69,6 +70,21 @@ document.getElementById("adminRegisterForm").addEventListener("submit", async (e
     }
 
     await set(ref(database, `admins/${uid}`), newAdmin)
+
+    const userDoc = {
+      uid,
+      email,
+      fullName: name,
+      role: "admin",
+      roles: ["admin"],
+      birthDate: null,
+      phone: formatPhoneNumber(phone),
+      isActive: true,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }
+
+    await setDoc(doc(firestore, "users", uid), userDoc)
 
     showSuccess("Administrador registado com sucesso!")
 

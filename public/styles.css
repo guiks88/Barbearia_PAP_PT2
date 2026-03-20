@@ -1460,6 +1460,14 @@ body {
   text-decoration: line-through;
 }
 
+.time-slot.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+}
+
 .no-slots-message {
   text-align: center;
   padding: 2rem;

@@ -45,6 +45,37 @@ function generateWorkingHours(startTime, endTime) {
   return hours
 }
 
+function getDateString(dateObj) {
+  return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`
+}
+
+function parseDateString(dateStr) {
+  const [year, month, day] = dateStr.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
+
+function isDateBeforeToday(dateStr) {
+  const now = new Date()
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const selectedDate = parseDateString(dateStr)
+  return selectedDate < todayStart
+}
+
+function isPastTimeSlot(dateStr, timeStr) {
+  const now = new Date()
+  const todayStr = getDateString(now)
+
+  if (dateStr !== todayStr) {
+    return false
+  }
+
+  const [hour, minute] = timeStr.split(':').map(Number)
+  const slotMinutes = hour * 60 + minute
+  const nowMinutes = now.getHours() * 60 + now.getMinutes()
+
+  return slotMinutes <= nowMinutes
+}
+
 function showBookingSteps() {
   document.getElementById('step-auth').classList.add('hidden')
   document.getElementById('step-services').classList.remove('hidden')
@@ -352,7 +383,7 @@ function renderCalendar() {
   const daysInPrevMonth = new Date(year, month, 0).getDate()
   
   const today = new Date()
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  const todayStr = getDateString(today)
   
   // Dias do mês anterior
   for (let i = firstDay - 1; i >= 0; i--) {
@@ -365,7 +396,7 @@ function renderCalendar() {
   for (let day = 1; day <= daysInMonth; day++) {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
     const isToday = dateStr === todayStr
-    const isPast = new Date(dateStr) < new Date(todayStr)
+    const isPast = isDateBeforeToday(dateStr)
     
     // Verificar se o barbeiro trabalha neste dia da semana
     const dayOfWeek = new Date(year, month, day).getDay()
@@ -414,7 +445,7 @@ function createDayElement(day, isOtherMonth, isToday, dateStr, availableSlots = 
   `
   
   if (!isOtherMonth && !isPast && dateStr) {
-    dayElement.addEventListener('click', () => selectDate(dateStr, availableSlots))
+    dayElement.addEventListener('click', () => selectDate(dateStr, availableSlots, dayElement))
   }
   
   return dayElement
@@ -426,15 +457,17 @@ function calculateAvailableSlots(dateStr) {
     .map(b => b.time)
   
   const workingHours = bookingState.barberWorkingHours.length > 0 ? bookingState.barberWorkingHours : defaultWorkingHours
-  return workingHours.filter(hour => !bookedSlots.includes(hour)).length
+  return workingHours.filter(hour => !bookedSlots.includes(hour) && !isPastTimeSlot(dateStr, hour)).length
 }
 
-function selectDate(dateStr, availableSlots) {
+function selectDate(dateStr, availableSlots, selectedDayElement) {
   bookingState.date = dateStr
   
   // Atualizar UI
   document.querySelectorAll('.calendar-day').forEach(d => d.classList.remove('selected'))
-  event.currentTarget.classList.add('selected')
+  if (selectedDayElement) {
+    selectedDayElement.classList.add('selected')
+  }
   
   // Formatar data para exibição
   const [year, month, day] = dateStr.split('-')
@@ -468,28 +501,34 @@ function renderTimeSlots(dateStr) {
   
   workingHours.forEach(hour => {
     const isBooked = bookedSlots.includes(hour)
+    const isPastSlot = isPastTimeSlot(dateStr, hour)
     
     const timeSlot = document.createElement('div')
     timeSlot.className = 'time-slot'
     if (isBooked) {
       timeSlot.classList.add('booked')
     }
+    if (isPastSlot) {
+      timeSlot.classList.add('disabled')
+    }
     timeSlot.textContent = hour
     
-    if (!isBooked) {
-      timeSlot.addEventListener('click', () => selectTime(hour))
+    if (!isBooked && !isPastSlot) {
+      timeSlot.addEventListener('click', () => selectTime(hour, timeSlot))
     }
     
     timeSlotsList.appendChild(timeSlot)
   })
 }
 
-function selectTime(time) {
+function selectTime(time, selectedTimeSlot) {
   bookingState.time = time
   
   // Atualizar UI
   document.querySelectorAll('.time-slot').forEach(t => t.classList.remove('selected'))
-  event.currentTarget.classList.add('selected')
+  if (selectedTimeSlot) {
+    selectedTimeSlot.classList.add('selected')
+  }
   
   // Mostrar formulário de dados do cliente
   setTimeout(() => {
@@ -539,11 +578,13 @@ function showClientDataForm() {
       <form id="clientDataForm" class="auth-form">
         <div class="form-group">
           <label for="clientName">Nome Completo *</label>
-          <input type="text" id="clientName" required minlength="3" placeholder="João Silva">
+          <input type="text" id="clientName" required minlength="3">
         </div>
         <div class="form-group">
           <label for="clientEmail">Email *</label>
           <input type="email" id="clientEmail" required placeholder="cliente@email.pt">
+          <small style="color: var(--color-text-secondary); font-size: 0.85rem;">O email é necessário para receber a confirmação da marcação</small>
+          <input type="email" id="clientEmail" required>
           <small style="color: var(--color-text-secondary); font-size: 0.85rem;">O email é necessário para receber a confirmação da marcação</small>
         </div>
         <div class="form-group">
@@ -556,7 +597,7 @@ function showClientDataForm() {
           <label for="clientPhone">Telefone *</label>
           <div style="display: flex; gap: 0.5rem;">
             <input type="text" id="countryCodeDisplay" disabled style="width: 70px; padding: 0.75rem; background: var(--color-bg-secondary); border: 1px solid var(--color-border); border-radius: 6px; font-size: 0.95rem; color: var(--color-text-primary);" value="+351">
-            <input type="tel" id="clientPhone" required maxlength="9" inputmode="numeric" placeholder="912345678" style="flex: 1; padding: 0.75rem; border: 1px solid var(--color-border); border-radius: 6px; font-size: 0.95rem; color: #1a1a2e; background: white;">
+            <input type="tel" id="clientPhone" required maxlength="9" inputmode="numeric" style="flex: 1; padding: 0.75rem; border: 1px solid var(--color-border); border-radius: 6px; font-size: 0.95rem; color: #1a1a2e; background: white;">
           </div>
           <small style="color: var(--color-text-secondary); font-size: 0.85rem;">9 dígitos, sem espaços</small>
         </div>
@@ -642,7 +683,43 @@ function formatDateForDisplay(dateStr) {
 
 // ===== CONFIRMAÇÃO DA MARCAÇÃO =====
 async function confirmBooking() {
+  if (!bookingState.barber || !bookingState.date || !bookingState.time) {
+    showError('Selecione barbeiro, data e hora antes de confirmar.')
+    return
+  }
+
+  if (isDateBeforeToday(bookingState.date) || isPastTimeSlot(bookingState.date, bookingState.time)) {
+    showError('Não é possível confirmar horários no passado. Escolha um horário futuro.')
+    document.getElementById('step-client-data').classList.add('hidden')
+    document.getElementById('step-datetime').classList.remove('hidden')
+    renderCalendar()
+    renderTimeSlots(bookingState.date)
+    return
+  }
+
+  const currentUser = auth.currentUser
+  if (!currentUser) {
+    showError('Sessão expirada. Entre novamente para concluir a marcação.')
+    showAuthStep()
+    return
+  }
+
   try {
+    await loadExistingBookings(bookingState.barber)
+
+    const bookedSlots = bookingState.bookings
+      .filter(b => b.date === bookingState.date)
+      .map(b => b.time)
+
+    if (bookedSlots.includes(bookingState.time) || isPastTimeSlot(bookingState.date, bookingState.time)) {
+      showError('Este horário já não está disponível. Escolha outro horário.')
+      document.getElementById('step-client-data').classList.add('hidden')
+      document.getElementById('step-datetime').classList.remove('hidden')
+      renderCalendar()
+      renderTimeSlots(bookingState.date)
+      return
+    }
+
     const bookingsRef = ref(database, 'bookings')
     const newBookingRef = push(bookingsRef)
     
@@ -655,7 +732,7 @@ async function confirmBooking() {
       serviceDuration: bookingState.serviceDuration,
       date: bookingState.date,
       time: bookingState.time,
-      clientUid: bookingState.client ? bookingState.client.uid : null,
+      clientUid: currentUser.uid,
       clientName: bookingState.clientName,
       clientEmail: bookingState.clientEmail || (bookingState.client ? bookingState.client.email : null),
       clientCountry: bookingState.clientCountry,
@@ -672,8 +749,21 @@ async function confirmBooking() {
     showSuccessScreen()
     
   } catch (error) {
-    console.error('Erro ao criar marcação:', error)
-    alert('❌ Erro ao criar marcação. Por favor, tente novamente.')
+    const errorCode = error?.code || ''
+    const errorMessage = error?.message || ''
+
+    console.error('Erro ao criar marcação:', errorCode, errorMessage, error)
+
+    if (
+      errorCode === 'PERMISSION_DENIED' ||
+      errorCode === 'permission-denied' ||
+      errorMessage.toLowerCase().includes('permission_denied')
+    ) {
+      showError('Sem permissão para gravar marcações no Firebase. Verifique as regras do Realtime Database para permitir escrita autenticada em /bookings.')
+      return
+    }
+
+    showError(`Erro ao criar marcação: ${errorMessage || 'tente novamente.'}`)
   }
 }
 
