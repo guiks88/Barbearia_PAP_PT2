@@ -1,5 +1,6 @@
 import { auth, database } from "./firebase-config.js"
 import { ref, get, push, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
+import { signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
 import { showSuccess, showError } from "./utils.js"
 
 const isBarberSession = sessionStorage.getItem("isBarber") === "true"
@@ -188,11 +189,31 @@ const fallbackBarbers = [
   { id: 'joao-pedro', name: 'João Pedro', specialty: 'Degradé' },
 ]
 
+async function ensureAuthenticatedSession() {
+  if (auth.currentUser) {
+    return auth.currentUser
+  }
+
+  try {
+    const credential = await signInAnonymously(auth)
+    return credential.user
+  } catch (error) {
+    console.error('Erro ao autenticar sessão anónima:', error)
+    return null
+  }
+}
+
 async function loadBarbers() {
   const barbersList = document.getElementById('barbersList')
   barbersList.innerHTML = '<p style="text-align: center; color: var(--color-text-secondary);">A carregar barbeiros...</p>'
   
   try {
+    const currentUser = await ensureAuthenticatedSession()
+    if (!currentUser) {
+      barbersList.innerHTML = '<p style="text-align: center; color: var(--color-error);">Não foi possível iniciar sessão no Firebase para carregar os barbeiros.</p>'
+      return
+    }
+
     const barbersRef = ref(database, 'barbers')
     const snapshot = await get(barbersRef)
     
@@ -444,7 +465,7 @@ function createDayElement(day, isOtherMonth, isToday, dateStr, availableSlots = 
     ${!isOtherMonth && !isPast && availableSlots > 0 ? `<span class="slots-badge">${availableSlots} espaços livres</span>` : ''}
   `
   
-  if (!isOtherMonth && !isPast && dateStr) {
+  if (!isOtherMonth && !isPast && dateStr && availableSlots > 0) {
     dayElement.addEventListener('click', () => selectDate(dateStr, availableSlots, dayElement))
   }
   
@@ -584,8 +605,6 @@ function showClientDataForm() {
           <label for="clientEmail">Email *</label>
           <input type="email" id="clientEmail" required placeholder="cliente@email.pt">
           <small style="color: var(--color-text-secondary); font-size: 0.85rem;">O email é necessário para receber a confirmação da marcação</small>
-          <input type="email" id="clientEmail" required>
-          <small style="color: var(--color-text-secondary); font-size: 0.85rem;">O email é necessário para receber a confirmação da marcação</small>
         </div>
         <div class="form-group">
           <label for="clientCountry">País *</label>
@@ -631,7 +650,8 @@ function showClientDataForm() {
       countrySelect.value = bookingState.clientCountry || 'PT'
     }
     if (countryCodeDisplay) {
-      countryCodeDisplay.value = '+351'
+      const selectedCountry = countrySelect ? countrySelect.value : 'PT'
+      countryCodeDisplay.value = countryPhoneCodes[selectedCountry].code
     }
     // Email fica sempre editável pois é pedido no final
     if (emailInput && bookingState.clientEmail) {
@@ -643,32 +663,30 @@ function showClientDataForm() {
   const form = document.getElementById('clientDataForm')
   form.addEventListener('submit', async (e) => {
     e.preventDefault()
-    
-    if (!bookingState.client) {
-      const clientName = document.getElementById('clientName').value.trim()
-      const clientEmail = document.getElementById('clientEmail').value.trim()
-      const clientCountry = document.getElementById('clientCountry').value
-      const clientPhone = document.getElementById('clientPhone').value.trim()
-      const countryCode = countryPhoneCodes[clientCountry].code
-      
-      // Validar telefone
-      if (!/^[0-9]{9}$/.test(clientPhone)) {
-        alert('❌ Número de telefone inválido. Use exatamente 9 dígitos.')
-        return
-      }
 
-      if (!clientEmail) {
-        alert('❌ Email inválido. Indique um email válido.')
-        return
-      }
-      
-      // Guardar dados do cliente com código do país
-      bookingState.clientName = clientName
-      bookingState.clientEmail = clientEmail
-      bookingState.clientCountry = clientCountry
-      bookingState.clientPhone = clientPhone
-      bookingState.clientPhoneComplete = `${countryCode} ${clientPhone}`
+    const clientName = document.getElementById('clientName').value.trim()
+    const clientEmail = document.getElementById('clientEmail').value.trim()
+    const clientCountry = document.getElementById('clientCountry').value
+    const clientPhone = document.getElementById('clientPhone').value.trim()
+    const countryCode = countryPhoneCodes[clientCountry].code
+
+    // Validar telefone
+    if (!/^[0-9]{9}$/.test(clientPhone)) {
+      alert('❌ Número de telefone inválido. Use exatamente 9 dígitos.')
+      return
     }
+
+    if (!clientEmail) {
+      alert('❌ Email inválido. Indique um email válido.')
+      return
+    }
+
+    // Guardar/atualizar sempre os dados do cliente
+    bookingState.clientName = clientName
+    bookingState.clientEmail = clientEmail
+    bookingState.clientCountry = clientCountry
+    bookingState.clientPhone = clientPhone
+    bookingState.clientPhoneComplete = `${countryCode} ${clientPhone}`
     
     // Confirmar marcação
     await confirmBooking()
@@ -893,7 +911,10 @@ function resetBooking() {
 
 // Inicializar quando o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', () => {
-  initClientAuth()
-  initServiceSelection()
-  initBookingConfirmation()
+  ;(async () => {
+    await ensureAuthenticatedSession()
+    initClientAuth()
+    initServiceSelection()
+    initBookingConfirmation()
+  })()
 })
