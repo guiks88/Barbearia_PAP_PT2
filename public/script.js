@@ -241,43 +241,72 @@ function initTabs() {
 
 function initActionMenu() {
   const menuButton = document.getElementById('actionMenuButton')
-  const actionSheet = document.getElementById('actionSheet')
-  const actionSheetBackdrop = document.getElementById('actionSheetBackdrop')
-  const actionSheetClose = document.getElementById('actionSheetClose')
-  const actionSheetCancel = document.getElementById('actionSheetCancel')
+  const quickContacts = document.getElementById('quickContactsPanel')
 
-  if (!menuButton || !actionSheet || !actionSheetBackdrop || !actionSheetClose || !actionSheetCancel) return
+  if (!menuButton || !quickContacts) return
 
-  const closeSheet = () => {
-    actionSheet.classList.remove('active')
-    actionSheet.setAttribute('aria-hidden', 'true')
+  const closeContacts = () => {
+    quickContacts.classList.add('hidden')
+    quickContacts.setAttribute('aria-hidden', 'true')
     menuButton.setAttribute('aria-expanded', 'false')
   }
 
-  const openSheet = () => {
-    actionSheet.classList.add('active')
-    actionSheet.setAttribute('aria-hidden', 'false')
+  const openContacts = () => {
+    quickContacts.classList.remove('hidden')
+    quickContacts.setAttribute('aria-hidden', 'false')
     menuButton.setAttribute('aria-expanded', 'true')
   }
 
   menuButton.addEventListener('click', (e) => {
     e.preventDefault()
     e.stopPropagation()
-    if (actionSheet.classList.contains('active')) {
-      closeSheet()
+    if (quickContacts.classList.contains('hidden')) {
+      openContacts()
     } else {
-      openSheet()
+      closeContacts()
     }
   })
 
-  actionSheetBackdrop.addEventListener('click', closeSheet)
-  actionSheetClose.addEventListener('click', closeSheet)
-  actionSheetCancel.addEventListener('click', closeSheet)
+  document.addEventListener('click', (e) => {
+    if (quickContacts.classList.contains('hidden')) return
+    if (quickContacts.contains(e.target) || menuButton.contains(e.target)) return
+    closeContacts()
+  })
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      closeSheet()
+      closeContacts()
     }
+  })
+}
+
+function initDownloadSiteButton() {
+  const downloadButton = document.getElementById('downloadSiteBtn')
+  if (!downloadButton) return
+
+  downloadButton.addEventListener('click', () => {
+    const siteUrl = `${window.location.origin}/index.html`
+    const fileContent = [
+      'Barbearia Joao Castro',
+      '',
+      `Site: ${siteUrl}`,
+      'Instagram: @joaocastro.barbearia',
+      'Telefone: 937 272 7447',
+      'Email: joaoguilhermesftc88@gmail.com',
+      '',
+      'Abra o link do site para fazer a sua marcacao online.'
+    ].join('\n')
+
+    const blob = new Blob([fileContent], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+
+    link.href = url
+    link.download = 'barbearia-joao-castro-site.txt'
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
   })
 }
 
@@ -285,11 +314,14 @@ function initActionMenu() {
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initTabs);
   document.addEventListener('DOMContentLoaded', initActionMenu);
+  document.addEventListener('DOMContentLoaded', initDownloadSiteButton);
 } else {
   initTabs();
   initActionMenu();
+  initDownloadSiteButton();
 }
 
 // Also initialize on load
 window.addEventListener('load', initTabs);
 window.addEventListener('load', initActionMenu);
+window.addEventListener('load', initDownloadSiteButton);

@@ -95,23 +95,24 @@ function initClientAuth() {
     e.preventDefault()
 
     const name = document.getElementById('clientAuthName').value.trim()
-    const phone = document.getElementById('clientAuthPhone').value.trim()
+    const email = document.getElementById('clientAuthEmail').value.trim()
 
     if (!name || name.length < 3) {
       showError('Indique o seu nome completo.')
       return
     }
 
-    if (!/^[0-9]{9}$/.test(phone)) {
-      showError('Indique um número de telemóvel válido (9 dígitos).')
+    if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+      showError('Indique um email válido.')
       return
     }
 
-    // Guardar dados básicos do cliente (email será pedido no final)
-    bookingState.client = { name, phone }
+    // Guardar dados básicos do cliente (telefone será pedido no final)
+    bookingState.client = { name, email }
     bookingState.clientName = name
-    bookingState.clientPhone = phone
-    bookingState.clientPhoneComplete = `+351 ${phone}`
+    bookingState.clientEmail = email
+    bookingState.clientPhone = null
+    bookingState.clientPhoneComplete = null
     bookingState.clientCountry = 'PT'
 
     showSuccess('Dados confirmados! Escolha o serviço.')
@@ -589,23 +590,15 @@ function showClientDataForm() {
     }
     
     clientDataStep.innerHTML = `
-      <h2>4. Confirme os Seus Dados</h2>
+      <h2>4. Confirme o Seu Telefone</h2>
       <div class="selected-info">
         <p><strong>Serviço:</strong> ${bookingState.serviceName} - ${bookingState.servicePrice}€</p>
         <p><strong>Barbeiro:</strong> ${bookingState.barberName}</p>
         <p><strong>Data:</strong> ${formatDateForDisplay(bookingState.date)}</p>
         <p><strong>Hora:</strong> ${bookingState.time}</p>
+        <p><strong>Email:</strong> ${bookingState.clientEmail || ''}</p>
       </div>
       <form id="clientDataForm" class="auth-form">
-        <div class="form-group">
-          <label for="clientName">Nome Completo *</label>
-          <input type="text" id="clientName" required minlength="3">
-        </div>
-        <div class="form-group">
-          <label for="clientEmail">Email *</label>
-          <input type="email" id="clientEmail" required placeholder="cliente@email.pt">
-          <small style="color: var(--color-text-secondary); font-size: 0.85rem;">O email é necessário para receber a confirmação da marcação</small>
-        </div>
         <div class="form-group">
           <label for="clientCountry">País *</label>
           <select id="clientCountry" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-border); border-radius: 6px; font-size: 0.95rem; color: #1a1a2e; background: white;">
@@ -620,7 +613,7 @@ function showClientDataForm() {
           </div>
           <small style="color: var(--color-text-secondary); font-size: 0.85rem;">9 dígitos, sem espaços</small>
         </div>
-        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">✅ Confirmar Marcação</button>
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">✅ Confirmar Marcação e Enviar Relatório</button>
       </form>
     `
     document.querySelector('.booking-steps').appendChild(clientDataStep)
@@ -637,25 +630,18 @@ function showClientDataForm() {
   clientDataStep.classList.remove('hidden')
   clientDataStep.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
-  if (bookingState.client && bookingState.clientName && bookingState.clientPhone) {
-    const nameInput = document.getElementById('clientName')
-    const emailInput = document.getElementById('clientEmail')
+  if (bookingState.client && bookingState.clientName) {
     const phoneInput = document.getElementById('clientPhone')
     const countrySelect = document.getElementById('clientCountry')
     const countryCodeDisplay = document.getElementById('countryCodeDisplay')
 
-    nameInput.value = bookingState.clientName
-    phoneInput.value = bookingState.clientPhone
+    phoneInput.value = bookingState.clientPhone || ''
     if (countrySelect) {
       countrySelect.value = bookingState.clientCountry || 'PT'
     }
     if (countryCodeDisplay) {
       const selectedCountry = countrySelect ? countrySelect.value : 'PT'
       countryCodeDisplay.value = countryPhoneCodes[selectedCountry].code
-    }
-    // Email fica sempre editável pois é pedido no final
-    if (emailInput && bookingState.clientEmail) {
-      emailInput.value = bookingState.clientEmail
     }
   }
   
@@ -664,8 +650,6 @@ function showClientDataForm() {
   form.addEventListener('submit', async (e) => {
     e.preventDefault()
 
-    const clientName = document.getElementById('clientName').value.trim()
-    const clientEmail = document.getElementById('clientEmail').value.trim()
     const clientCountry = document.getElementById('clientCountry').value
     const clientPhone = document.getElementById('clientPhone').value.trim()
     const countryCode = countryPhoneCodes[clientCountry].code
@@ -676,14 +660,12 @@ function showClientDataForm() {
       return
     }
 
-    if (!clientEmail) {
-      alert('❌ Email inválido. Indique um email válido.')
+    if (!bookingState.clientEmail) {
+      alert('❌ Email em falta. Volte ao início e introduza o email.')
       return
     }
 
-    // Guardar/atualizar sempre os dados do cliente
-    bookingState.clientName = clientName
-    bookingState.clientEmail = clientEmail
+    // Guardar/atualizar telefone no passo final
     bookingState.clientCountry = clientCountry
     bookingState.clientPhone = clientPhone
     bookingState.clientPhoneComplete = `${countryCode} ${clientPhone}`
@@ -807,6 +789,9 @@ function showSuccessScreen() {
     reportEl.textContent = reportText
   }
   setupReportActions(reportText)
+
+  // Tenta abrir a composição de email automaticamente ao confirmar.
+  sendReportByEmail(reportText)
   
   // Mostrar tela de sucesso
   document.getElementById('step-success').classList.remove('hidden')
@@ -829,8 +814,16 @@ function buildBookingReport(formattedDate) {
 }
 
 function setupReportActions(reportText) {
+  const sendEmailBtn = document.getElementById('sendEmailReportBtn')
   const copyBtn = document.getElementById('copyReportBtn')
   const downloadBtn = document.getElementById('downloadReportBtn')
+
+  if (sendEmailBtn && !sendEmailBtn.dataset.bound) {
+    sendEmailBtn.dataset.bound = 'true'
+    sendEmailBtn.addEventListener('click', () => {
+      sendReportByEmail(reportText)
+    })
+  }
 
   if (copyBtn && !copyBtn.dataset.bound) {
     copyBtn.dataset.bound = 'true'
@@ -858,6 +851,43 @@ function setupReportActions(reportText) {
       URL.revokeObjectURL(url)
     })
   }
+}
+
+function sendReportByEmail(reportText) {
+  const clientEmail = bookingState.clientEmail || (bookingState.client ? bookingState.client.email : '')
+  if (!clientEmail) {
+    showError('Email do cliente não encontrado para envio do relatório.')
+    return
+  }
+
+  const subject = encodeURIComponent('Relatório da sua marcação - Barbearia João Castro')
+  const body = encodeURIComponent(reportText)
+  const mailtoUrl = `mailto:${clientEmail}?subject=${subject}&body=${body}`
+
+  window.location.href = mailtoUrl
+  showEmailSentPopup(clientEmail)
+}
+
+function showEmailSentPopup(email) {
+  const popup = document.getElementById('emailSentPopup')
+  const message = document.getElementById('emailSentMessage')
+  if (!popup || !message) return
+
+  message.textContent = `O relatório foi preparado para envio para ${email}. Confirme o envio no seu cliente de email.`
+  popup.classList.remove('hidden')
+}
+
+function initEmailPopup() {
+  const popup = document.getElementById('emailSentPopup')
+  const okBtn = document.getElementById('emailSentOkBtn')
+  const backdrop = document.getElementById('emailSentBackdrop')
+
+  if (!popup || !okBtn || !backdrop) return
+
+  const closePopup = () => popup.classList.add('hidden')
+
+  okBtn.addEventListener('click', closePopup)
+  backdrop.addEventListener('click', closePopup)
 }
 
 // ===== STEP 4: CONFIRMAÇÃO =====
@@ -916,5 +946,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initClientAuth()
     initServiceSelection()
     initBookingConfirmation()
+    initEmailPopup()
   })()
 })

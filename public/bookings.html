@@ -21,7 +21,7 @@
             <!-- Step 0: Autenticação do Cliente -->
             <div class="card" id="step-auth">
                 <h2>Autenticação do Cliente</h2>
-                <p style="color: var(--color-text-secondary);">Introduza o seu nome e telemóvel para começar. O email será pedido no final da marcação.</p>
+                <p style="color: var(--color-text-secondary);">Introduza o seu nome e email para começar. O telefone será pedido no final da marcação.</p>
 
                 <form id="clientAuthForm" class="auth-form">
                     <div class="form-group">
@@ -29,9 +29,9 @@
                         <input type="text" id="clientAuthName" required minlength="3">
                     </div>
                     <div class="form-group">
-                        <label for="clientAuthPhone">Telemóvel *</label>
-                        <input type="tel" id="clientAuthPhone" required maxlength="9">
-                        <small style="color: var(--color-text-secondary); font-size: 0.85rem;">Formato: 9 dígitos</small>
+                        <label for="clientAuthEmail">Email *</label>
+                        <input type="email" id="clientAuthEmail" required placeholder="cliente@email.pt">
+                        <small style="color: var(--color-text-secondary); font-size: 0.85rem;">Será usado para enviar o relatório da marcação</small>
                     </div>
                     <button type="submit" class="btn btn-primary" id="clientAuthSubmit">Continuar</button>
                 </form>
@@ -172,10 +172,11 @@
                         <button class="btn btn-secondary" id="exitBtn">🏠 Sair do Site</button>
                     </div>
 
-                    <div style="margin-top: 2rem; text-align: left;">
+                    <div class="report-section">
                         <h3>📄 Relatório da Marcação</h3>
-                        <pre id="bookingReportText" style="background: #f7f7f7; padding: 1rem; border-radius: 8px; white-space: pre-wrap; font-size: 0.95rem;"></pre>
-                        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.75rem;">
+                        <pre id="bookingReportText" class="booking-report"></pre>
+                        <div class="report-actions">
+                            <button class="btn btn-primary" id="sendEmailReportBtn">✉️ Enviar Relatório por Email</button>
                             <button class="btn btn-secondary" id="copyReportBtn">📋 Copiar Relatório</button>
                             <button class="btn btn-secondary" id="downloadReportBtn">⬇️ Download Relatório</button>
                         </div>
@@ -184,6 +185,15 @@
             </div>
         </div>
     </main>
+
+    <div class="email-popup hidden" id="emailSentPopup" role="dialog" aria-modal="true" aria-labelledby="emailSentTitle">
+        <div class="email-popup-backdrop" id="emailSentBackdrop"></div>
+        <div class="email-popup-card">
+            <h3 id="emailSentTitle">✅ Relatório Preparado</h3>
+            <p id="emailSentMessage">O relatório foi enviado para o email indicado.</p>
+            <button class="btn btn-primary" id="emailSentOkBtn">Percebi</button>
+        </div>
+    </div>
 
     <footer class="footer">
         <div class="container">

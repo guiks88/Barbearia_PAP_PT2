@@ -152,6 +152,28 @@ body {
   align-items: center;
 }
 
+.quick-contacts-panel {
+  margin-top: 1rem;
+  background: linear-gradient(180deg, #1a2233 0%, #1a1f2b 100%);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 1rem 1.2rem;
+}
+
+.quick-contacts-panel p {
+  color: #d7dbe6;
+  font-size: 1.05rem;
+  margin-bottom: 0.75rem;
+}
+
+.quick-contacts-panel p:last-child {
+  margin-bottom: 0;
+}
+
+.quick-contacts-panel strong {
+  color: var(--color-gold);
+}
+
 /* ===== BUTTONS ===== */
 .btn {
   padding: 0.75rem 1.5rem;
@@ -225,46 +247,57 @@ body {
 }
 
 .action-sheet {
-  position: fixed;
-  inset: 0;
   display: none;
-  z-index: 1000;
 }
 
 .action-sheet.active {
-  display: block;
+  display: none;
 }
 
 .action-sheet-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(2px);
+  display: none;
 }
 
 .action-sheet-panel {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: min(420px, 92vw);
-  background: #1b1b1f;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-  padding: 1rem;
+  position: relative;
+  margin: 0 auto;
+  width: min(1120px, 100%);
+  background: linear-gradient(180deg, #1a2233 0%, #1a1f2b 100%);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-lg);
+  padding: 1rem 1.2rem;
 }
 
 .action-sheet-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.25rem 0.25rem 0.75rem;
+  display: none;
 }
 
 .action-sheet-header h3 {
   font-size: 1.1rem;
   color: #fff;
+}
+
+.action-sheet-contact {
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.action-sheet-contact p {
+  color: #d7dbe6;
+  font-size: 0.92rem;
+  margin-bottom: 0.4rem;
+}
+
+.action-sheet-contact p:last-child {
+  margin-bottom: 0;
+}
+
+.action-sheet-contact strong {
+  color: #ffffff;
 }
 
 .action-sheet-close {
@@ -280,9 +313,10 @@ body {
 
 .action-sheet-actions {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  flex-wrap: wrap;
   gap: 0.5rem;
-  margin-bottom: 0.75rem;
+  margin-top: 0.75rem;
 }
 
 .action-sheet-item {
@@ -302,17 +336,7 @@ body {
 }
 
 .action-sheet-cancel {
-  width: 100%;
-  padding: 0.8rem 1rem;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: transparent;
-  color: #fff;
-  cursor: pointer;
-}
-
-.action-sheet-cancel:hover {
-  background: rgba(255, 255, 255, 0.08);
+  display: none;
 }
 
 /* ===== TABS NAVIGATION ===== */
@@ -1621,6 +1645,71 @@ body {
   font-size: 1rem;
 }
 
+.report-section {
+  margin-top: 2rem;
+  text-align: left;
+}
+
+.booking-report {
+  background: #f3f4f6;
+  color: #111827;
+  padding: 1rem;
+  border-radius: 8px;
+  white-space: pre-wrap;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  border: 1px solid #d1d5db;
+  max-height: 420px;
+  overflow: auto;
+}
+
+.report-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.75rem;
+}
+
+.email-popup {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+}
+
+.email-popup-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.email-popup-card {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(520px, 92vw);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 1.25rem;
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+}
+
+.email-popup-card h3 {
+  color: var(--color-success);
+  margin-bottom: 0.5rem;
+}
+
+.email-popup-card p {
+  color: var(--color-text-secondary);
+  margin-bottom: 1rem;
+}
+
+.email-popup-card .btn {
+  min-width: 180px;
+}
+
 @keyframes slideInDown {
   from {
     opacity: 0;
@@ -1644,6 +1733,31 @@ body {
   .success-actions .btn {
     width: 100%;
     min-width: unset;
+  }
+
+  .report-actions {
+    flex-direction: column;
+  }
+
+  .report-actions .btn {
+    width: 100%;
+  }
+
+  .booking-report {
+    font-size: 0.85rem;
+  }
+
+  .action-sheet-panel {
+    width: 100%;
+  }
+
+  .action-sheet {
+    top: 72px;
+    padding: 0 0.75rem;
+  }
+
+  .action-sheet-actions {
+    flex-direction: column;
   }
 }
 
