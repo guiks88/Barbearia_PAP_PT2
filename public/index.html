@@ -23,9 +23,9 @@
                     <div class="profile-info">
                         <h1 class="profile-name">Barbearia João Castro</h1>
                         <div class="profile-meta">
-                            <span class="rating">★ 4.9</span>
+                            <span class="rating">4.9</span>
                             <span class="divider">·</span>
-                            <span class="location">📍 Rua das Flores, Póvoa de Varzim, Portugal</span>
+                            <span class="location">Rua das Flores, Póvoa de Varzim, Portugal</span>
                             <span class="divider">·</span>
                             <span class="status status-open">Aberto</span>
                         </div>
@@ -33,14 +33,8 @@
                     <div class="profile-actions">
                         <a href="bookings.html" class="btn btn-book">Marcar</a>
                         <button class="btn-icon" id="downloadSiteBtn" title="Download Site">⬇</button>
-                        <button class="btn-icon" id="actionMenuButton" title="Mostrar contactos" aria-expanded="false" aria-controls="quickContactsPanel">⋯</button>
+                        <button class="btn-icon" id="actionMenuButton" title="Mostrar contactos" aria-expanded="false" aria-controls="actionSheet">...</button>
                     </div>
-                </div>
-
-                <div class="quick-contacts-panel hidden" id="quickContactsPanel" aria-hidden="true">
-                    <p><strong>Instagram:</strong> @joaocastro.barbearia</p>
-                    <p><strong>Telefone:</strong> 937 272 7447</p>
-                    <p><strong>Email:</strong> joaoguilhermesftc88@gmail.com</p>
                 </div>
             </div>
         </div>
@@ -118,7 +112,7 @@
                 <h2 class="section-title">Sobre Nós</h2>
                 <div class="about-section about-wide">
                     <p class="about-text">
-                        <strong>Estilo e elegância em cada corte 🍃</strong>
+                        <strong>Estilo e elegância em cada corte</strong>
                     </p>
                     <p class="about-text">
                         Barbearia João Castro, fundada a 21 de setembro de 2025, nasce da paixão pelo estilo, pela tradição e pela confiança que um bom corte transmite. Localizada na Rua das Flores, Póvoa de Varzim, Portugal, a barbearia oferece um ambiente moderno e acolhedor, onde cada cliente é tratado com atenção ao detalhe, profissionalismo e dedicação. Dos cortes clássicos às tendências mais atuais, passando pelo cuidado da barba, a Barbearia João Castro é o espaço ideal para quem valoriza qualidade, atitude e identidade própria.
@@ -189,7 +183,7 @@
                         </iframe>
                     </div>
                     <div class="location-details">
-                        <h3>📍 Morada</h3>
+                        <h3>Morada</h3>
                         <p>Rua das Flores</p>
                         <p>Póvoa de Varzim, Portugal</p>
                         <a href="https://www.google.com/maps" target="_blank" class="btn btn-secondary" style="margin-top: 1rem;">Ver no Google Maps</a>
@@ -198,6 +192,21 @@
             </div>
         </div>
     </main>
+
+    <div class="action-sheet" id="actionSheet" aria-hidden="true" role="dialog" aria-label="Contactos">
+        <div class="action-sheet-backdrop" id="actionSheetBackdrop"></div>
+        <div class="action-sheet-panel" role="document">
+            <div class="action-sheet-header">
+                <h3>Barbearia João Castro</h3>
+                <button class="action-sheet-close" id="actionSheetClose" aria-label="Fechar">x</button>
+            </div>
+            <div class="action-sheet-actions">
+                <a href="tel:9372727447" class="action-sheet-item">Telefonar</a>
+                <a href="mailto:joaoguilhermesftc88@gmail.com" class="action-sheet-item">Mensagem</a>
+                <a href="bookings.html" class="action-sheet-item">Cancelar marcação</a>
+            </div>
+        </div>
+    </div>
 
     <!-- Footer com acesso admin -->
     <footer class="footer">

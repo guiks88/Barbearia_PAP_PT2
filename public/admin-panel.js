@@ -334,7 +334,7 @@ function loadSchedules() {
 
         return `
           <div class="schedule-item">
-            <h3>📅 ${barber.name}</h3>
+            <h3>${barber.name}</h3>
             <div class="schedule-controls">
               <div class="form-group">
                 <label>Início</label>
@@ -490,7 +490,7 @@ function updateRevenue() {
         <div class="revenue-value success">${totalRevenue}€</div>
       </div>
       <div class="revenue-card">
-        <h3>📋 Marcações ${filterLabel}</h3>
+        <h3>Marcações ${filterLabel}</h3>
         <div class="revenue-value">${totalBookings}</div>
       </div>
       <div class="revenue-card">

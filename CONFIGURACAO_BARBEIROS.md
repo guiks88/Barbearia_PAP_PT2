@@ -12,7 +12,7 @@ Para configurar os 3 barbeiros (Ana, João Pedro e Manuel), siga os passos abaix
 
 #### **Ana**
 - **Nome**: Ana
-- **Email**: ana@barbearia.pt
+- **Email**: anasilva@barbearia.pt
 - **Senha**: ana123456
 - **Telefone**: 912345678
 - **Especialidade**: Cortes femininos e masculinos
@@ -30,7 +30,7 @@ Para configurar os 3 barbeiros (Ana, João Pedro e Manuel), siga os passos abaix
 
 #### **Manuel**
 - **Nome**: Manuel
-- **Email**: manuel@barbearia.pt
+- **Email**: manuelfernandes@barbearia.pt
 - **Senha**: manuel123456
 - **Telefone**: 914567890
 - **Especialidade**: Cortes clássicos e penteados

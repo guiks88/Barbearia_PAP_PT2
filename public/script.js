@@ -1,19 +1,3 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js"
-import { getDatabase } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
-
-const firebaseConfig = {
-  apiKey: "AIzaSyDicOe3s-45mfnNvk7SiZ90pq2MhtPwzcM",
-  authDomain: "barbearia-sistema-a9d1a.firebaseapp.com",
-  databaseURL: "https://barbearia-sistema-a9d1a-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "barbearia-sistema-a9d1a",
-  storageBucket: "barbearia-sistema-a9d1a.firebasestorage.app",
-  messagingSenderId: "981942161598",
-  appId: "1:981942161598:web:483d0698428296d20fceef",
-}
-
-const app = initializeApp(firebaseConfig)
-const database = getDatabase(app)
-
 const helpTexts = {
   register: {
     title: "Como me registo?",
@@ -84,23 +68,23 @@ const helpTexts = {
       <h3>Serviços e Preços</h3>
       <ul style="list-style: none; padding: 0;">
         <li style="background: rgba(212, 175, 55, 0.1); padding: 1rem; margin-bottom: 0.5rem; border-radius: 8px; border: 1px solid rgba(212, 175, 55, 0.2);">
-          <strong style="color: #d4af37;">✂️ Corte de Cabelo</strong><br>
+          <strong style="color: #d4af37;">Corte de Cabelo</strong><br>
           15€ - 30 minutos
         </li>
         <li style="background: rgba(212, 175, 55, 0.1); padding: 1rem; margin-bottom: 0.5rem; border-radius: 8px; border: 1px solid rgba(212, 175, 55, 0.2);">
-          <strong style="color: #d4af37;">💈 Barba</strong><br>
+          <strong style="color: #d4af37;">Barba</strong><br>
           10€ - 20 minutos
         </li>
         <li style="background: rgba(212, 175, 55, 0.1); padding: 1rem; margin-bottom: 0.5rem; border-radius: 8px; border: 1px solid rgba(212, 175, 55, 0.2);">
-          <strong style="color: #d4af37;">✂️💈 Corte + Barba</strong><br>
+          <strong style="color: #d4af37;">Corte + Barba</strong><br>
           22€ - 45 minutos (Poupe 3€!)
         </li>
         <li style="background: rgba(212, 175, 55, 0.1); padding: 1rem; margin-bottom: 0.5rem; border-radius: 8px; border: 1px solid rgba(212, 175, 55, 0.2);">
-          <strong style="color: #d4af37;">👁️ Sobrancelha</strong><br>
+          <strong style="color: #d4af37;">Sobrancelha</strong><br>
           5€ - 10 minutos
         </li>
         <li style="background: rgba(212, 175, 55, 0.1); padding: 1rem; margin-bottom: 0.5rem; border-radius: 8px; border: 1px solid rgba(212, 175, 55, 0.2);">
-          <strong style="color: #d4af37;">⭐ Pacote Completo</strong><br>
+          <strong style="color: #d4af37;">Pacote Completo</strong><br>
           35€ - 60 minutos (Melhor valor!)
         </li>
       </ul>
@@ -241,41 +225,50 @@ function initTabs() {
 
 function initActionMenu() {
   const menuButton = document.getElementById('actionMenuButton')
-  const quickContacts = document.getElementById('quickContactsPanel')
+  const actionSheet = document.getElementById('actionSheet')
+  const actionSheetBackdrop = document.getElementById('actionSheetBackdrop')
+  const actionSheetClose = document.getElementById('actionSheetClose')
 
-  if (!menuButton || !quickContacts) return
+  if (!menuButton || !actionSheet) return
 
-  const closeContacts = () => {
-    quickContacts.classList.add('hidden')
-    quickContacts.setAttribute('aria-hidden', 'true')
+  const closeSheet = () => {
+    actionSheet.classList.remove('active')
+    actionSheet.setAttribute('aria-hidden', 'true')
     menuButton.setAttribute('aria-expanded', 'false')
   }
 
-  const openContacts = () => {
-    quickContacts.classList.remove('hidden')
-    quickContacts.setAttribute('aria-hidden', 'false')
+  const openSheet = () => {
+    actionSheet.classList.add('active')
+    actionSheet.setAttribute('aria-hidden', 'false')
     menuButton.setAttribute('aria-expanded', 'true')
   }
 
   menuButton.addEventListener('click', (e) => {
     e.preventDefault()
     e.stopPropagation()
-    if (quickContacts.classList.contains('hidden')) {
-      openContacts()
+    if (actionSheet.classList.contains('active')) {
+      closeSheet()
     } else {
-      closeContacts()
+      openSheet()
     }
   })
 
+  if (actionSheetBackdrop) {
+    actionSheetBackdrop.addEventListener('click', closeSheet)
+  }
+  if (actionSheetClose) {
+    actionSheetClose.addEventListener('click', closeSheet)
+  }
+
   document.addEventListener('click', (e) => {
-    if (quickContacts.classList.contains('hidden')) return
-    if (quickContacts.contains(e.target) || menuButton.contains(e.target)) return
-    closeContacts()
+    if (!actionSheet.classList.contains('active')) return
+    if (actionSheet.contains(e.target) || menuButton.contains(e.target)) return
+    closeSheet()
   })
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      closeContacts()
+      closeSheet()
     }
   })
 }

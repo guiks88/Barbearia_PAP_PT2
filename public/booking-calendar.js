@@ -613,7 +613,7 @@ function showClientDataForm() {
           </div>
           <small style="color: var(--color-text-secondary); font-size: 0.85rem;">9 dígitos, sem espaços</small>
         </div>
-        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">✅ Confirmar Marcação e Enviar Relatório</button>
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Confirmar Marcação e Enviar Relatório</button>
       </form>
     `
     document.querySelector('.booking-steps').appendChild(clientDataStep)
@@ -656,12 +656,12 @@ function showClientDataForm() {
 
     // Validar telefone
     if (!/^[0-9]{9}$/.test(clientPhone)) {
-      alert('❌ Número de telefone inválido. Use exatamente 9 dígitos.')
+      alert('Número de telefone inválido. Use exatamente 9 dígitos.')
       return
     }
 
     if (!bookingState.clientEmail) {
-      alert('❌ Email em falta. Volte ao início e introduza o email.')
+      alert('Email em falta. Volte ao início e introduza o email.')
       return
     }
 

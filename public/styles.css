@@ -152,28 +152,6 @@ body {
   align-items: center;
 }
 
-.quick-contacts-panel {
-  margin-top: 1rem;
-  background: linear-gradient(180deg, #1a2233 0%, #1a1f2b 100%);
-  border: 1px solid var(--color-border);
-  border-radius: 14px;
-  padding: 1rem 1.2rem;
-}
-
-.quick-contacts-panel p {
-  color: #d7dbe6;
-  font-size: 1.05rem;
-  margin-bottom: 0.75rem;
-}
-
-.quick-contacts-panel p:last-child {
-  margin-bottom: 0;
-}
-
-.quick-contacts-panel strong {
-  color: var(--color-gold);
-}
-
 /* ===== BUTTONS ===== */
 .btn {
   padding: 0.75rem 1.5rem;
@@ -247,96 +225,79 @@ body {
 }
 
 .action-sheet {
+  position: fixed;
+  inset: 0;
   display: none;
+  z-index: 1000;
 }
 
 .action-sheet.active {
-  display: none;
+  display: block;
 }
 
 .action-sheet-backdrop {
-  display: none;
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(2px);
 }
 
 .action-sheet-panel {
-  position: relative;
-  margin: 0 auto;
-  width: min(1120px, 100%);
-  background: linear-gradient(180deg, #1a2233 0%, #1a1f2b 100%);
-  border: 1px solid var(--color-border);
-  border-radius: 14px;
-  box-shadow: var(--shadow-lg);
-  padding: 1rem 1.2rem;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(640px, 92vw);
+  background: #181116;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+  padding: 1.25rem;
 }
 
 .action-sheet-header {
-  display: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 0.75rem;
 }
 
 .action-sheet-header h3 {
-  font-size: 1.1rem;
+  font-size: 2rem;
   color: #fff;
-}
-
-.action-sheet-contact {
-  padding: 0.75rem;
-  margin-bottom: 0.75rem;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.action-sheet-contact p {
-  color: #d7dbe6;
-  font-size: 0.92rem;
-  margin-bottom: 0.4rem;
-}
-
-.action-sheet-contact p:last-child {
-  margin-bottom: 0;
-}
-
-.action-sheet-contact strong {
-  color: #ffffff;
 }
 
 .action-sheet-close {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  width: 30px;
+  height: 30px;
+  border: none;
   background: transparent;
-  color: #fff;
-  font-size: 1.2rem;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 1.4rem;
   cursor: pointer;
 }
 
 .action-sheet-actions {
   display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
+  flex-direction: column;
+  gap: 0.7rem;
 }
 
 .action-sheet-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.85rem 1rem;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.06);
+  padding: 0.9rem 1rem;
+  border-radius: 8px;
+  background: transparent;
   color: #fff;
   text-decoration: none;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  font-size: 1.9rem;
+  line-height: 1.2;
 }
 
 .action-sheet-item:hover {
-  background: rgba(255, 255, 255, 0.12);
-}
-
-.action-sheet-cancel {
-  display: none;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 /* ===== TABS NAVIGATION ===== */
@@ -811,13 +772,32 @@ body {
   margin-bottom: 1rem;
   font-size: 2rem;
   justify-content: center;
+  color: #1f2937;
 }
 
 .subtitle {
   text-align: center;
-  color: var(--color-text-secondary);
+  color: #4b5563;
   margin-bottom: 2rem;
   font-size: 1rem;
+}
+
+.auth-card .form-group label {
+  color: #374151;
+  font-weight: 600;
+}
+
+.auth-card .form-group input,
+.auth-card .form-group select,
+.auth-card .form-group textarea {
+  border: 1px solid #4b5563;
+  color: #111827;
+  background: #ffffff;
+}
+
+.auth-card .form-group input::placeholder,
+.auth-card .form-group textarea::placeholder {
+  color: #9ca3af;
 }
 
 .auth-options {
@@ -865,7 +845,7 @@ body {
 .auth-footer {
   margin-top: 2rem;
   text-align: center;
-  color: var(--color-text-secondary);
+  color: #4b5563;
 }
 
 .auth-footer a {
@@ -1748,16 +1728,16 @@ body {
   }
 
   .action-sheet-panel {
-    width: 100%;
+    width: 94vw;
+    padding: 1rem;
   }
 
-  .action-sheet {
-    top: 72px;
-    padding: 0 0.75rem;
+  .action-sheet-header h3 {
+    font-size: 1.5rem;
   }
 
-  .action-sheet-actions {
-    flex-direction: column;
+  .action-sheet-item {
+    font-size: 1.3rem;
   }
 }
 

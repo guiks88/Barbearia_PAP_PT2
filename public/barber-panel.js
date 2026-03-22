@@ -91,7 +91,7 @@ function displayBookings() {
   if (filteredBookings.length === 0) {
     container.innerHTML = `
       <div class="no-appointments">
-        <p>📅 Não há marcações para esta data</p>
+        <p>Não há marcações para esta data</p>
         <p style="font-size: 0.9rem; color: #999;">Selecione outra data para ver suas marcações</p>
       </div>
     `
