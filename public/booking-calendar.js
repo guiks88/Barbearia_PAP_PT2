@@ -1,6 +1,6 @@
 import { auth, database } from "./firebase-config.js"
 import { ref, get, push, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
-import { signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
+import { RecaptchaVerifier, signInWithPhoneNumber } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
 import { showSuccess, showError } from "./utils.js"
 
 const isBarberSession = sessionStorage.getItem("isBarber") === "true"
@@ -22,6 +22,7 @@ const bookingState = {
   time: null,
   client: null,
   clientEmail: null,
+  clientUid: null,
   currentMonth: new Date().getMonth(),
   currentYear: new Date().getFullYear(),
   availableSlots: {},
@@ -88,14 +89,123 @@ function showAuthStep() {
 }
 
 function initClientAuth() {
-  const form = document.getElementById('clientAuthForm')
-  if (!form) return
+  const loginBox = document.getElementById('authLoginBox')
+  const registerBox = document.getElementById('authRegisterBox')
+  const openRegisterLink = document.getElementById('openRegisterLink')
+  const openLoginLink = document.getElementById('openLoginLink')
+  const sendLoginCodeBtn = document.getElementById('sendLoginCodeBtn')
+  const verifyLoginCodeBtn = document.getElementById('verifyLoginCodeBtn')
+  const sendRegisterCodeBtn = document.getElementById('sendRegisterCodeBtn')
+  const verifyRegisterCodeBtn = document.getElementById('verifyRegisterCodeBtn')
 
-  form.addEventListener('submit', async (e) => {
+  if (!loginBox || !registerBox || !openRegisterLink || !openLoginLink || !sendLoginCodeBtn || !verifyLoginCodeBtn || !sendRegisterCodeBtn || !verifyRegisterCodeBtn) {
+    return
+  }
+
+  let loginVerifier = null
+  let registerVerifier = null
+  let loginConfirmation = null
+  let registerConfirmation = null
+  let pendingRegisterData = null
+
+  const normalizePhonePt = (value) => {
+    const raw = value.trim()
+    const digits = raw.replace(/\D/g, '')
+
+    if (/^9\d{8}$/.test(digits)) return `+351${digits}`
+    if (/^3519\d{8}$/.test(digits)) return `+${digits}`
+    if (/^\+3519\d{8}$/.test(raw)) return raw
+    return null
+  }
+
+  const switchToRegister = () => {
+    loginBox.classList.add('hidden')
+    registerBox.classList.remove('hidden')
+  }
+
+  const switchToLogin = () => {
+    registerBox.classList.add('hidden')
+    loginBox.classList.remove('hidden')
+  }
+
+  openRegisterLink.addEventListener('click', (e) => {
     e.preventDefault()
+    switchToRegister()
+  })
 
-    const name = document.getElementById('clientAuthName').value.trim()
-    const email = document.getElementById('clientAuthEmail').value.trim()
+  openLoginLink.addEventListener('click', (e) => {
+    e.preventDefault()
+    switchToLogin()
+  })
+
+  sendLoginCodeBtn.addEventListener('click', async () => {
+    const phone = document.getElementById('clientLoginPhone').value
+    const phoneE164 = normalizePhonePt(phone)
+
+    if (!phoneE164) {
+      showError('Indique um número de telemóvel válido (9 dígitos PT).')
+      return
+    }
+
+    try {
+      if (loginVerifier) loginVerifier.clear()
+      loginVerifier = new RecaptchaVerifier(auth, 'loginRecaptchaContainer', { size: 'invisible' })
+      loginConfirmation = await signInWithPhoneNumber(auth, phoneE164, loginVerifier)
+      document.getElementById('loginOtpSection').classList.remove('hidden')
+      showSuccess('Código enviado por SMS.')
+    } catch (error) {
+      showError(`Não foi possível enviar o código: ${error.message || 'tente novamente.'}`)
+    }
+  })
+
+  verifyLoginCodeBtn.addEventListener('click', async () => {
+    if (!loginConfirmation) {
+      showError('Primeiro envie o código de confirmação.')
+      return
+    }
+
+    const code = document.getElementById('clientLoginCode').value.trim()
+    if (!/^\d{6}$/.test(code)) {
+      showError('Introduza o código de 6 dígitos.')
+      return
+    }
+
+    try {
+      const result = await loginConfirmation.confirm(code)
+      const user = result.user
+      const snap = await get(ref(database, `clients/${user.uid}`))
+
+      if (!snap.exists()) {
+        showError('Conta não encontrada. Clique em Criar uma para registar.')
+        switchToRegister()
+        return
+      }
+
+      const clientData = snap.val()
+      bookingState.clientUid = user.uid
+      bookingState.clientName = clientData.name || ''
+      bookingState.clientEmail = clientData.email || ''
+      bookingState.clientPhoneComplete = clientData.phone || ''
+      bookingState.clientPhone = (clientData.phone || '').replace(/^\+351/, '')
+      bookingState.clientCountry = 'PT'
+      bookingState.client = {
+        name: bookingState.clientName,
+        email: bookingState.clientEmail,
+        phone: bookingState.clientPhone
+      }
+
+      showSuccess('Login confirmado com sucesso.')
+      showBookingSteps()
+    } catch (error) {
+      showError('Código inválido ou expirado.')
+    }
+  })
+
+  sendRegisterCodeBtn.addEventListener('click', async () => {
+    const name = document.getElementById('clientRegisterName').value.trim()
+    const email = document.getElementById('clientRegisterEmail').value.trim()
+    const phone = document.getElementById('clientRegisterPhone').value
+    const phoneE164 = normalizePhonePt(phone)
 
     if (!name || name.length < 3) {
       showError('Indique o seu nome completo.')
@@ -107,16 +217,67 @@ function initClientAuth() {
       return
     }
 
-    // Guardar dados básicos do cliente (telefone será pedido no final)
-    bookingState.client = { name, email }
-    bookingState.clientName = name
-    bookingState.clientEmail = email
-    bookingState.clientPhone = null
-    bookingState.clientPhoneComplete = null
-    bookingState.clientCountry = 'PT'
+    if (!phoneE164) {
+      showError('Indique um número de telemóvel válido (9 dígitos PT).')
+      return
+    }
 
-    showSuccess('Dados confirmados! Escolha o serviço.')
-    showBookingSteps()
+    pendingRegisterData = { name, email, phone: phoneE164 }
+
+    try {
+      if (registerVerifier) registerVerifier.clear()
+      registerVerifier = new RecaptchaVerifier(auth, 'registerRecaptchaContainer', { size: 'invisible' })
+      registerConfirmation = await signInWithPhoneNumber(auth, phoneE164, registerVerifier)
+      document.getElementById('registerOtpSection').classList.remove('hidden')
+      showSuccess('Código de registo enviado por SMS.')
+    } catch (error) {
+      showError(`Não foi possível enviar o código: ${error.message || 'tente novamente.'}`)
+    }
+  })
+
+  verifyRegisterCodeBtn.addEventListener('click', async () => {
+    if (!registerConfirmation || !pendingRegisterData) {
+      showError('Primeiro envie o código de registo.')
+      return
+    }
+
+    const code = document.getElementById('clientRegisterCode').value.trim()
+    if (!/^\d{6}$/.test(code)) {
+      showError('Introduza o código de 6 dígitos.')
+      return
+    }
+
+    try {
+      const result = await registerConfirmation.confirm(code)
+      const user = result.user
+
+      const payload = {
+        name: pendingRegisterData.name,
+        email: pendingRegisterData.email,
+        phone: pendingRegisterData.phone,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+
+      await set(ref(database, `clients/${user.uid}`), payload)
+
+      bookingState.clientUid = user.uid
+      bookingState.clientName = payload.name
+      bookingState.clientEmail = payload.email
+      bookingState.clientPhoneComplete = payload.phone
+      bookingState.clientPhone = payload.phone.replace(/^\+351/, '')
+      bookingState.clientCountry = 'PT'
+      bookingState.client = {
+        name: bookingState.clientName,
+        email: bookingState.clientEmail,
+        phone: bookingState.clientPhone
+      }
+
+      showSuccess('Conta criada com sucesso e telemóvel confirmado.')
+      showBookingSteps()
+    } catch (error) {
+      showError('Código inválido ou expirado.')
+    }
   })
 }
 
@@ -190,28 +351,14 @@ const fallbackBarbers = [
   { id: 'joao-pedro', name: 'João Pedro', specialty: 'Degradé' },
 ]
 
-async function ensureAuthenticatedSession() {
-  if (auth.currentUser) {
-    return auth.currentUser
-  }
-
-  try {
-    const credential = await signInAnonymously(auth)
-    return credential.user
-  } catch (error) {
-    console.error('Erro ao autenticar sessão anónima:', error)
-    return null
-  }
-}
-
 async function loadBarbers() {
   const barbersList = document.getElementById('barbersList')
   barbersList.innerHTML = '<p style="text-align: center; color: var(--color-text-secondary);">A carregar barbeiros...</p>'
   
   try {
-    const currentUser = await ensureAuthenticatedSession()
+    const currentUser = auth.currentUser
     if (!currentUser) {
-      barbersList.innerHTML = '<p style="text-align: center; color: var(--color-error);">Não foi possível iniciar sessão no Firebase para carregar os barbeiros.</p>'
+      barbersList.innerHTML = '<p style="text-align: center; color: var(--color-error);">Faça login com telemóvel para carregar os barbeiros.</p>'
       return
     }
 
@@ -582,93 +729,38 @@ function showClientDataForm() {
     clientDataStep.id = 'step-client-data'
     clientDataStep.className = 'card'
     
-    // Criar opções de países
-    let countryOptions = ''
-    for (const [key, country] of Object.entries(countryPhoneCodes)) {
-      const selected = key === 'PT' ? 'selected' : ''
-      countryOptions += `<option value="${key}" ${selected}>${country.name} (${country.code})</option>`
-    }
-    
     clientDataStep.innerHTML = `
-      <h2>4. Confirme o Seu Telefone</h2>
+      <h2>4. Confirmar Marcação</h2>
       <div class="selected-info">
         <p><strong>Serviço:</strong> ${bookingState.serviceName} - ${bookingState.servicePrice}€</p>
         <p><strong>Barbeiro:</strong> ${bookingState.barberName}</p>
         <p><strong>Data:</strong> ${formatDateForDisplay(bookingState.date)}</p>
         <p><strong>Hora:</strong> ${bookingState.time}</p>
+        <p><strong>Cliente:</strong> ${bookingState.clientName || ''}</p>
         <p><strong>Email:</strong> ${bookingState.clientEmail || ''}</p>
+        <p><strong>Telefone:</strong> ${bookingState.clientPhoneComplete || ''}</p>
       </div>
       <form id="clientDataForm" class="auth-form">
-        <div class="form-group">
-          <label for="clientCountry">País *</label>
-          <select id="clientCountry" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-border); border-radius: 6px; font-size: 0.95rem; color: #1a1a2e; background: white;">
-            ${countryOptions}
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="clientPhone">Telefone *</label>
-          <div style="display: flex; gap: 0.5rem;">
-            <input type="text" id="countryCodeDisplay" disabled style="width: 70px; padding: 0.75rem; background: var(--color-bg-secondary); border: 1px solid var(--color-border); border-radius: 6px; font-size: 0.95rem; color: var(--color-text-primary);" value="+351">
-            <input type="tel" id="clientPhone" required maxlength="9" inputmode="numeric" style="flex: 1; padding: 0.75rem; border: 1px solid var(--color-border); border-radius: 6px; font-size: 0.95rem; color: #1a1a2e; background: white;">
-          </div>
-          <small style="color: var(--color-text-secondary); font-size: 0.85rem;">9 dígitos, sem espaços</small>
-        </div>
         <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Confirmar Marcação e Enviar Relatório</button>
       </form>
     `
     document.querySelector('.booking-steps').appendChild(clientDataStep)
-    
-    // Adicionar evento ao select de país
-    const countrySelect = document.getElementById('clientCountry')
-    countrySelect.addEventListener('change', (e) => {
-      const countryCode = countryPhoneCodes[e.target.value].code
-      document.getElementById('countryCodeDisplay').value = countryCode
-    })
   }
   
   // Mostrar formulário
   clientDataStep.classList.remove('hidden')
   clientDataStep.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
-  if (bookingState.client && bookingState.clientName) {
-    const phoneInput = document.getElementById('clientPhone')
-    const countrySelect = document.getElementById('clientCountry')
-    const countryCodeDisplay = document.getElementById('countryCodeDisplay')
-
-    phoneInput.value = bookingState.clientPhone || ''
-    if (countrySelect) {
-      countrySelect.value = bookingState.clientCountry || 'PT'
-    }
-    if (countryCodeDisplay) {
-      const selectedCountry = countrySelect ? countrySelect.value : 'PT'
-      countryCodeDisplay.value = countryPhoneCodes[selectedCountry].code
-    }
-  }
-  
   // Adicionar event listener ao formulário
   const form = document.getElementById('clientDataForm')
   form.addEventListener('submit', async (e) => {
     e.preventDefault()
 
-    const clientCountry = document.getElementById('clientCountry').value
-    const clientPhone = document.getElementById('clientPhone').value.trim()
-    const countryCode = countryPhoneCodes[clientCountry].code
-
-    // Validar telefone
-    if (!/^[0-9]{9}$/.test(clientPhone)) {
-      alert('Número de telefone inválido. Use exatamente 9 dígitos.')
+    if (!auth.currentUser) {
+      showError('Sessão inválida. Faça login novamente.')
+      showAuthStep()
       return
     }
-
-    if (!bookingState.clientEmail) {
-      alert('Email em falta. Volte ao início e introduza o email.')
-      return
-    }
-
-    // Guardar/atualizar telefone no passo final
-    bookingState.clientCountry = clientCountry
-    bookingState.clientPhone = clientPhone
-    bookingState.clientPhoneComplete = `${countryCode} ${clientPhone}`
     
     // Confirmar marcação
     await confirmBooking()
@@ -941,11 +1033,8 @@ function resetBooking() {
 
 // Inicializar quando o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', () => {
-  ;(async () => {
-    await ensureAuthenticatedSession()
-    initClientAuth()
-    initServiceSelection()
-    initBookingConfirmation()
-    initEmailPopup()
-  })()
+  initClientAuth()
+  initServiceSelection()
+  initBookingConfirmation()
+  initEmailPopup()
 })

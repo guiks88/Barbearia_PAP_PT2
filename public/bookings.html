@@ -21,20 +21,50 @@
             <!-- Step 0: Autenticação do Cliente -->
             <div class="card" id="step-auth">
                 <h2>Autenticação do Cliente</h2>
-                <p style="color: var(--color-text-secondary);">Introduza o seu nome e email para começar. O telefone será pedido no final da marcação.</p>
+                <p style="color: var(--color-text-secondary);">Faça login com o seu número de telefone para receber um código de confirmação por SMS.</p>
 
-                <form id="clientAuthForm" class="auth-form">
+                <div id="authLoginBox" class="auth-form">
                     <div class="form-group">
-                        <label for="clientAuthName">Nome Completo *</label>
-                        <input type="text" id="clientAuthName" required minlength="3">
+                        <label for="clientLoginPhone">Número de Telefone *</label>
+                        <input type="tel" id="clientLoginPhone" placeholder="912345678" maxlength="9" required>
+                        <small style="color: var(--color-text-secondary); font-size: 0.85rem;">Formato PT: 9 dígitos (ex: 912345678)</small>
+                    </div>
+                    <button type="button" class="btn btn-primary" id="sendLoginCodeBtn" style="width: 100%;">Enviar Código</button>
+                    <div id="loginOtpSection" class="hidden" style="margin-top: 1rem;">
+                        <div class="form-group">
+                            <label for="clientLoginCode">Código de Confirmação *</label>
+                            <input type="text" id="clientLoginCode" placeholder="123456" maxlength="6" inputmode="numeric">
+                        </div>
+                        <button type="button" class="btn btn-primary" id="verifyLoginCodeBtn" style="width: 100%;">Confirmar Código e Entrar</button>
+                    </div>
+                    <div id="loginRecaptchaContainer" style="margin-top: 0.5rem;"></div>
+                    <p style="margin-top: 1rem; color: var(--color-text-secondary);">Não tem uma conta? <a href="#" id="openRegisterLink">Criar uma</a></p>
+                </div>
+
+                <div id="authRegisterBox" class="auth-form hidden">
+                    <div class="form-group">
+                        <label for="clientRegisterName">Nome Completo *</label>
+                        <input type="text" id="clientRegisterName" minlength="3">
                     </div>
                     <div class="form-group">
-                        <label for="clientAuthEmail">Email *</label>
-                        <input type="email" id="clientAuthEmail" required placeholder="cliente@email.pt">
-                        <small style="color: var(--color-text-secondary); font-size: 0.85rem;">Será usado para enviar o relatório da marcação</small>
+                        <label for="clientRegisterEmail">Email *</label>
+                        <input type="email" id="clientRegisterEmail" placeholder="cliente@email.pt">
                     </div>
-                    <button type="submit" class="btn btn-primary" id="clientAuthSubmit">Continuar</button>
-                </form>
+                    <div class="form-group">
+                        <label for="clientRegisterPhone">Número de Telefone *</label>
+                        <input type="tel" id="clientRegisterPhone" placeholder="912345678" maxlength="9" inputmode="numeric">
+                    </div>
+                    <button type="button" class="btn btn-primary" id="sendRegisterCodeBtn" style="width: 100%;">Enviar Código de Registo</button>
+                    <div id="registerOtpSection" class="hidden" style="margin-top: 1rem;">
+                        <div class="form-group">
+                            <label for="clientRegisterCode">Código de Confirmação *</label>
+                            <input type="text" id="clientRegisterCode" placeholder="123456" maxlength="6" inputmode="numeric">
+                        </div>
+                        <button type="button" class="btn btn-primary" id="verifyRegisterCodeBtn" style="width: 100%;">Criar Conta e Entrar</button>
+                    </div>
+                    <div id="registerRecaptchaContainer" style="margin-top: 0.5rem;"></div>
+                    <p style="margin-top: 1rem; color: var(--color-text-secondary);">Já tem conta? <a href="#" id="openLoginLink">Entrar</a></p>
+                </div>
             </div>
 
             <!-- Step 1: Serviços -->
