@@ -21,23 +21,18 @@
             <!-- Step 0: Autenticação do Cliente -->
             <div class="card" id="step-auth">
                 <h2>Autenticação do Cliente</h2>
-                <p style="color: var(--color-text-secondary);">Faça login com o seu número de telefone para receber um código de confirmação por SMS.</p>
+                <p style="color: var(--color-text-secondary);" id="authStepDescription">Faça login com email e senha. Se não tiver conta, crie uma com nome, telefone, email e senha.</p>
 
                 <div id="authLoginBox" class="auth-form">
                     <div class="form-group">
-                        <label for="clientLoginPhone">Número de Telefone *</label>
-                        <input type="tel" id="clientLoginPhone" placeholder="912345678" maxlength="9" required>
-                        <small style="color: var(--color-text-secondary); font-size: 0.85rem;">Formato PT: 9 dígitos (ex: 912345678)</small>
+                        <label for="clientLoginEmail">Email *</label>
+                        <input type="email" id="clientLoginEmail" placeholder="cliente@email.pt" required>
                     </div>
-                    <button type="button" class="btn btn-primary" id="sendLoginCodeBtn" style="width: 100%;">Enviar Código</button>
-                    <div id="loginOtpSection" class="hidden" style="margin-top: 1rem;">
-                        <div class="form-group">
-                            <label for="clientLoginCode">Código de Confirmação *</label>
-                            <input type="text" id="clientLoginCode" placeholder="123456" maxlength="6" inputmode="numeric">
-                        </div>
-                        <button type="button" class="btn btn-primary" id="verifyLoginCodeBtn" style="width: 100%;">Confirmar Código e Entrar</button>
+                    <div class="form-group">
+                        <label for="clientLoginPassword">Senha *</label>
+                        <input type="password" id="clientLoginPassword" placeholder="Mínimo 6 caracteres" required>
                     </div>
-                    <div id="loginRecaptchaContainer" style="margin-top: 0.5rem;"></div>
+                    <button type="button" class="btn btn-primary" id="loginClientBtn" style="width: 100%;">Entrar</button>
                     <p style="margin-top: 1rem; color: var(--color-text-secondary);">Não tem uma conta? <a href="#" id="openRegisterLink">Criar uma</a></p>
                 </div>
 
@@ -51,20 +46,23 @@
                         <input type="email" id="clientRegisterEmail" placeholder="cliente@email.pt">
                     </div>
                     <div class="form-group">
+                        <label for="clientRegisterPassword">Senha *</label>
+                        <input type="password" id="clientRegisterPassword" placeholder="Mínimo 6 caracteres">
+                    </div>
+                    <div class="form-group">
                         <label for="clientRegisterPhone">Número de Telefone *</label>
                         <input type="tel" id="clientRegisterPhone" placeholder="912345678" maxlength="9" inputmode="numeric">
                     </div>
-                    <button type="button" class="btn btn-primary" id="sendRegisterCodeBtn" style="width: 100%;">Enviar Código de Registo</button>
-                    <div id="registerOtpSection" class="hidden" style="margin-top: 1rem;">
-                        <div class="form-group">
-                            <label for="clientRegisterCode">Código de Confirmação *</label>
-                            <input type="text" id="clientRegisterCode" placeholder="123456" maxlength="6" inputmode="numeric">
-                        </div>
-                        <button type="button" class="btn btn-primary" id="verifyRegisterCodeBtn" style="width: 100%;">Criar Conta e Entrar</button>
-                    </div>
-                    <div id="registerRecaptchaContainer" style="margin-top: 0.5rem;"></div>
+                    <button type="button" class="btn btn-primary" id="registerClientBtn" style="width: 100%;">Criar Conta</button>
                     <p style="margin-top: 1rem; color: var(--color-text-secondary);">Já tem conta? <a href="#" id="openLoginLink">Entrar</a></p>
                 </div>
+            </div>
+
+            <div class="card hidden" id="step-manage-bookings">
+                <h2>As Suas Marcações</h2>
+                <p style="color: var(--color-text-secondary); margin-bottom: 1rem;">Depois do login pode adiar ou anular qualquer marcação da sua conta.</p>
+                <div id="manageBookingsStatus" class="manage-bookings-status">A carregar marcações...</div>
+                <div id="clientBookingsList" class="client-bookings-list"></div>
             </div>
 
             <!-- Step 1: Serviços -->

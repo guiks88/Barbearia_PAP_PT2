@@ -217,6 +217,7 @@ body {
   align-items: center;
   justify-content: center;
   padding: 0;
+  text-decoration: none;
 }
 
 .btn-icon:hover {
@@ -232,6 +233,10 @@ body {
 }
 
 .action-sheet.active {
+  display: block;
+}
+
+.action-sheet:target {
   display: block;
 }
 
@@ -275,6 +280,10 @@ body {
   color: rgba(255, 255, 255, 0.65);
   font-size: 1.4rem;
   cursor: pointer;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .action-sheet-actions {
@@ -286,18 +295,28 @@ body {
 .action-sheet-item {
   display: flex;
   align-items: center;
+  gap: 0.7rem;
   padding: 0.9rem 1rem;
   border-radius: 8px;
   background: transparent;
   color: #fff;
   text-decoration: none;
   border: 1px solid rgba(255, 255, 255, 0.85);
-  font-size: 1.9rem;
+  font-size: 1.15rem;
+  font-weight: 500;
   line-height: 1.2;
 }
 
 .action-sheet-item:hover {
   background: rgba(255, 255, 255, 0.08);
+}
+
+.action-sheet-icon {
+  min-width: 4.6rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 /* ===== TABS NAVIGATION ===== */
@@ -1650,6 +1669,70 @@ body {
   margin-top: 0.75rem;
 }
 
+.manage-bookings-status {
+  margin-bottom: 1rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+}
+
+.manage-bookings-status.is-muted {
+  color: var(--color-text-secondary);
+}
+
+.manage-bookings-status.is-success {
+  color: #bbf7d0;
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.manage-bookings-status.is-error {
+  color: #fecaca;
+  border-color: rgba(239, 68, 68, 0.45);
+}
+
+.client-bookings-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.client-booking-card {
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-bg-secondary);
+  padding: 1rem;
+}
+
+.client-booking-card.is-cancelled {
+  opacity: 0.7;
+}
+
+.client-booking-main h3 {
+  margin-bottom: 0.5rem;
+}
+
+.client-booking-main p {
+  color: var(--color-text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.client-booking-main p strong {
+  color: var(--color-text-primary);
+}
+
+.client-booking-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.8rem;
+}
+
+.manage-reschedule-panel {
+  margin-top: 0.8rem;
+  border-top: 1px solid var(--color-border);
+  padding-top: 0.8rem;
+}
+
 .email-popup {
   position: fixed;
   inset: 0;
@@ -1737,7 +1820,17 @@ body {
   }
 
   .action-sheet-item {
-    font-size: 1.3rem;
+    font-size: 0.95rem;
+  }
+
+  .action-sheet-icon {
+    min-width: 3.8rem;
+    font-size: 0.7rem;
+  }
+
+  .client-booking-actions .btn,
+  .manage-reschedule-panel .btn {
+    width: 100%;
   }
 }
 

@@ -1,12 +1,15 @@
 import { auth, database } from "./firebase-config.js"
-import { ref, get, push, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
-import { RecaptchaVerifier, signInWithPhoneNumber } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
+import { ref, get, push, set, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
 import { showSuccess, showError } from "./utils.js"
 
 const isBarberSession = sessionStorage.getItem("isBarber") === "true"
 if (isBarberSession) {
   window.location.href = "barber-panel.html"
 }
+
+const urlParams = new URLSearchParams(window.location.search)
+const isManageMode = urlParams.get('mode') === 'manage'
 
 // Estado da marcação
 const bookingState = {
@@ -21,8 +24,10 @@ const bookingState = {
   date: null,
   time: null,
   client: null,
+  clientName: null,
   clientEmail: null,
   clientUid: null,
+  clientBookings: [],
   currentMonth: new Date().getMonth(),
   currentYear: new Date().getFullYear(),
   availableSlots: {},
@@ -79,13 +84,53 @@ function isPastTimeSlot(dateStr, timeStr) {
 }
 
 function showBookingSteps() {
+  document.getElementById('step-manage-bookings')?.classList.add('hidden')
   document.getElementById('step-auth').classList.add('hidden')
   document.getElementById('step-services').classList.remove('hidden')
 }
 
+function showManageBookingsStep() {
+  document.getElementById('step-services').classList.add('hidden')
+  document.getElementById('step-barber').classList.add('hidden')
+  document.getElementById('step-datetime').classList.add('hidden')
+  document.getElementById('step-success').classList.add('hidden')
+  document.getElementById('step-auth').classList.add('hidden')
+  document.getElementById('step-manage-bookings').classList.remove('hidden')
+}
+
 function showAuthStep() {
+  document.getElementById('step-manage-bookings')?.classList.add('hidden')
   document.getElementById('step-auth').classList.remove('hidden')
   document.getElementById('step-services').classList.add('hidden')
+}
+
+function handlePostAuthSuccess() {
+  if (isManageMode) {
+    showManageBookingsStep()
+    loadClientBookings()
+    return
+  }
+  showBookingSteps()
+}
+
+function initPageMode() {
+  if (!isManageMode) return
+
+  const authDescription = document.getElementById('authStepDescription')
+  if (authDescription) {
+    authDescription.textContent = 'Entre na sua conta para ver as suas marcações e poder adiar ou anular.'
+  }
+
+  const openRegisterLink = document.getElementById('openRegisterLink')
+  if (openRegisterLink) {
+    const registerPrompt = openRegisterLink.closest('p')
+    if (registerPrompt) registerPrompt.classList.add('hidden')
+  }
+
+  const registerBox = document.getElementById('authRegisterBox')
+  if (registerBox) {
+    registerBox.classList.add('hidden')
+  }
 }
 
 function initClientAuth() {
@@ -93,29 +138,25 @@ function initClientAuth() {
   const registerBox = document.getElementById('authRegisterBox')
   const openRegisterLink = document.getElementById('openRegisterLink')
   const openLoginLink = document.getElementById('openLoginLink')
-  const sendLoginCodeBtn = document.getElementById('sendLoginCodeBtn')
-  const verifyLoginCodeBtn = document.getElementById('verifyLoginCodeBtn')
-  const sendRegisterCodeBtn = document.getElementById('sendRegisterCodeBtn')
-  const verifyRegisterCodeBtn = document.getElementById('verifyRegisterCodeBtn')
+  const loginClientBtn = document.getElementById('loginClientBtn')
+  const registerClientBtn = document.getElementById('registerClientBtn')
 
-  if (!loginBox || !registerBox || !openRegisterLink || !openLoginLink || !sendLoginCodeBtn || !verifyLoginCodeBtn || !sendRegisterCodeBtn || !verifyRegisterCodeBtn) {
+  if (!loginBox || !registerBox || !openRegisterLink || !openLoginLink || !loginClientBtn || !registerClientBtn) {
     return
   }
 
-  let loginVerifier = null
-  let registerVerifier = null
-  let loginConfirmation = null
-  let registerConfirmation = null
-  let pendingRegisterData = null
+  if (isManageMode) {
+    const loginPrompt = openRegisterLink.closest('p')
+    if (loginPrompt) {
+      loginPrompt.classList.add('hidden')
+    }
+  }
 
-  const normalizePhonePt = (value) => {
-    const raw = value.trim()
-    const digits = raw.replace(/\D/g, '')
-
-    if (/^9\d{8}$/.test(digits)) return `+351${digits}`
-    if (/^3519\d{8}$/.test(digits)) return `+${digits}`
-    if (/^\+3519\d{8}$/.test(raw)) return raw
-    return null
+  const formatPhone = (value) => {
+    const digits = value.replace(/\D/g, '')
+    if (!digits) return ''
+    if (digits.startsWith('351')) return `+${digits}`
+    return `+351${digits}`
   }
 
   const switchToRegister = () => {
@@ -138,53 +179,34 @@ function initClientAuth() {
     switchToLogin()
   })
 
-  sendLoginCodeBtn.addEventListener('click', async () => {
-    const phone = document.getElementById('clientLoginPhone').value
-    const phoneE164 = normalizePhonePt(phone)
+  loginClientBtn.addEventListener('click', async () => {
+    const email = document.getElementById('clientLoginEmail').value.trim()
+    const password = document.getElementById('clientLoginPassword').value
 
-    if (!phoneE164) {
-      showError('Indique um número de telemóvel válido (9 dígitos PT).')
+    if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+      showError('Indique um email válido.')
+      return
+    }
+
+    if (!password || password.length < 6) {
+      showError('Indique uma senha válida (mínimo 6 caracteres).')
       return
     }
 
     try {
-      if (loginVerifier) loginVerifier.clear()
-      loginVerifier = new RecaptchaVerifier(auth, 'loginRecaptchaContainer', { size: 'invisible' })
-      loginConfirmation = await signInWithPhoneNumber(auth, phoneE164, loginVerifier)
-      document.getElementById('loginOtpSection').classList.remove('hidden')
-      showSuccess('Código enviado por SMS.')
-    } catch (error) {
-      showError(`Não foi possível enviar o código: ${error.message || 'tente novamente.'}`)
-    }
-  })
-
-  verifyLoginCodeBtn.addEventListener('click', async () => {
-    if (!loginConfirmation) {
-      showError('Primeiro envie o código de confirmação.')
-      return
-    }
-
-    const code = document.getElementById('clientLoginCode').value.trim()
-    if (!/^\d{6}$/.test(code)) {
-      showError('Introduza o código de 6 dígitos.')
-      return
-    }
-
-    try {
-      const result = await loginConfirmation.confirm(code)
+      const result = await signInWithEmailAndPassword(auth, email, password)
       const user = result.user
       const snap = await get(ref(database, `clients/${user.uid}`))
 
       if (!snap.exists()) {
-        showError('Conta não encontrada. Clique em Criar uma para registar.')
-        switchToRegister()
+        showError('Conta encontrada no login, mas sem perfil de cliente. Crie a conta novamente.')
         return
       }
 
       const clientData = snap.val()
       bookingState.clientUid = user.uid
       bookingState.clientName = clientData.name || ''
-      bookingState.clientEmail = clientData.email || ''
+      bookingState.clientEmail = clientData.email || email
       bookingState.clientPhoneComplete = clientData.phone || ''
       bookingState.clientPhone = (clientData.phone || '').replace(/^\+351/, '')
       bookingState.clientCountry = 'PT'
@@ -195,17 +217,18 @@ function initClientAuth() {
       }
 
       showSuccess('Login confirmado com sucesso.')
-      showBookingSteps()
+      handlePostAuthSuccess()
     } catch (error) {
-      showError('Código inválido ou expirado.')
+      showError('Email ou senha inválidos.')
     }
   })
 
-  sendRegisterCodeBtn.addEventListener('click', async () => {
+  registerClientBtn.addEventListener('click', async () => {
     const name = document.getElementById('clientRegisterName').value.trim()
     const email = document.getElementById('clientRegisterEmail').value.trim()
-    const phone = document.getElementById('clientRegisterPhone').value
-    const phoneE164 = normalizePhonePt(phone)
+    const password = document.getElementById('clientRegisterPassword').value
+    const phoneRaw = document.getElementById('clientRegisterPhone').value.trim()
+    const phone = formatPhone(phoneRaw)
 
     if (!name || name.length < 3) {
       showError('Indique o seu nome completo.')
@@ -217,44 +240,19 @@ function initClientAuth() {
       return
     }
 
-    if (!phoneE164) {
-      showError('Indique um número de telemóvel válido (9 dígitos PT).')
-      return
-    }
-
-    pendingRegisterData = { name, email, phone: phoneE164 }
-
-    try {
-      if (registerVerifier) registerVerifier.clear()
-      registerVerifier = new RecaptchaVerifier(auth, 'registerRecaptchaContainer', { size: 'invisible' })
-      registerConfirmation = await signInWithPhoneNumber(auth, phoneE164, registerVerifier)
-      document.getElementById('registerOtpSection').classList.remove('hidden')
-      showSuccess('Código de registo enviado por SMS.')
-    } catch (error) {
-      showError(`Não foi possível enviar o código: ${error.message || 'tente novamente.'}`)
-    }
-  })
-
-  verifyRegisterCodeBtn.addEventListener('click', async () => {
-    if (!registerConfirmation || !pendingRegisterData) {
-      showError('Primeiro envie o código de registo.')
-      return
-    }
-
-    const code = document.getElementById('clientRegisterCode').value.trim()
-    if (!/^\d{6}$/.test(code)) {
-      showError('Introduza o código de 6 dígitos.')
+    if (!password || password.length < 6) {
+      showError('A senha deve ter pelo menos 6 caracteres.')
       return
     }
 
     try {
-      const result = await registerConfirmation.confirm(code)
+      const result = await createUserWithEmailAndPassword(auth, email, password)
       const user = result.user
 
       const payload = {
-        name: pendingRegisterData.name,
-        email: pendingRegisterData.email,
-        phone: pendingRegisterData.phone,
+        name,
+        email,
+        phone,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       }
@@ -265,7 +263,7 @@ function initClientAuth() {
       bookingState.clientName = payload.name
       bookingState.clientEmail = payload.email
       bookingState.clientPhoneComplete = payload.phone
-      bookingState.clientPhone = payload.phone.replace(/^\+351/, '')
+      bookingState.clientPhone = payload.phone.replace(/^\+351\s?/, '')
       bookingState.clientCountry = 'PT'
       bookingState.client = {
         name: bookingState.clientName,
@@ -273,12 +271,219 @@ function initClientAuth() {
         phone: bookingState.clientPhone
       }
 
-      showSuccess('Conta criada com sucesso e telemóvel confirmado.')
-      showBookingSteps()
+      showSuccess('Conta criada com sucesso.')
+      handlePostAuthSuccess()
     } catch (error) {
-      showError('Código inválido ou expirado.')
+      if (error?.code === 'auth/email-already-in-use') {
+        showError('Este email já está registado. Faça login.')
+        return
+      }
+
+      showError(`Não foi possível criar a conta: ${error.message || 'tente novamente.'}`)
     }
   })
+}
+
+function getTodayDateForInput() {
+  return getDateString(new Date())
+}
+
+function getBookingById(bookingId) {
+  return bookingState.clientBookings.find((booking) => booking.id === bookingId) || null
+}
+
+async function hasBookingConflict(barberId, date, time, bookingIdToIgnore) {
+  const snapshot = await get(ref(database, 'bookings'))
+  if (!snapshot.exists()) return false
+
+  const allBookings = snapshot.val()
+  return Object.entries(allBookings).some(([id, booking]) => {
+    if (!booking || id === bookingIdToIgnore) return false
+    if (booking.status === 'cancelled') return false
+    return booking.barberId === barberId && booking.date === date && booking.time === time
+  })
+}
+
+function setManageBookingsStatus(text, variant = 'muted') {
+  const statusEl = document.getElementById('manageBookingsStatus')
+  if (!statusEl) return
+
+  statusEl.textContent = text
+  statusEl.classList.remove('is-muted', 'is-success', 'is-error')
+  statusEl.classList.add(`is-${variant}`)
+}
+
+function renderClientBookings() {
+  const listEl = document.getElementById('clientBookingsList')
+  if (!listEl) return
+
+  if (bookingState.clientBookings.length === 0) {
+    listEl.innerHTML = ''
+    setManageBookingsStatus('Não existem marcações associadas a esta conta.', 'muted')
+    return
+  }
+
+  setManageBookingsStatus('Selecione uma marcação para adiar ou anular.', 'success')
+  listEl.innerHTML = bookingState.clientBookings.map((booking) => {
+    const statusLabel = booking.status === 'cancelled' ? 'Anulada' : 'Confirmada'
+    const isCancelled = booking.status === 'cancelled'
+    const safeDate = booking.date || ''
+    const safeTime = booking.time || ''
+    return `
+      <div class="client-booking-card ${isCancelled ? 'is-cancelled' : ''}" data-booking-id="${booking.id}">
+        <div class="client-booking-main">
+          <h3>${booking.serviceName || 'Serviço'}</h3>
+          <p><strong>Barbeiro:</strong> ${booking.barberName || '-'}</p>
+          <p><strong>Data:</strong> ${formatDateForDisplay(safeDate)}</p>
+          <p><strong>Hora:</strong> ${safeTime || '-'}</p>
+          <p><strong>Estado:</strong> ${statusLabel}</p>
+        </div>
+        ${isCancelled ? '' : `
+          <div class="client-booking-actions">
+            <button type="button" class="btn btn-secondary manage-reschedule-btn" data-booking-id="${booking.id}">Adiar</button>
+            <button type="button" class="btn btn-primary manage-cancel-btn" data-booking-id="${booking.id}">Anular</button>
+          </div>
+          <div class="manage-reschedule-panel hidden" id="reschedule-panel-${booking.id}">
+            <div class="form-group" style="margin-bottom: 0.8rem;">
+              <label for="reschedule-date-${booking.id}">Nova Data</label>
+              <input type="date" id="reschedule-date-${booking.id}" value="${safeDate}" min="${getTodayDateForInput()}">
+            </div>
+            <div class="form-group" style="margin-bottom: 0.8rem;">
+              <label for="reschedule-time-${booking.id}">Nova Hora</label>
+              <select id="reschedule-time-${booking.id}">
+                ${defaultWorkingHours.map((slot) => `<option value="${slot}" ${slot === safeTime ? 'selected' : ''}>${slot}</option>`).join('')}
+              </select>
+            </div>
+            <button type="button" class="btn btn-primary save-reschedule-btn" data-booking-id="${booking.id}">Guardar Nova Data</button>
+          </div>
+        `}
+      </div>
+    `
+  }).join('')
+
+  listEl.querySelectorAll('.manage-reschedule-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const bookingId = btn.dataset.bookingId
+      const panel = document.getElementById(`reschedule-panel-${bookingId}`)
+      if (panel) panel.classList.toggle('hidden')
+    })
+  })
+
+  listEl.querySelectorAll('.save-reschedule-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const bookingId = btn.dataset.bookingId
+      await rescheduleBooking(bookingId)
+    })
+  })
+
+  listEl.querySelectorAll('.manage-cancel-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const bookingId = btn.dataset.bookingId
+      await cancelBookingByClient(bookingId)
+    })
+  })
+}
+
+async function loadClientBookings() {
+  if (!auth.currentUser) {
+    showError('Faça login para gerir as suas marcações.')
+    showAuthStep()
+    return
+  }
+
+  setManageBookingsStatus('A carregar marcações...', 'muted')
+  bookingState.clientBookings = []
+
+  try {
+    const snapshot = await get(ref(database, 'bookings'))
+    if (!snapshot.exists()) {
+      renderClientBookings()
+      return
+    }
+
+    const allBookings = snapshot.val()
+    bookingState.clientBookings = Object.entries(allBookings)
+      .map(([id, booking]) => ({ id, ...booking }))
+      .filter((booking) => booking.clientUid === auth.currentUser.uid)
+      .sort((a, b) => {
+        const left = `${a.date || ''} ${a.time || ''}`
+        const right = `${b.date || ''} ${b.time || ''}`
+        return left.localeCompare(right)
+      })
+
+    renderClientBookings()
+  } catch (error) {
+    setManageBookingsStatus('Erro ao carregar as suas marcações.', 'error')
+    showError('Não foi possível carregar as marcações da sua conta.')
+  }
+}
+
+async function rescheduleBooking(bookingId) {
+  const booking = getBookingById(bookingId)
+  if (!booking) {
+    showError('Marcação não encontrada.')
+    return
+  }
+
+  const dateInput = document.getElementById(`reschedule-date-${bookingId}`)
+  const timeSelect = document.getElementById(`reschedule-time-${bookingId}`)
+  if (!dateInput || !timeSelect) return
+
+  const newDate = dateInput.value
+  const newTime = timeSelect.value
+
+  if (!newDate || !newTime) {
+    showError('Escolha nova data e hora para adiar a marcação.')
+    return
+  }
+
+  if (isDateBeforeToday(newDate) || isPastTimeSlot(newDate, newTime)) {
+    showError('Escolha um horário futuro para o adiamento.')
+    return
+  }
+
+  try {
+    const conflict = await hasBookingConflict(booking.barberId, newDate, newTime, bookingId)
+    if (conflict) {
+      showError('Esse horário já está ocupado. Escolha outro horário.')
+      return
+    }
+
+    await update(ref(database, `bookings/${bookingId}`), {
+      date: newDate,
+      time: newTime,
+      updatedAt: new Date().toISOString()
+    })
+
+    showSuccess('Marcação adiada com sucesso.')
+    await loadClientBookings()
+  } catch (error) {
+    showError('Não foi possível adiar a marcação.')
+  }
+}
+
+async function cancelBookingByClient(bookingId) {
+  const booking = getBookingById(bookingId)
+  if (!booking) {
+    showError('Marcação não encontrada.')
+    return
+  }
+
+  const shouldCancel = window.confirm('Tem a certeza que quer anular esta marcação?')
+  if (!shouldCancel) return
+
+  try {
+    await update(ref(database, `bookings/${bookingId}`), {
+      status: 'cancelled',
+      cancelledAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    })
+
+    showSuccess('Marcação anulada com sucesso.')
+    await loadClientBookings()
+  } catch (error) {
+    showError('Não foi possível anular a marcação.')
+  }
 }
 
 // ===== STEP 1: SERVIÇOS =====
@@ -358,7 +563,7 @@ async function loadBarbers() {
   try {
     const currentUser = auth.currentUser
     if (!currentUser) {
-      barbersList.innerHTML = '<p style="text-align: center; color: var(--color-error);">Faça login com telemóvel para carregar os barbeiros.</p>'
+      barbersList.innerHTML = '<p style="text-align: center; color: var(--color-error);">Faça login com email e senha para carregar os barbeiros.</p>'
       return
     }
 
@@ -768,6 +973,7 @@ function showClientDataForm() {
 }
 
 function formatDateForDisplay(dateStr) {
+  if (!dateStr) return '-'
   const [year, month, day] = dateStr.split('-')
   const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
   return `${day} de ${months[parseInt(month) - 1]} de ${year}`
@@ -1033,6 +1239,7 @@ function resetBooking() {
 
 // Inicializar quando o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', () => {
+  initPageMode()
   initClientAuth()
   initServiceSelection()
   initBookingConfirmation()

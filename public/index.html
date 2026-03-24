@@ -33,7 +33,7 @@
                     <div class="profile-actions">
                         <a href="bookings.html" class="btn btn-book">Marcar</a>
                         <button class="btn-icon" id="downloadSiteBtn" title="Download Site">⬇</button>
-                        <button class="btn-icon" id="actionMenuButton" title="Mostrar contactos" aria-expanded="false" aria-controls="actionSheet">...</button>
+                        <a href="#actionSheet" class="btn-icon" title="Mostrar contactos" aria-controls="actionSheet">...</a>
                     </div>
                 </div>
             </div>
@@ -194,16 +194,16 @@
     </main>
 
     <div class="action-sheet" id="actionSheet" aria-hidden="true" role="dialog" aria-label="Contactos">
-        <div class="action-sheet-backdrop" id="actionSheetBackdrop"></div>
+        <a href="#" class="action-sheet-backdrop" id="actionSheetBackdrop" aria-label="Fechar"></a>
         <div class="action-sheet-panel" role="document">
             <div class="action-sheet-header">
                 <h3>Barbearia João Castro</h3>
-                <button class="action-sheet-close" id="actionSheetClose" aria-label="Fechar">x</button>
+                <a href="#" class="action-sheet-close" id="actionSheetClose" aria-label="Fechar">x</a>
             </div>
             <div class="action-sheet-actions">
-                <a href="tel:9372727447" class="action-sheet-item">Telefonar</a>
-                <a href="mailto:joaoguilhermesftc88@gmail.com" class="action-sheet-item">Mensagem</a>
-                <a href="bookings.html" class="action-sheet-item">Cancelar marcação</a>
+                <a href="tel:+351937277447" class="action-sheet-item"><span class="action-sheet-icon">Call</span> Telefonar 937277447</a>
+                <a href="mailto:joaoguilhermesftc88@gmail.com" class="action-sheet-item"><span class="action-sheet-icon">Email</span> Mensagem joaoguilhermesftc88@gmail.com</a>
+                <a href="bookings.html?mode=manage" class="action-sheet-item"><span class="action-sheet-icon">Manage</span> Cancelar marcação</a>
             </div>
         </div>
     </div>

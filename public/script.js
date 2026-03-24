@@ -231,6 +231,9 @@ function initActionMenu() {
 
   if (!menuButton || !actionSheet) return
 
+  if (menuButton.dataset.actionMenuBound === 'true') return
+  menuButton.dataset.actionMenuBound = 'true'
+
   const closeSheet = () => {
     actionSheet.classList.remove('active')
     actionSheet.setAttribute('aria-hidden', 'true')
@@ -243,14 +246,23 @@ function initActionMenu() {
     menuButton.setAttribute('aria-expanded', 'true')
   }
 
-  menuButton.addEventListener('click', (e) => {
-    e.preventDefault()
-    e.stopPropagation()
+  const toggleSheet = () => {
     if (actionSheet.classList.contains('active')) {
       closeSheet()
     } else {
       openSheet()
     }
+  }
+
+  // Fallback global handlers for inline onclick attributes.
+  window.openActionSheet = openSheet
+  window.closeActionSheet = closeSheet
+  window.toggleActionSheet = toggleSheet
+
+  menuButton.addEventListener('click', (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    toggleSheet()
   })
 
   if (actionSheetBackdrop) {
@@ -284,7 +296,7 @@ function initDownloadSiteButton() {
       '',
       `Site: ${siteUrl}`,
       'Instagram: @joaocastro.barbearia',
-      'Telefone: 937 272 7447',
+      'Telefone: 937 277 447',
       'Email: joaoguilhermesftc88@gmail.com',
       '',
       'Abra o link do site para fazer a sua marcacao online.'
