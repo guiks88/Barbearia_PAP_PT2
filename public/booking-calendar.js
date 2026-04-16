@@ -1,6 +1,6 @@
 import { auth, database } from "./firebase-config.js"
 import { ref, get, push, set, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
 import { showSuccess, showError } from "./utils.js"
 
 const isBarberSession = sessionStorage.getItem("isBarber") === "true"
@@ -133,6 +133,48 @@ function initPageMode() {
   }
 }
 
+function applyClientProfile(user, clientData, fallbackEmail = '') {
+  bookingState.clientUid = user.uid
+  bookingState.clientName = clientData?.name || ''
+  bookingState.clientEmail = clientData?.email || fallbackEmail || user.email || ''
+  bookingState.clientPhoneComplete = clientData?.phone || ''
+  bookingState.clientPhone = (clientData?.phone || '').replace(/^\+351/, '')
+  bookingState.clientCountry = 'PT'
+  bookingState.client = {
+    name: bookingState.clientName,
+    email: bookingState.clientEmail,
+    phone: bookingState.clientPhone
+  }
+}
+
+function initAutoClientSession() {
+  return new Promise((resolve) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      unsubscribe()
+
+      if (!user) {
+        resolve(false)
+        return
+      }
+
+      try {
+        const clientSnapshot = await get(ref(database, `clients/${user.uid}`))
+        if (!clientSnapshot.exists()) {
+          resolve(false)
+          return
+        }
+
+        applyClientProfile(user, clientSnapshot.val(), user.email || '')
+        handlePostAuthSuccess()
+        resolve(true)
+      } catch (error) {
+        console.error('Erro ao validar sessão de cliente:', error)
+        resolve(false)
+      }
+    })
+  })
+}
+
 function initClientAuth() {
   const loginBox = document.getElementById('authLoginBox')
   const registerBox = document.getElementById('authRegisterBox')
@@ -199,22 +241,13 @@ function initClientAuth() {
       const snap = await get(ref(database, `clients/${user.uid}`))
 
       if (!snap.exists()) {
+        await signOut(auth)
         showError('Conta encontrada no login, mas sem perfil de cliente. Crie a conta novamente.')
         return
       }
 
       const clientData = snap.val()
-      bookingState.clientUid = user.uid
-      bookingState.clientName = clientData.name || ''
-      bookingState.clientEmail = clientData.email || email
-      bookingState.clientPhoneComplete = clientData.phone || ''
-      bookingState.clientPhone = (clientData.phone || '').replace(/^\+351/, '')
-      bookingState.clientCountry = 'PT'
-      bookingState.client = {
-        name: bookingState.clientName,
-        email: bookingState.clientEmail,
-        phone: bookingState.clientPhone
-      }
+      applyClientProfile(user, clientData, email)
 
       showSuccess('Login confirmado com sucesso.')
       handlePostAuthSuccess()
@@ -1241,7 +1274,14 @@ function resetBooking() {
 document.addEventListener('DOMContentLoaded', () => {
   initPageMode()
   initClientAuth()
-  initServiceSelection()
-  initBookingConfirmation()
-  initEmailPopup()
+
+  initAutoClientSession().then((didAutoLogin) => {
+    if (!didAutoLogin) {
+      showAuthStep()
+    }
+
+    initServiceSelection()
+    initBookingConfirmation()
+    initEmailPopup()
+  })
 })
