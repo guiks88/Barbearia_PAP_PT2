@@ -143,8 +143,12 @@ function redirectByRole(role) {
     return
   }
 
-  window.location.href = "bookings.html"
+  window.location.href = "client-menu.html"
 }
+
+// Ao entrar no ecrã de login, limpamos sessão ativa para permitir troca de conta.
+signOut(auth).catch(() => {})
+sessionStorage.clear()
 
 async function loginAndRoute(email, password) {
   const loginResult = await signInWithEmailAndPassword(auth, email, password)
@@ -269,22 +273,5 @@ googleLoginBtn.addEventListener("click", async () => {
   } finally {
     googleLoginBtn.disabled = false
     googleLoginBtnLabel.textContent = "Continuar com Google"
-  }
-})
-
-onAuthStateChanged(auth, async (user) => {
-  if (!user) return
-
-  const currentEmail = normalizeEmail(user.email)
-  if (!currentEmail) return
-
-  try {
-    const roleData = await resolveRoleData(user, currentEmail)
-    if (!roleData) return
-
-    saveRoleSession(roleData.role, user.uid, currentEmail, roleData.profile)
-    redirectByRole(roleData.role)
-  } catch (error) {
-    console.error("Erro ao validar sessão existente:", error)
   }
 })

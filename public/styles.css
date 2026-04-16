@@ -768,6 +768,10 @@ body {
   gap: 1rem;
 }
 
+.client-menu-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
 .service-card {
   background: var(--color-bg-secondary);
   border: 1px solid var(--color-border);

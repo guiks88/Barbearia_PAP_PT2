@@ -9,7 +9,9 @@ if (isBarberSession) {
 }
 
 const urlParams = new URLSearchParams(window.location.search)
-const isManageMode = urlParams.get('mode') === 'manage'
+const currentMode = urlParams.get('mode')
+const isManageMode = currentMode === 'manage' || currentMode === 'cancel'
+const isCancelMode = currentMode === 'cancel'
 
 // Estado da marcação
 const bookingState = {
@@ -118,7 +120,9 @@ function initPageMode() {
 
   const authDescription = document.getElementById('authStepDescription')
   if (authDescription) {
-    authDescription.textContent = 'Entre na sua conta para ver as suas marcações e poder adiar ou anular.'
+    authDescription.textContent = isCancelMode
+      ? 'Entre na sua conta para cancelar marcações existentes.'
+      : 'Entre na sua conta para ver as suas marcações e poder adiar ou anular.'
   }
 
   const openRegisterLink = document.getElementById('openRegisterLink')
@@ -357,6 +361,9 @@ function renderClientBookings() {
   }
 
   setManageBookingsStatus('Selecione uma marcação para adiar ou anular.', 'success')
+  if (isCancelMode) {
+    setManageBookingsStatus('Selecione uma marcação para anular.', 'success')
+  }
   listEl.innerHTML = bookingState.clientBookings.map((booking) => {
     const statusLabel = booking.status === 'cancelled' ? 'Anulada' : 'Confirmada'
     const isCancelled = booking.status === 'cancelled'
@@ -373,10 +380,10 @@ function renderClientBookings() {
         </div>
         ${isCancelled ? '' : `
           <div class="client-booking-actions">
-            <button type="button" class="btn btn-secondary manage-reschedule-btn" data-booking-id="${booking.id}">Adiar</button>
+            ${isCancelMode ? '' : `<button type="button" class="btn btn-secondary manage-reschedule-btn" data-booking-id="${booking.id}">Adiar</button>`}
             <button type="button" class="btn btn-primary manage-cancel-btn" data-booking-id="${booking.id}">Anular</button>
           </div>
-          <div class="manage-reschedule-panel hidden" id="reschedule-panel-${booking.id}">
+          <div class="manage-reschedule-panel ${isCancelMode ? 'hidden' : 'hidden'}" id="reschedule-panel-${booking.id}">
             <div class="form-group" style="margin-bottom: 0.8rem;">
               <label for="reschedule-date-${booking.id}">Nova Data</label>
               <input type="date" id="reschedule-date-${booking.id}" value="${safeDate}" min="${getTodayDateForInput()}">
@@ -394,20 +401,24 @@ function renderClientBookings() {
     `
   }).join('')
 
-  listEl.querySelectorAll('.manage-reschedule-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const bookingId = btn.dataset.bookingId
-      const panel = document.getElementById(`reschedule-panel-${bookingId}`)
-      if (panel) panel.classList.toggle('hidden')
+  if (!isCancelMode) {
+    listEl.querySelectorAll('.manage-reschedule-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const bookingId = btn.dataset.bookingId
+        const panel = document.getElementById(`reschedule-panel-${bookingId}`)
+        if (panel) panel.classList.toggle('hidden')
+      })
     })
-  })
+  }
 
-  listEl.querySelectorAll('.save-reschedule-btn').forEach((btn) => {
-    btn.addEventListener('click', async () => {
-      const bookingId = btn.dataset.bookingId
-      await rescheduleBooking(bookingId)
+  if (!isCancelMode) {
+    listEl.querySelectorAll('.save-reschedule-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const bookingId = btn.dataset.bookingId
+        await rescheduleBooking(bookingId)
+      })
     })
-  })
+  }
 
   listEl.querySelectorAll('.manage-cancel-btn').forEach((btn) => {
     btn.addEventListener('click', async () => {
@@ -1238,6 +1249,20 @@ function initBookingConfirmation() {
   }
 }
 
+function initClientLogout() {
+  const logoutBtn = document.getElementById('logoutClientBtn')
+  if (!logoutBtn) return
+
+  logoutBtn.addEventListener('click', async () => {
+    try {
+      await signOut(auth)
+    } finally {
+      sessionStorage.clear()
+      window.location.href = 'index.html'
+    }
+  })
+}
+
 function resetBooking() {
   // Resetar estado
   bookingState.service = null
@@ -1274,6 +1299,7 @@ function resetBooking() {
 document.addEventListener('DOMContentLoaded', () => {
   initPageMode()
   initClientAuth()
+  initClientLogout()
 
   initAutoClientSession().then((didAutoLogin) => {
     if (!didAutoLogin) {
