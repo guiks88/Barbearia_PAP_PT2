@@ -315,6 +315,10 @@ function filterClientEntries() {
 }
 
 function getLifecycleStatus(booking) {
+  if (booking.status === "expired") {
+    return { label: "Expirada", className: "is-warning" }
+  }
+
   if (booking.status === "cancelled") {
     return { label: "Anulada", className: "is-cancelled" }
   }
@@ -655,7 +659,7 @@ function getRevenueFilteredBookings() {
   const dateTo = document.getElementById("revenueDateTo")?.value || ""
 
   return Object.values(state.bookings)
-    .filter((booking) => booking.status !== "cancelled")
+    .filter((booking) => booking.status !== "cancelled" && booking.status !== "expired")
     .filter((booking) => {
       const bookingDate = dateOnly(booking.date)
       if (!bookingDate) return false

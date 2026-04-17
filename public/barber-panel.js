@@ -155,18 +155,24 @@ function getExecutionClass(booking) {
 }
 
 function getLifecycleLabel(booking) {
+  if (booking.status === "expired") return "Expirada"
   if (booking.status === "cancelled") return "Anulada"
   if (booking.status === "cancel_requested") return "Cancelamento pendente"
   return "Ativa"
 }
 
 function getLifecycleClass(booking) {
+  if (booking.status === "expired") return "is-warning"
   if (booking.status === "cancelled") return "is-cancelled"
   if (booking.status === "cancel_requested") return "is-warning"
   return "is-pending"
 }
 
 function renderActions(booking) {
+  if (booking.status === "expired") {
+    return `<button class="btn btn-secondary" disabled>Marcação expirada</button>`
+  }
+
   if (booking.status === "cancelled") {
     return `<button class="btn btn-secondary" disabled>Marcação anulada</button>`
   }
@@ -190,7 +196,7 @@ function renderActions(booking) {
       buttons.push(`<button class="btn btn-primary" onclick="startCut('${booking.id}')">Iniciar corte</button>`)
     }
   } else if (executionStatus === "in_progress") {
-    buttons.push(`<button class="btn btn-primary" onclick="completeCut('${booking.id}')">Concluir corte</button>`)
+    buttons.push(`<button class="btn btn-primary" onclick="completeCut('${booking.id}')">Finalizar corte</button>`)
   } else {
     buttons.push(`<button class="btn btn-secondary" disabled>Corte concluído</button>`)
   }
@@ -230,10 +236,20 @@ function getMinutesFromBooking(booking) {
   return Math.round((now.getTime() - bookingDateTime.getTime()) / 60000)
 }
 
+function syncLocalBooking(bookingId, partialData) {
+  const index = allBookings.findIndex((booking) => booking.id === bookingId)
+  if (index === -1) return
+
+  allBookings[index] = {
+    ...allBookings[index],
+    ...partialData,
+  }
+}
+
 async function autoCancelExpiredBookings(bookings) {
   const candidates = bookings.filter((booking) => {
     if (!booking) return false
-    if (booking.status === "cancelled" || booking.status === "cancel_requested") return false
+    if (booking.status === "cancelled" || booking.status === "cancel_requested" || booking.status === "expired") return false
     if ((booking.executionStatus || "pending") !== "pending") return false
     return getMinutesFromBooking(booking) > 60
   })
@@ -243,7 +259,7 @@ async function autoCancelExpiredBookings(bookings) {
   await Promise.all(
     candidates.map((booking) =>
       patchBooking(booking.id, {
-        status: "cancelled",
+        status: "expired",
         cancelledBy: "system",
         cancellationReason: "Não iniciado até 1h após o horário marcado",
         cancelledAt: new Date().toISOString(),
@@ -269,13 +285,15 @@ window.startCut = async (bookingId) => {
     }
 
     if (minutesFromBooking > 60) {
-      showError("A marcação passou mais de 1 hora e foi automaticamente anulada.")
+      showError("A marcação passou mais de 1 hora e ficou expirada.")
       await patchBooking(bookingId, {
-        status: "cancelled",
+        status: "expired",
         cancelledBy: "system",
         cancellationReason: "Não iniciado até 1h após o horário marcado",
         cancelledAt: new Date().toISOString(),
       })
+      syncLocalBooking(bookingId, { status: "expired" })
+      displayBookings()
       return
     }
 
@@ -283,6 +301,11 @@ window.startCut = async (bookingId) => {
       executionStatus: "in_progress",
       startedAt: new Date().toISOString(),
     })
+    syncLocalBooking(bookingId, {
+      executionStatus: "in_progress",
+      startedAt: new Date().toISOString(),
+    })
+    displayBookings()
     showSuccess("Corte iniciado.")
   } catch (error) {
     if (String(error?.message || "").toUpperCase().includes("PERMISSION_DENIED")) {
@@ -299,6 +322,11 @@ window.completeCut = async (bookingId) => {
       executionStatus: "completed",
       completedAt: new Date().toISOString(),
     })
+    syncLocalBooking(bookingId, {
+      executionStatus: "completed",
+      completedAt: new Date().toISOString(),
+    })
+    displayBookings()
     showSuccess("Corte concluído.")
   } catch (error) {
     if (String(error?.message || "").toUpperCase().includes("PERMISSION_DENIED")) {
@@ -321,6 +349,14 @@ window.requestCancel = async (bookingId) => {
         requestedAt: new Date().toISOString(),
       },
     })
+    syncLocalBooking(bookingId, {
+      status: "cancel_requested",
+      cancellationRequest: {
+        requestedBy: "barbeiro",
+        requestedAt: new Date().toISOString(),
+      },
+    })
+    displayBookings()
     showSuccess("Pedido de cancelamento enviado para aprovação do administrador.")
   } catch (error) {
     if (String(error?.message || "").toUpperCase().includes("PERMISSION_DENIED")) {

@@ -383,7 +383,7 @@ async function hasBookingConflict(barberId, date, time, bookingIdToIgnore) {
   const allBookings = snapshot.val()
   return Object.entries(allBookings).some(([id, booking]) => {
     if (!booking || id === bookingIdToIgnore) return false
-    if (booking.status === 'cancelled') return false
+    if (booking.status === 'cancelled' || booking.status === 'expired') return false
     return booking.barberId === barberId && booking.date === date && booking.time === time
   })
 }
@@ -412,8 +412,8 @@ function renderClientBookings() {
     setManageBookingsStatus('Selecione uma marcação para anular.', 'success')
   }
   listEl.innerHTML = bookingState.clientBookings.map((booking) => {
-    const statusLabel = booking.status === 'cancelled' ? 'Anulada' : 'Confirmada'
-    const isCancelled = booking.status === 'cancelled'
+    const statusLabel = booking.status === 'expired' ? 'Expirada' : booking.status === 'cancelled' ? 'Anulada' : 'Confirmada'
+    const isCancelled = booking.status === 'cancelled' || booking.status === 'expired'
     const safeDate = booking.date || ''
     const safeTime = booking.time || ''
     return `
@@ -770,7 +770,7 @@ async function loadExistingBookings(barberId) {
       const allBookings = snapshot.val()
       
       Object.values(allBookings).forEach(booking => {
-        if (booking.barberId === barberId && booking.status !== 'cancelled') {
+        if (booking.barberId === barberId && booking.status !== 'cancelled' && booking.status !== 'expired') {
           bookingState.bookings.push({
             date: booking.date,
             time: booking.time
