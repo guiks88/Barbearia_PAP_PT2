@@ -1,5 +1,6 @@
-import { database } from "./firebase-config.js"
+import { auth, database } from "./firebase-config.js"
 import { ref, get, onValue, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
+import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
 import { showSuccess, showError } from "./utils.js"
 
 let barberId = null
@@ -22,25 +23,40 @@ window.addEventListener("load", () => {
     return
   }
 
-  // Exibir informações do barbeiro
-  document.getElementById("barberNameDisplay").textContent = barberName || "Barbeiro"
-  document.getElementById("barberEmailDisplay").textContent = barberEmail || ""
+  onAuthStateChanged(auth, (user) => {
+    if (!user || user.uid !== barberId) {
+      sessionStorage.removeItem("barberId")
+      sessionStorage.removeItem("barberName")
+      sessionStorage.removeItem("barberEmail")
+      sessionStorage.removeItem("isBarber")
+      showError("Sessão expirada. Faça login novamente.")
+      setTimeout(() => {
+        window.location.href = "barber-login.html"
+      }, 1200)
+      return
+    }
 
-  // Definir data de hoje como padrão
-  const today = new Date().toISOString().split("T")[0]
-  document.getElementById("dateFilter").value = today
+    // Exibir informações do barbeiro
+    document.getElementById("barberNameDisplay").textContent = barberName || "Barbeiro"
+    document.getElementById("barberEmailDisplay").textContent = barberEmail || ""
 
-  // Carregar marcações
-  loadBookings()
+    // Definir data de hoje como padrão
+    const today = new Date().toISOString().split("T")[0]
+    document.getElementById("dateFilter").value = today
 
-  // Listener para mudança de data
-  document.getElementById("dateFilter").addEventListener("change", () => {
-    displayBookings()
+    // Carregar marcações
+    loadBookings()
+
+    // Listener para mudança de data
+    document.getElementById("dateFilter").addEventListener("change", () => {
+      displayBookings()
+    })
   })
 })
 
 // Logout
 document.getElementById("logoutBtn").addEventListener("click", () => {
+  signOut(auth).catch(() => {})
   sessionStorage.removeItem("barberId")
   sessionStorage.removeItem("barberName")
   sessionStorage.removeItem("barberEmail")
@@ -87,6 +103,8 @@ function displayBookings() {
   const selectedDate = document.getElementById("dateFilter").value
   
   const filteredBookings = allBookings.filter(booking => booking.date === selectedDate)
+
+  autoCancelExpiredBookings(filteredBookings)
 
   if (filteredBookings.length === 0) {
     container.innerHTML = `
@@ -159,9 +177,18 @@ function renderActions(booking) {
 
   const executionStatus = booking.executionStatus || "pending"
   const buttons = []
+  const minutesFromBooking = getMinutesFromBooking(booking)
+  const tooEarly = minutesFromBooking < -120
+  const tooLate = minutesFromBooking > 60
 
   if (executionStatus === "pending") {
-    buttons.push(`<button class="btn btn-primary" onclick="startCut('${booking.id}')">Iniciar corte</button>`)
+    if (tooLate) {
+      buttons.push(`<button class="btn btn-secondary" disabled>Prazo expirado (+1h)</button>`)
+    } else if (tooEarly) {
+      buttons.push(`<button class="btn btn-secondary" disabled>Disponível até 2h antes</button>`)
+    } else {
+      buttons.push(`<button class="btn btn-primary" onclick="startCut('${booking.id}')">Iniciar corte</button>`)
+    }
   } else if (executionStatus === "in_progress") {
     buttons.push(`<button class="btn btn-primary" onclick="completeCut('${booking.id}')">Concluir corte</button>`)
   } else {
@@ -189,8 +216,69 @@ async function patchBooking(bookingId, partialData) {
   })
 }
 
+function getBookingDateTime(booking) {
+  if (!booking?.date || !booking?.time) return null
+  const dateTime = new Date(`${booking.date}T${booking.time}:00`)
+  if (Number.isNaN(dateTime.getTime())) return null
+  return dateTime
+}
+
+function getMinutesFromBooking(booking) {
+  const bookingDateTime = getBookingDateTime(booking)
+  if (!bookingDateTime) return 0
+  const now = new Date()
+  return Math.round((now.getTime() - bookingDateTime.getTime()) / 60000)
+}
+
+async function autoCancelExpiredBookings(bookings) {
+  const candidates = bookings.filter((booking) => {
+    if (!booking) return false
+    if (booking.status === "cancelled" || booking.status === "cancel_requested") return false
+    if ((booking.executionStatus || "pending") !== "pending") return false
+    return getMinutesFromBooking(booking) > 60
+  })
+
+  if (!candidates.length) return
+
+  await Promise.all(
+    candidates.map((booking) =>
+      patchBooking(booking.id, {
+        status: "cancelled",
+        cancelledBy: "system",
+        cancellationReason: "Não iniciado até 1h após o horário marcado",
+        cancelledAt: new Date().toISOString(),
+      }).catch((error) => {
+        console.error("Erro no cancelamento automático:", error)
+      }),
+    ),
+  )
+}
+
 window.startCut = async (bookingId) => {
   try {
+    const booking = allBookings.find((item) => item.id === bookingId)
+    if (!booking) {
+      showError("Marcação não encontrada.")
+      return
+    }
+
+    const minutesFromBooking = getMinutesFromBooking(booking)
+    if (minutesFromBooking < -120) {
+      showError("Só pode iniciar até 2 horas antes da marcação.")
+      return
+    }
+
+    if (minutesFromBooking > 60) {
+      showError("A marcação passou mais de 1 hora e foi automaticamente anulada.")
+      await patchBooking(bookingId, {
+        status: "cancelled",
+        cancelledBy: "system",
+        cancellationReason: "Não iniciado até 1h após o horário marcado",
+        cancelledAt: new Date().toISOString(),
+      })
+      return
+    }
+
     await patchBooking(bookingId, {
       executionStatus: "in_progress",
       startedAt: new Date().toISOString(),

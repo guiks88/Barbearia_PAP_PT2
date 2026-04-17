@@ -18,7 +18,7 @@
             <div class="container">
                 <div class="profile-card">
                     <div class="profile-avatar">
-                        <img src="https://images.unsplash.com/photo-1621605815971-fbc98d665033?q=80&w=150&h=150&fit=crop" alt="Nelson Coutinho Barbershop">
+                        <img src="publiclogo-barbearia.png.png" alt="Logo da Barbearia João Castro">
                     </div>
                     <div class="profile-info">
                         <h1 class="profile-name">Barbearia João Castro</h1>
@@ -79,29 +79,29 @@
 
                 <h2 class="section-title" style="margin-top: 2rem;">Cortes de Cabelo</h2>
                 <div class="cuts-grid">
-                    <div class="cut-card">
+                    <div class="cut-card" data-cut-category="hair" data-cut-title="Corte Clássico" role="button" tabindex="0" aria-label="Ver exemplos de Corte Clássico">
                         <img src="https://images.unsplash.com/photo-1622286342621-4bd786c2447c?q=80&w=800&h=500&fit=crop" alt="Corte Clássico">
                         <div class="cut-info">
                             <h3>Corte Clássico</h3>
                             <p>Elegância e acabamento impecável.</p>
                         </div>
                     </div>
-                    <div class="cut-card">
+                    <div class="cut-card" data-cut-category="hair" data-cut-title="Degradé" role="button" tabindex="0" aria-label="Ver exemplos de Degradé">
                         <img src="https://images.unsplash.com/photo-1599351431202-1e0f0137899a?q=80&w=800&h=500&fit=crop" alt="Degradé">
                         <div class="cut-info">
                             <h3>Degradé</h3>
                             <p>Transições suaves e modernas.</p>
                         </div>
                     </div>
-                    <div class="cut-card">
+                    <div class="cut-card" data-cut-category="hair" data-cut-title="Corte Moderno" role="button" tabindex="0" aria-label="Ver exemplos de Corte Moderno">
                         <img src="https://images.unsplash.com/photo-1605497788044-5a32c7078486?q=80&w=800&h=500&fit=crop" alt="Corte Moderno">
                         <div class="cut-info">
                             <h3>Corte Moderno</h3>
                             <p>Estilo atual para destacar o seu visual.</p>
                         </div>
                     </div>
-                    <div class="cut-card">
-                        <img src="https://images.unsplash.com/photo-1621605815971-fbc98d665033?q=80&w=800&h=500&fit=crop" alt="Barba e Acabamento">
+                    <div class="cut-card" data-cut-category="beard" data-cut-title="Barba e Acabamento" role="button" tabindex="0" aria-label="Ver exemplos de Barba e Acabamento">
+                        <img src="https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=800&h=500&fit=crop" alt="Barbeiro a aparar barba">
                         <div class="cut-info">
                             <h3>Barba e Acabamento</h3>
                             <p>Detalhes finos e acabamento preciso.</p>
@@ -207,6 +207,18 @@
                 <a href="tel:+351937277447" class="action-sheet-item"><span class="action-sheet-icon">Call</span> Telefonar 937277447</a>
                 <a href="mailto:joaoguilhermesftc88@gmail.com" class="action-sheet-item"><span class="action-sheet-icon">Email</span> Mensagem joaoguilhermesftc88@gmail.com</a>
             </div>
+        </div>
+    </div>
+
+    <div class="cut-gallery-modal" id="cutGalleryModal" aria-hidden="true" role="dialog" aria-label="Galeria de cortes">
+        <div class="cut-gallery-backdrop" id="cutGalleryBackdrop"></div>
+        <div class="cut-gallery-panel" role="document">
+            <div class="cut-gallery-header">
+                <h3 id="cutGalleryTitle">Exemplos</h3>
+                <button class="cut-gallery-close" id="cutGalleryClose" aria-label="Fechar">x</button>
+            </div>
+            <p class="cut-gallery-subtitle" id="cutGallerySubtitle"></p>
+            <div class="cut-gallery-grid" id="cutGalleryGrid"></div>
         </div>
     </div>
 

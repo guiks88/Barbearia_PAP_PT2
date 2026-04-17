@@ -42,6 +42,18 @@ function isPromotionEligible(promotion, completedCuts) {
   return completedCuts % threshold === 0
 }
 
+function getRemainingCuts(promotion, completedCuts) {
+  const threshold = Number(promotion.minCompletedCuts || 10)
+  if (!threshold) return 0
+
+  if (completedCuts < threshold) {
+    return threshold - completedCuts
+  }
+
+  const remainder = completedCuts % threshold
+  return remainder === 0 ? 0 : threshold - remainder
+}
+
 async function loadClientPromotions(user) {
   const promotions = []
   try {
@@ -83,11 +95,17 @@ async function loadClientPromotions(user) {
   }
 
   const eligiblePromotions = promotions.filter((promo) => isPromotionEligible(promo, completedCuts))
+  const remainingCutsList = promotions
+    .map((promo) => getRemainingCuts(promo, completedCuts))
+    .filter((remaining) => remaining > 0)
+  const nextRemainingCuts = remainingCutsList.length ? Math.min(...remainingCutsList) : 0
 
   if (promotionsSummary) {
     promotionsSummary.textContent = eligiblePromotions.length
       ? `Tem ${eligiblePromotions.length} promoção(ões) disponível(is) para usar agora.`
-      : "Temos campanhas ativas durante o ano. Consulte as condições abaixo e aproveite a próxima oferta disponível."
+      : nextRemainingCuts > 0
+        ? `Faltam ${nextRemainingCuts} corte(s) para desbloquear a próxima promoção.`
+        : "Temos campanhas ativas durante o ano. Consulte as condições abaixo e aproveite a próxima oferta disponível."
   }
 
   if (promoBadge) {
@@ -99,12 +117,14 @@ async function loadClientPromotions(user) {
     promotionsList.innerHTML = promotions
       .map((promo) => {
         const eligible = isPromotionEligible(promo, completedCuts)
+        const remainingCuts = getRemainingCuts(promo, completedCuts)
         return `
           <article class="promotion-item ${eligible ? "is-eligible" : ""}">
             <h3>${promo.title}</h3>
             <p>${promo.description}</p>
             <p><strong>Condição:</strong> ${promo.minCompletedCuts} cortes concluídos</p>
             <p><strong>Prémio:</strong> ${promo.rewardText}</p>
+            <p><strong>Faltam:</strong> ${eligible ? "0 (já disponível)" : `${remainingCuts} corte(s)`}</p>
             <p class="promotion-status">${eligible ? "Disponível para usar" : "Ainda não disponível"}</p>
           </article>
         `

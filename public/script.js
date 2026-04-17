@@ -315,18 +315,97 @@ function initDownloadSiteButton() {
   })
 }
 
+function initCutsGallery() {
+  const cards = document.querySelectorAll('.cut-card')
+  const modal = document.getElementById('cutGalleryModal')
+  const backdrop = document.getElementById('cutGalleryBackdrop')
+  const closeBtn = document.getElementById('cutGalleryClose')
+  const titleEl = document.getElementById('cutGalleryTitle')
+  const subtitleEl = document.getElementById('cutGallerySubtitle')
+  const gridEl = document.getElementById('cutGalleryGrid')
+
+  if (!cards.length || !modal || !backdrop || !closeBtn || !titleEl || !subtitleEl || !gridEl) return
+
+  const galleries = {
+    hair: [
+      { name: 'Clássico Curto', image: 'https://images.unsplash.com/photo-1622286342621-4bd786c2447c?q=80&w=600&h=400&fit=crop' },
+      { name: 'Degradé Alto', image: 'https://images.unsplash.com/photo-1599351431202-1e0f0137899a?q=80&w=600&h=400&fit=crop' },
+      { name: 'Crop Texturizado', image: 'https://images.unsplash.com/photo-1605497788044-5a32c7078486?q=80&w=600&h=400&fit=crop' },
+      { name: 'Pompadour Moderno', image: 'https://images.unsplash.com/photo-1605497788044-5a32c7078486?q=80&w=600&h=400&fit=crop' },
+      { name: 'Mid Fade', image: 'https://images.unsplash.com/photo-1599351431202-1e0f0137899a?q=80&w=600&h=400&fit=crop' },
+      { name: 'Corte Social', image: 'https://images.unsplash.com/photo-1622286342621-4bd786c2447c?q=80&w=600&h=400&fit=crop' },
+    ],
+    beard: [
+      { name: 'Contorno Definido', image: 'https://images.unsplash.com/photo-1621605815971-fbc98d665033?q=80&w=600&h=400&fit=crop' },
+      { name: 'Barba Curta Alinhada', image: 'https://images.unsplash.com/photo-1599351431202-1e0f0137899a?q=80&w=600&h=400&fit=crop' },
+      { name: 'Barba Completa', image: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=600&h=400&fit=crop' },
+      { name: 'Bigode + Barba', image: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=600&h=400&fit=crop' },
+      { name: 'Fade na Barba', image: 'https://images.unsplash.com/photo-1599351431202-1e0f0137899a?q=80&w=600&h=400&fit=crop' },
+      { name: 'Acabamento Navalha', image: 'https://images.unsplash.com/photo-1605497788044-5a32c7078486?q=80&w=600&h=400&fit=crop' },
+    ],
+  }
+
+  const closeModal = () => {
+    modal.classList.remove('active')
+    modal.setAttribute('aria-hidden', 'true')
+  }
+
+  const openModal = (title, category) => {
+    const items = galleries[category] || galleries.hair
+    titleEl.textContent = title
+    subtitleEl.textContent = category === 'beard'
+      ? 'Inspirações de barba e acabamento para o seu próximo visual.'
+      : 'Inspirações de cortes de cabelo para escolher o seu estilo.'
+
+    gridEl.innerHTML = items.map((item) => `
+      <article class="cut-gallery-item">
+        <img src="${item.image}" alt="${item.name}">
+        <p>${item.name}</p>
+      </article>
+    `).join('')
+
+    modal.classList.add('active')
+    modal.setAttribute('aria-hidden', 'false')
+  }
+
+  cards.forEach((card) => {
+    const title = card.dataset.cutTitle || 'Galeria de cortes'
+    const category = card.dataset.cutCategory || 'hair'
+
+    const open = () => openModal(title, category)
+    card.addEventListener('click', open)
+    card.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        open()
+      }
+    })
+  })
+
+  backdrop.addEventListener('click', closeModal)
+  closeBtn.addEventListener('click', closeModal)
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeModal()
+    }
+  })
+}
+
 // Initialize tabs when DOM is ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initTabs);
   document.addEventListener('DOMContentLoaded', initActionMenu);
   document.addEventListener('DOMContentLoaded', initDownloadSiteButton);
+  document.addEventListener('DOMContentLoaded', initCutsGallery);
 } else {
   initTabs();
   initActionMenu();
   initDownloadSiteButton();
+  initCutsGallery();
 }
 
 // Also initialize on load
 window.addEventListener('load', initTabs);
 window.addEventListener('load', initActionMenu);
 window.addEventListener('load', initDownloadSiteButton);
+window.addEventListener('load', initCutsGallery);
