@@ -1188,6 +1188,15 @@ document.getElementById("bookingPriorityCancel")?.addEventListener("change", () 
   renderBookings()
 })
 
+// Inicializa controles visuais imediatamente para evitar UI sem ação
+setupTopTabs()
+setupBarberFormMode()
+setupBarberFormTimes()
+setupStoreScheduleTimes()
+setupFilters()
+setupRevenueControls()
+setupPromotionForm()
+
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
     sessionStorage.clear()
@@ -1197,14 +1206,6 @@ onAuthStateChanged(auth, async (user) => {
 
   const ok = await verifyAdminAccess(user)
   if (!ok) return
-
-  setupTopTabs()
-  setupBarberFormMode()
-  setupBarberFormTimes()
-  setupStoreScheduleTimes()
-  setupFilters()
-  setupRevenueControls()
-  setupPromotionForm()
 
   loadBarbers()
   loadBookings()
