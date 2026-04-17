@@ -82,7 +82,7 @@ function buildHourOptions(selected) {
 }
 
 function buildMinuteOptions(selected) {
-  const minutes = ["00", "15", "30", "45"]
+  const minutes = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0"))
   return minutes
     .map((minute) => `<option value="${minute}" ${selected === minute ? "selected" : ""}>${minute}</option>`)
     .join("")
@@ -181,14 +181,22 @@ function setupFilters() {
 
 function setupRevenueControls() {
   const filter = document.getElementById("revenueFilter")
+  const dayInput = document.getElementById("revenueDay")
   const monthInput = document.getElementById("revenueMonth")
   const yearSelect = document.getElementById("revenueYear")
   const dateFrom = document.getElementById("revenueDateFrom")
   const dateTo = document.getElementById("revenueDateTo")
+  const dayWrap = document.getElementById("revenueDayWrap")
+  const monthWrap = document.getElementById("revenueMonthWrap")
+  const yearWrap = document.getElementById("revenueYearWrap")
+  const dateFromWrap = document.getElementById("revenueDateFromWrap")
+  const dateToWrap = document.getElementById("revenueDateToWrap")
 
-  if (!filter || !monthInput || !yearSelect || !dateFrom || !dateTo) return
+  if (!filter || !dayInput || !monthInput || !yearSelect || !dateFrom || !dateTo) return
 
   const now = new Date()
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
+  dayInput.value = today
   monthInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
 
   yearSelect.innerHTML = ""
@@ -198,14 +206,24 @@ function setupRevenueControls() {
 
   const refreshUi = () => {
     const mode = filter.value
+
+    dayInput.disabled = mode !== "day"
     monthInput.disabled = mode !== "month"
     yearSelect.disabled = mode !== "year"
-    dateFrom.disabled = mode === "all"
-    dateTo.disabled = mode === "all"
+    dateFrom.disabled = mode !== "between-dates"
+    dateTo.disabled = mode !== "between-dates"
+
+    if (dayWrap) dayWrap.classList.toggle("hidden", mode !== "day")
+    if (monthWrap) monthWrap.classList.toggle("hidden", mode !== "month")
+    if (yearWrap) yearWrap.classList.toggle("hidden", mode !== "year")
+    if (dateFromWrap) dateFromWrap.classList.toggle("hidden", mode !== "between-dates")
+    if (dateToWrap) dateToWrap.classList.toggle("hidden", mode !== "between-dates")
+
     updateRevenue()
   }
 
   filter.addEventListener("change", refreshUi)
+  dayInput.addEventListener("change", refreshUi)
   monthInput.addEventListener("change", refreshUi)
   yearSelect.addEventListener("change", refreshUi)
   dateFrom.addEventListener("change", refreshUi)
@@ -520,6 +538,7 @@ function renderSchedules() {
 
 function getRevenueFilteredBookings() {
   const mode = document.getElementById("revenueFilter")?.value || "all"
+  const dayValue = document.getElementById("revenueDay")?.value || ""
   const monthValue = document.getElementById("revenueMonth")?.value || ""
   const yearValue = Number(document.getElementById("revenueYear")?.value || new Date().getFullYear())
   const dateFrom = document.getElementById("revenueDateFrom")?.value || ""
@@ -533,7 +552,12 @@ function getRevenueFilteredBookings() {
 
       if (mode === "all") return true
 
-      if (mode === "day-range") {
+      if (mode === "day") {
+        if (!dayValue) return false
+        return isDateInRange(booking.date, dayValue, dayValue)
+      }
+
+      if (mode === "between-dates") {
         return isDateInRange(booking.date, dateFrom, dateTo)
       }
 
@@ -541,18 +565,11 @@ function getRevenueFilteredBookings() {
         if (!monthValue) return false
         const [year, month] = monthValue.split("-").map(Number)
         const sameMonth = bookingDate.getFullYear() === year && bookingDate.getMonth() + 1 === month
-        if (!sameMonth) return false
-
-        if (!dateFrom && !dateTo) return true
-        return isDateInRange(booking.date, dateFrom, dateTo)
+        return sameMonth
       }
 
       if (mode === "year") {
-        const sameYear = bookingDate.getFullYear() === yearValue
-        if (!sameYear) return false
-
-        if (!dateFrom && !dateTo) return true
-        return isDateInRange(booking.date, dateFrom, dateTo)
+        return bookingDate.getFullYear() === yearValue
       }
 
       return true
@@ -589,7 +606,16 @@ function updateRevenue() {
   })
 
   const totalBookings = bookings.length
-  const label = mode === "day-range" ? "(Período de Dias)" : mode === "month" ? "(Período de Mês)" : mode === "year" ? "(Período de Ano)" : "(Todo o Período)"
+  const label =
+    mode === "day"
+      ? "(Período de Dias)"
+      : mode === "between-dates"
+        ? "(Período entre datas)"
+        : mode === "month"
+          ? "(Período de Mês)"
+          : mode === "year"
+            ? "(Período de Ano)"
+            : "(Todo o Período)"
 
   summaryContainer.innerHTML = `
     <div class="revenue-card">

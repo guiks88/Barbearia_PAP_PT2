@@ -22,6 +22,7 @@ const bookingState = {
   barber: null,
   barberName: '',
   barberWorkingHours: [],
+  barberSpecialSchedules: { day: {}, week: {}, month: {} },
   barberWorkingDays: [1, 2, 3, 4, 5], // Seg-Sex por defeito
   date: null,
   time: null,
@@ -40,18 +41,64 @@ const bookingState = {
 const defaultWorkingHours = ['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00']
 
 // Função para gerar horários do barbeiro
-function generateWorkingHours(startTime, endTime) {
-  const hours = []
-  const [startHour] = startTime.split(':').map(Number)
-  const [endHour] = endTime.split(':').map(Number)
-  
-  for (let hour = startHour; hour <= endHour; hour++) {
-    // Pular hora do almoço (13h)
-    if (hour === 13) continue
-    hours.push(`${hour.toString().padStart(2, '0')}:00`)
+function generateWorkingHours(startTime, endTime, stepMinutes = 30) {
+  const slots = []
+  const [startHour, startMinute] = String(startTime || '09:00').split(':').map(Number)
+  const [endHour, endMinute] = String(endTime || '19:00').split(':').map(Number)
+
+  let current = startHour * 60 + (startMinute || 0)
+  const end = endHour * 60 + (endMinute || 0)
+
+  if (Number.isNaN(current) || Number.isNaN(end) || current > end) {
+    return defaultWorkingHours
   }
-  
-  return hours
+
+  while (current <= end) {
+    const hour = Math.floor(current / 60)
+    const minute = current % 60
+    slots.push(`${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`)
+    current += stepMinutes
+  }
+
+  return slots
+}
+
+function getIsoWeekKey(dateStr) {
+  const date = parseDateString(dateStr)
+  const utcDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+  const dayNum = utcDate.getUTCDay() || 7
+  utcDate.setUTCDate(utcDate.getUTCDate() + 4 - dayNum)
+  const yearStart = new Date(Date.UTC(utcDate.getUTCFullYear(), 0, 1))
+  const weekNo = Math.ceil((((utcDate - yearStart) / 86400000) + 1) / 7)
+  return `${utcDate.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`
+}
+
+function getSpecialScheduleForDate(dateStr) {
+  const special = bookingState.barberSpecialSchedules || {}
+
+  const daySchedule = special.day?.[dateStr]
+  if (daySchedule?.start && daySchedule?.end) return daySchedule
+
+  const weekSchedule = special.week?.[getIsoWeekKey(dateStr)]
+  if (weekSchedule?.start && weekSchedule?.end) return weekSchedule
+
+  const monthSchedule = special.month?.[dateStr.slice(0, 7)]
+  if (monthSchedule?.start && monthSchedule?.end) return monthSchedule
+
+  return null
+}
+
+function getWorkingHoursForDate(dateStr) {
+  const specialSchedule = getSpecialScheduleForDate(dateStr)
+  if (specialSchedule) {
+    return generateWorkingHours(specialSchedule.start, specialSchedule.end)
+  }
+
+  if (bookingState.barberWorkingHours.length > 0) {
+    return bookingState.barberWorkingHours
+  }
+
+  return defaultWorkingHours
 }
 
 function getDateString(dateObj) {
@@ -666,6 +713,7 @@ async function selectBarber(barberId, barberName) {
     
     if (snapshot.exists()) {
       const barberData = snapshot.val()
+      bookingState.barberSpecialSchedules = barberData.specialSchedules || { day: {}, week: {}, month: {} }
       if (barberData.workingHours && barberData.workingHours.start && barberData.workingHours.end) {
         bookingState.barberWorkingHours = generateWorkingHours(barberData.workingHours.start, barberData.workingHours.end)
       } else {
@@ -680,10 +728,12 @@ async function selectBarber(barberId, barberName) {
     } else {
       bookingState.barberWorkingHours = defaultWorkingHours
       bookingState.barberWorkingDays = [1, 2, 3, 4, 5]
+      bookingState.barberSpecialSchedules = { day: {}, week: {}, month: {} }
     }
   } catch (error) {
     console.error('Erro ao carregar horários do barbeiro:', error)
     bookingState.barberWorkingHours = defaultWorkingHours
+    bookingState.barberSpecialSchedules = { day: {}, week: {}, month: {} }
   }
   
   // Atualizar UI
@@ -720,7 +770,7 @@ async function loadExistingBookings(barberId) {
       const allBookings = snapshot.val()
       
       Object.values(allBookings).forEach(booking => {
-        if (booking.barberId === barberId) {
+        if (booking.barberId === barberId && booking.status !== 'cancelled') {
           bookingState.bookings.push({
             date: booking.date,
             time: booking.time
@@ -874,7 +924,7 @@ function calculateAvailableSlots(dateStr) {
     .filter(b => b.date === dateStr)
     .map(b => b.time)
   
-  const workingHours = bookingState.barberWorkingHours.length > 0 ? bookingState.barberWorkingHours : defaultWorkingHours
+  const workingHours = getWorkingHoursForDate(dateStr)
   return workingHours.filter(hour => !bookedSlots.includes(hour) && !isPastTimeSlot(dateStr, hour)).length
 }
 
@@ -915,7 +965,7 @@ function renderTimeSlots(dateStr) {
     .filter(b => b.date === dateStr)
     .map(b => b.time)
   
-  const workingHours = bookingState.barberWorkingHours.length > 0 ? bookingState.barberWorkingHours : defaultWorkingHours
+  const workingHours = getWorkingHoursForDate(dateStr)
   
   workingHours.forEach(hour => {
     const isBooked = bookedSlots.includes(hour)
@@ -1271,6 +1321,7 @@ function resetBooking() {
   bookingState.serviceDuration = 0
   bookingState.barber = null
   bookingState.barberName = ''
+  bookingState.barberSpecialSchedules = { day: {}, week: {}, month: {} }
   bookingState.barberWorkingDays = [1, 2, 3, 4, 5]
   bookingState.date = null
   bookingState.time = null

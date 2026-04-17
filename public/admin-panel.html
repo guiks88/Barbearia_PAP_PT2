@@ -167,25 +167,30 @@
                     <div class="form-group" style="margin-bottom: 0;">
                         <label for="revenueFilter">Período</label>
                         <select id="revenueFilter" style="padding: 0.75rem; border: 1px solid var(--color-border); border-radius: 8px; background: white; color: #1a1a2e; font-size: 0.95rem;">
-                            <option value="day-range">Período de Dias</option>
+                            <option value="day">Período de Dias</option>
+                            <option value="between-dates">Período entre datas</option>
                             <option value="month">Período de Mês</option>
                             <option value="year">Período de Ano</option>
                             <option value="all">Todo o Período</option>
                         </select>
                     </div>
-                    <div class="form-group" style="margin-bottom: 0;">
+                    <div class="form-group" id="revenueDayWrap" style="margin-bottom: 0;">
+                        <label for="revenueDay">Dia</label>
+                        <input type="date" id="revenueDay" style="padding: 0.75rem; border: 1px solid var(--color-border); border-radius: 8px; background: white; color: #1a1a2e; font-size: 0.95rem;">
+                    </div>
+                    <div class="form-group hidden" id="revenueMonthWrap" style="margin-bottom: 0;">
                         <label for="revenueMonth">Mês e Ano</label>
                         <input type="month" id="revenueMonth" style="padding: 0.75rem; border: 1px solid var(--color-border); border-radius: 8px; background: white; color: #1a1a2e; font-size: 0.95rem;">
                     </div>
-                    <div class="form-group" style="margin-bottom: 0;">
+                    <div class="form-group hidden" id="revenueYearWrap" style="margin-bottom: 0;">
                         <label for="revenueYear">Ano</label>
                         <select id="revenueYear" style="padding: 0.75rem; border: 1px solid var(--color-border); border-radius: 8px; background: white; color: #1a1a2e; font-size: 0.95rem;"></select>
                     </div>
-                    <div class="form-group" style="margin-bottom: 0;">
+                    <div class="form-group hidden" id="revenueDateFromWrap" style="margin-bottom: 0;">
                         <label for="revenueDateFrom">Data de</label>
                         <input type="date" id="revenueDateFrom" style="padding: 0.75rem; border: 1px solid var(--color-border); border-radius: 8px; background: white; color: #1a1a2e; font-size: 0.95rem;">
                     </div>
-                    <div class="form-group" style="margin-bottom: 0;">
+                    <div class="form-group hidden" id="revenueDateToWrap" style="margin-bottom: 0;">
                         <label for="revenueDateTo">Data até</label>
                         <input type="date" id="revenueDateTo" style="padding: 0.75rem; border: 1px solid var(--color-border); border-radius: 8px; background: white; color: #1a1a2e; font-size: 0.95rem;">
                     </div>

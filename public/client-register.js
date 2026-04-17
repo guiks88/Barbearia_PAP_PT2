@@ -1,15 +1,73 @@
-import { database, firestore } from "./firebase-config.js"
-import { ref, push, set, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
+import { auth, database, firestore } from "./firebase-config.js"
+import { ref, set, get, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
 import { doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"
+import {
+  GoogleAuthProvider,
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
 import { formatPhoneNumber, validatePhoneNumber, setupPhoneValidation, showSuccess, showError } from "./utils.js"
 
 setupPhoneValidation("clientPhone")
+
+async function findClientByEmail(email) {
+  const snapshot = await get(ref(database, "clients"))
+  if (!snapshot.exists()) return null
+
+  const clients = snapshot.val()
+  const normalizedTarget = (email || "").trim().toLowerCase()
+
+  for (const [id, client] of Object.entries(clients)) {
+    const clientEmail = String(client?.email || "").trim().toLowerCase()
+    if (clientEmail === normalizedTarget) {
+      return { id, client }
+    }
+  }
+
+  return null
+}
+
+async function saveClientProfile(uid, { name, email, phone }) {
+  const normalizedEmail = (email || "").trim().toLowerCase()
+  const normalizedPhone = formatPhoneNumber(phone || "")
+
+  const existing = await findClientByEmail(normalizedEmail)
+
+  const payload = {
+    name: name || "Cliente",
+    email: normalizedEmail,
+    phone: normalizedPhone,
+    createdAt: existing?.client?.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }
+
+  await set(ref(database, `clients/${uid}`), payload)
+
+  if (existing && existing.id !== uid) {
+    await remove(ref(database, `clients/${existing.id}`))
+  }
+
+  await setDoc(doc(firestore, "users", uid), {
+    uid,
+    email: normalizedEmail,
+    fullName: payload.name,
+    role: "client",
+    roles: ["client"],
+    birthDate: null,
+    phone: normalizedPhone,
+    isActive: true,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  })
+
+  return payload
+}
 
 document.getElementById("clientRegisterForm").addEventListener("submit", async (e) => {
   e.preventDefault()
 
   const phone = document.getElementById("clientPhone").value
-  const email = document.getElementById("clientEmail").value
+  const email = document.getElementById("clientEmail").value.trim().toLowerCase()
   const name = document.getElementById("clientName").value
   const password = document.getElementById("clientPassword").value
 
@@ -24,46 +82,14 @@ document.getElementById("clientRegisterForm").addEventListener("submit", async (
   }
 
   try {
-    const clientsRef = ref(database, "clients")
-    const snapshot = await get(clientsRef)
+    const credential = await createUserWithEmailAndPassword(auth, email, password)
+    const uid = credential.user.uid
 
-    if (snapshot.exists()) {
-      const clients = snapshot.val()
-      const emailExists = Object.values(clients).some((client) => client.email === email)
-
-      if (emailExists) {
-        showError("Este email já está registado!")
-        return
-      }
-    }
-
-    const newClientRef = push(clientsRef)
-
-    const newClient = {
-      name: name,
-      email: email,
-      phone: formatPhoneNumber(phone),
-      password: password,
-      createdAt: new Date().toISOString(),
-    }
-
-    await set(newClientRef, newClient)
-
-    const clientUid = newClientRef.key
-    const userDoc = {
-      uid: clientUid,
-      email: email,
-      fullName: name,
-      role: "client",
-      roles: ["client"],
-      birthDate: null,
-      phone: formatPhoneNumber(phone),
-      isActive: true,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    }
-
-    await setDoc(doc(firestore, "users", clientUid), userDoc)
+    await saveClientProfile(uid, {
+      name,
+      email,
+      phone,
+    })
 
     showSuccess("Cliente registado com sucesso! Redirecionando...")
 
@@ -71,9 +97,14 @@ document.getElementById("clientRegisterForm").addEventListener("submit", async (
     sessionStorage.setItem("clientName", name)
 
     setTimeout(() => {
-      window.location.href = "bookings.html"
+      window.location.href = "client-menu.html"
     }, 2000)
   } catch (error) {
+    if (error.code === "auth/email-already-in-use") {
+      showError("Este email já está registado. Faça login.")
+      return
+    }
+
     if (error.message.includes("apiKey") || error.message.includes("projectId")) {
       showError("Firebase não está configurado! Verifique o arquivo firebase-config.js")
     } else {
@@ -81,3 +112,56 @@ document.getElementById("clientRegisterForm").addEventListener("submit", async (
     }
   }
 })
+
+const googleRegisterBtn = document.getElementById("googleRegisterBtn")
+const googleRegisterBtnLabel = document.getElementById("googleRegisterBtnLabel")
+
+if (googleRegisterBtn && googleRegisterBtnLabel) {
+  googleRegisterBtn.addEventListener("click", async () => {
+    googleRegisterBtn.disabled = true
+    googleRegisterBtnLabel.textContent = "A criar conta com Google..."
+
+    try {
+      const provider = new GoogleAuthProvider()
+      provider.setCustomParameters({ prompt: "select_account" })
+
+      const result = await signInWithPopup(auth, provider)
+      const user = result.user
+      const email = String(user.email || "").trim().toLowerCase()
+
+      if (!email) {
+        throw new Error("Não foi possível obter o email da conta Google.")
+      }
+
+      const nameInput = document.getElementById("clientName")
+      const phoneInput = document.getElementById("clientPhone")
+      const fallbackName = nameInput?.value?.trim() || user.displayName || "Cliente"
+      const fallbackPhone = phoneInput?.value?.trim() || ""
+
+      const profile = await saveClientProfile(user.uid, {
+        name: fallbackName,
+        email,
+        phone: fallbackPhone,
+      })
+
+      sessionStorage.setItem("clientEmail", profile.email)
+      sessionStorage.setItem("clientName", profile.name)
+
+      showSuccess("Conta criada com Google com sucesso! Redirecionando...")
+      setTimeout(() => {
+        window.location.href = "client-menu.html"
+      }, 1500)
+    } catch (error) {
+      if (error.code === "auth/popup-closed-by-user") {
+        showError("Registo com Google cancelado.")
+      } else if (error.code === "auth/account-exists-with-different-credential") {
+        showError("Este email já existe com outro método. Use email e senha para entrar.")
+      } else {
+        showError("Não foi possível criar conta com Google: " + (error.message || "tente novamente"))
+      }
+    } finally {
+      googleRegisterBtn.disabled = false
+      googleRegisterBtnLabel.textContent = "Criar conta com Google"
+    }
+  })
+}

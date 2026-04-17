@@ -926,6 +926,17 @@ body {
   text-decoration: underline;
 }
 
+.auth-inline-link {
+  color: var(--color-accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.auth-inline-link:hover {
+  color: var(--color-accent-hover);
+  text-decoration: underline;
+}
+
 /* ===== ADMIN STYLES ===== */
 .admin-tabs {
   display: flex;

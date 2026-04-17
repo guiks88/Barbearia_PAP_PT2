@@ -2,6 +2,7 @@ import { auth, database } from "./firebase-config.js"
 import { ref, get, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
 import {
   GoogleAuthProvider,
+  createUserWithEmailAndPassword,
   onAuthStateChanged,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
@@ -111,6 +112,44 @@ async function resolveRoleData(user, email) {
   return roleData
 }
 
+async function migrateLegacyClientAuth(email, password) {
+  const clientsSnapshot = await get(ref(database, "clients"))
+  if (!clientsSnapshot.exists()) return null
+
+  const clients = clientsSnapshot.val()
+  const normalizedEmail = normalizeEmail(email)
+
+  for (const [legacyId, client] of Object.entries(clients)) {
+    const clientEmail = normalizeEmail(client?.email)
+    const clientPassword = String(client?.password || "")
+
+    if (clientEmail !== normalizedEmail) continue
+    if (!clientPassword || clientPassword !== password) continue
+
+    const credential = await createUserWithEmailAndPassword(auth, email, password)
+    const uid = credential.user.uid
+
+    const migratedProfile = {
+      ...client,
+      email,
+      password: null,
+      updatedAt: new Date().toISOString(),
+    }
+
+    await set(ref(database, `clients/${uid}`), migratedProfile)
+
+    if (legacyId !== uid) {
+      await set(ref(database, `clients/${legacyId}/password`), null)
+      await set(ref(database, `clients/${legacyId}/migratedToUid`), uid)
+      await set(ref(database, `clients/${legacyId}/updatedAt`), new Date().toISOString())
+    }
+
+    return credential.user
+  }
+
+  return null
+}
+
 function saveRoleSession(role, uid, email, profile) {
   if (role === "admin") {
     sessionStorage.setItem("adminId", uid)
@@ -151,8 +190,29 @@ signOut(auth).catch(() => {})
 sessionStorage.clear()
 
 async function loginAndRoute(email, password) {
-  const loginResult = await signInWithEmailAndPassword(auth, email, password)
-  const user = loginResult.user
+  let user = null
+
+  try {
+    const loginResult = await signInWithEmailAndPassword(auth, email, password)
+    user = loginResult.user
+  } catch (error) {
+    const code = error?.code || ""
+    const canTryLegacy =
+      code === "auth/invalid-credential" ||
+      code === "auth/wrong-password" ||
+      code === "auth/user-not-found"
+
+    if (!canTryLegacy) {
+      throw error
+    }
+
+    const migratedUser = await migrateLegacyClientAuth(email, password)
+    if (!migratedUser) {
+      throw error
+    }
+
+    user = migratedUser
+  }
 
   const roleData = await resolveRoleData(user, email)
 
@@ -244,6 +304,16 @@ forgotPasswordLink.addEventListener("click", async (event) => {
   } catch (error) {
     const code = error?.code || ""
     if (code === "auth/user-not-found") {
+      const legacySnapshot = await get(ref(database, "clients"))
+      if (legacySnapshot.exists()) {
+        const clients = legacySnapshot.val()
+        const existsInLegacy = Object.values(clients).some((client) => normalizeEmail(client?.email) === email)
+        if (existsInLegacy) {
+          showError("Esta conta é antiga e ainda não tem recuperação por email. Use 'Criar conta' ou Google para ativar o novo login.")
+          return
+        }
+      }
+
       showError("Não existe conta com este email.")
       return
     }
