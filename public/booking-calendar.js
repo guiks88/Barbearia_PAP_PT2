@@ -1284,12 +1284,6 @@ function initEmailPopup() {
 
 // ===== STEP 4: CONFIRMAÇÃO =====
 function initBookingConfirmation() {
-  // Botão para fazer outra marcação
-  const newBookingBtn = document.getElementById('newBookingBtn')
-  if (newBookingBtn) {
-    newBookingBtn.addEventListener('click', resetBooking)
-  }
-  
   // Botão para voltar para a área de cliente
   const exitBtn = document.getElementById('exitBtn')
   if (exitBtn) {
@@ -1304,11 +1298,7 @@ function initClientNavigation() {
   if (!backBtn) return
 
   backBtn.addEventListener('click', () => {
-    if (window.history.length > 1) {
-      window.history.back()
-      return
-    }
-    window.location.href = 'client-menu.html'
+    window.location.href = 'index.html'
   })
 }
 

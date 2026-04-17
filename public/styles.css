@@ -1884,6 +1884,12 @@ main {
 @media (max-width: 768px) {
   .booking-steps {
     max-width: 100%;
+    margin: 1rem auto;
+  }
+
+  .booking-steps .card {
+    padding: 1.1rem;
+    overflow: hidden;
   }
 
   .barbers-list {
@@ -1892,6 +1898,16 @@ main {
 
   .calendar-container {
     padding: 1rem;
+    overflow: hidden;
+  }
+
+  .calendar-header {
+    gap: 0.5rem;
+  }
+
+  .calendar-title {
+    flex: 1;
+    justify-content: center;
   }
 
   .calendar-select {
@@ -1899,8 +1915,15 @@ main {
     font-size: 0.9rem;
   }
 
+  .calendar-weekdays,
+  .calendar-days {
+    gap: 0.35rem;
+  }
+
   .calendar-day {
-    padding: 0.25rem;
+    min-height: 56px;
+    aspect-ratio: auto;
+    padding: 0.2rem;
   }
 
   .calendar-day .day-number {
@@ -1908,7 +1931,9 @@ main {
   }
 
   .calendar-day .slots-badge {
-    font-size: 0.6rem;
+    font-size: 0.55rem;
+    line-height: 1.05;
+    text-align: center;
   }
 
   .time-slots-list {
@@ -1922,17 +1947,95 @@ main {
 }
 
 @media (max-width: 480px) {
+  .booking-steps {
+    margin: 0.75rem auto;
+  }
+
+  .booking-steps .card {
+    padding: 0.95rem;
+    border-radius: 10px;
+  }
+
+  .selected-info {
+    padding: 0.8rem;
+  }
+
+  .selected-info p {
+    font-size: 0.9rem;
+    overflow-wrap: anywhere;
+  }
+
   .services-grid {
     grid-template-columns: 1fr;
   }
 
+  .calendar-container {
+    padding: 0.75rem;
+  }
+
+  .calendar-header {
+    display: grid;
+    grid-template-columns: 36px 1fr 36px;
+    align-items: center;
+    gap: 0.35rem;
+    margin-bottom: 0.9rem;
+  }
+
   .calendar-title {
-    flex-direction: column;
-    gap: 0.5rem;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.3rem;
   }
 
   .calendar-select {
     width: 100%;
+    min-width: 0;
+    font-size: 0.82rem;
+    padding: 0.38rem 0.5rem;
+  }
+
+  .calendar-weekdays,
+  .calendar-days {
+    gap: 0.2rem;
+  }
+
+  .calendar-weekdays div {
+    font-size: 0.67rem;
+    padding: 0.25rem 0;
+  }
+
+  .calendar-day {
+    min-height: 46px;
+    border-radius: 6px;
+    padding: 0.1rem;
+  }
+
+  .calendar-day .day-number {
+    font-size: 0.75rem;
+  }
+
+  .calendar-day .slots-badge {
+    font-size: 0.48rem;
+    margin-top: 0.15rem;
+  }
+
+  .time-slots-container {
+    margin-top: 1rem;
+  }
+
+  .slots-title {
+    font-size: 1rem;
+    line-height: 1.3;
+  }
+
+  .time-slots-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  .time-slot {
+    padding: 0.65rem 0.4rem;
+    font-size: 0.83rem;
   }
 
   .barbers-list {

@@ -87,7 +87,7 @@ async function loadClientPromotions(user) {
   if (promotionsSummary) {
     promotionsSummary.textContent = eligiblePromotions.length
       ? `Tem ${eligiblePromotions.length} promoção(ões) disponível(is) para usar agora.`
-      : `Ao 10.º corte, ganha 1 corte grátis. Já tem ${completedCuts} cortes concluídos.`
+      : "Temos campanhas ativas durante o ano. Consulte as condições abaixo e aproveite a próxima oferta disponível."
   }
 
   if (promoBadge) {
