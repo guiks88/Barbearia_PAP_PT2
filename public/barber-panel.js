@@ -285,6 +285,10 @@ window.startCut = async (bookingId) => {
     })
     showSuccess("Corte iniciado.")
   } catch (error) {
+    if (String(error?.message || "").toUpperCase().includes("PERMISSION_DENIED")) {
+      showError("Sem permissão no Firebase. É necessário publicar as regras atualizadas da base de dados.")
+      return
+    }
     showError("Erro ao iniciar corte: " + error.message)
   }
 }
@@ -297,6 +301,10 @@ window.completeCut = async (bookingId) => {
     })
     showSuccess("Corte concluído.")
   } catch (error) {
+    if (String(error?.message || "").toUpperCase().includes("PERMISSION_DENIED")) {
+      showError("Sem permissão no Firebase. É necessário publicar as regras atualizadas da base de dados.")
+      return
+    }
     showError("Erro ao concluir corte: " + error.message)
   }
 }
@@ -315,6 +323,10 @@ window.requestCancel = async (bookingId) => {
     })
     showSuccess("Pedido de cancelamento enviado para aprovação do administrador.")
   } catch (error) {
+    if (String(error?.message || "").toUpperCase().includes("PERMISSION_DENIED")) {
+      showError("Sem permissão no Firebase. É necessário publicar as regras atualizadas da base de dados.")
+      return
+    }
     showError("Erro ao pedir cancelamento: " + error.message)
   }
 }

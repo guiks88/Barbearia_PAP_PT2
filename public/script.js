@@ -325,23 +325,25 @@ function initCutsGallery() {
   const gridEl = document.getElementById('cutGalleryGrid')
 
   if (!cards.length || !modal || !backdrop || !closeBtn || !titleEl || !subtitleEl || !gridEl) return
+  if (modal.dataset.bound === 'true') return
+  modal.dataset.bound = 'true'
 
   const galleries = {
     hair: [
-      { name: 'Clássico Curto', image: 'https://images.unsplash.com/photo-1622286342621-4bd786c2447c?q=80&w=600&h=400&fit=crop' },
-      { name: 'Degradé Alto', image: 'https://images.unsplash.com/photo-1599351431202-1e0f0137899a?q=80&w=600&h=400&fit=crop' },
-      { name: 'Crop Texturizado', image: 'https://images.unsplash.com/photo-1605497788044-5a32c7078486?q=80&w=600&h=400&fit=crop' },
-      { name: 'Pompadour Moderno', image: 'https://images.unsplash.com/photo-1605497788044-5a32c7078486?q=80&w=600&h=400&fit=crop' },
-      { name: 'Mid Fade', image: 'https://images.unsplash.com/photo-1599351431202-1e0f0137899a?q=80&w=600&h=400&fit=crop' },
-      { name: 'Corte Social', image: 'https://images.unsplash.com/photo-1622286342621-4bd786c2447c?q=80&w=600&h=400&fit=crop' },
+      { name: 'Clássico Curto', image: 'https://images.pexels.com/photos/1453005/pexels-photo-1453005.jpeg?auto=compress&cs=tinysrgb&w=600' },
+      { name: 'Degradé Alto', image: 'https://images.pexels.com/photos/2076932/pexels-photo-2076932.jpeg?auto=compress&cs=tinysrgb&w=600' },
+      { name: 'Crop Texturizado', image: 'https://images.pexels.com/photos/1813272/pexels-photo-1813272.jpeg?auto=compress&cs=tinysrgb&w=600' },
+      { name: 'Pompadour Moderno', image: 'https://images.pexels.com/photos/897270/pexels-photo-897270.jpeg?auto=compress&cs=tinysrgb&w=600' },
+      { name: 'Mid Fade', image: 'https://images.pexels.com/photos/1319461/pexels-photo-1319461.jpeg?auto=compress&cs=tinysrgb&w=600' },
+      { name: 'Corte Social', image: 'https://images.pexels.com/photos/1570807/pexels-photo-1570807.jpeg?auto=compress&cs=tinysrgb&w=600' },
     ],
     beard: [
-      { name: 'Contorno Definido', image: 'https://images.unsplash.com/photo-1621605815971-fbc98d665033?q=80&w=600&h=400&fit=crop' },
-      { name: 'Barba Curta Alinhada', image: 'https://images.unsplash.com/photo-1599351431202-1e0f0137899a?q=80&w=600&h=400&fit=crop' },
-      { name: 'Barba Completa', image: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=600&h=400&fit=crop' },
-      { name: 'Bigode + Barba', image: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=600&h=400&fit=crop' },
-      { name: 'Fade na Barba', image: 'https://images.unsplash.com/photo-1599351431202-1e0f0137899a?q=80&w=600&h=400&fit=crop' },
-      { name: 'Acabamento Navalha', image: 'https://images.unsplash.com/photo-1605497788044-5a32c7078486?q=80&w=600&h=400&fit=crop' },
+      { name: 'Contorno Definido', image: 'https://images.pexels.com/photos/1805600/pexels-photo-1805600.jpeg?auto=compress&cs=tinysrgb&w=600' },
+      { name: 'Barba Curta Alinhada', image: 'https://images.pexels.com/photos/3993449/pexels-photo-3993449.jpeg?auto=compress&cs=tinysrgb&w=600' },
+      { name: 'Barba Completa', image: 'https://images.pexels.com/photos/3998417/pexels-photo-3998417.jpeg?auto=compress&cs=tinysrgb&w=600' },
+      { name: 'Bigode + Barba', image: 'https://images.pexels.com/photos/91227/pexels-photo-91227.jpeg?auto=compress&cs=tinysrgb&w=600' },
+      { name: 'Fade na Barba', image: 'https://images.pexels.com/photos/1342609/pexels-photo-1342609.jpeg?auto=compress&cs=tinysrgb&w=600' },
+      { name: 'Acabamento Navalha', image: 'https://images.pexels.com/photos/1813272/pexels-photo-1813272.jpeg?auto=compress&cs=tinysrgb&w=600' },
     ],
   }
 

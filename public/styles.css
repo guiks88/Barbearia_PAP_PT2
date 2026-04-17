@@ -35,6 +35,10 @@ body {
   flex-direction: column;
 }
 
+img {
+  max-width: 100%;
+}
+
 main {
   width: 100%;
   flex: 1 0 auto;
@@ -534,6 +538,7 @@ main {
   min-height: 180px;
   object-fit: cover;
   display: block;
+  pointer-events: none;
 }
 
 .cut-info {
@@ -631,6 +636,24 @@ main {
   height: 170px;
   object-fit: cover;
   display: block;
+}
+
+@media (max-width: 1024px) {
+  .container {
+    padding: 0 1.1rem;
+  }
+
+  .cuts-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .location-section {
+    grid-template-columns: 1fr;
+  }
+
+  .cut-gallery-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .cut-gallery-item p {
@@ -1530,6 +1553,11 @@ main {
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   }
 
+  .cut-gallery-panel {
+    width: min(900px, 96vw);
+    max-height: 90vh;
+  }
+
   .location-section {
     grid-template-columns: 1fr;
   }
@@ -1621,6 +1649,14 @@ main {
 
   .cut-card {
     flex-direction: column;
+  }
+
+  .cut-gallery-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cut-gallery-item img {
+    height: 200px;
   }
 }
 
