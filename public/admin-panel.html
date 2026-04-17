@@ -28,13 +28,8 @@
         </div>
 
         <section id="barbers-tab" class="tab-content active">
-            <div class="admin-subtabs" role="tablist" aria-label="Gestão de barbeiros">
-                <button class="subtab-btn active" data-subtab="create">Adicionar Barbeiro</button>
-                <button class="subtab-btn" data-subtab="list">Ver Barbeiros</button>
-            </div>
-
-            <div class="card" id="barberCreateCard">
-                <h2>Registar Novo Barbeiro</h2>
+            <div class="card hidden" id="barberCreateCard">
+                <h2 id="barberFormTitle">Adicionar Barbeiro</h2>
                 <form id="barberForm">
                     <div class="form-group">
                         <label for="barberName">Nome Completo *</label>
@@ -44,7 +39,7 @@
                         <label for="barberEmail">Email *</label>
                         <input type="email" id="barberEmail" required>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" id="barberPasswordGroup">
                         <label for="barberPassword">Senha *</label>
                         <input type="password" id="barberPassword" required minlength="6">
                     </div>
@@ -88,12 +83,18 @@
                         </div>
                         <small style="color: var(--color-text-secondary); font-size: 0.85rem;">Selecione os dias em que o barbeiro trabalha</small>
                     </div>
-                    <button type="submit" class="btn btn-primary" style="width: 100%;">Adicionar Barbeiro</button>
+                    <div class="promotion-form-actions">
+                        <button type="submit" class="btn btn-primary" id="barberSubmitBtn" style="flex: 1;">Adicionar Barbeiro</button>
+                        <button type="button" class="btn btn-secondary" id="cancelBarberFormBtn" style="flex: 1;">Cancelar</button>
+                    </div>
                 </form>
             </div>
 
-            <div class="card hidden" id="barberListCard">
+            <div class="card" id="barberListCard">
                 <h2>Barbeiros Registados</h2>
+                <div class="promotion-form-actions" style="margin-bottom: 1rem;">
+                    <button type="button" class="btn btn-primary" id="openCreateBarberBtn">Adicionar Barbeiro</button>
+                </div>
                 <div class="filter-grid">
                     <div class="form-group">
                         <label for="barberSearchName">Nome</label>
@@ -119,6 +120,12 @@
         <section id="bookings-tab" class="tab-content">
             <div class="card">
                 <h2>Todas as Marcações</h2>
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label class="day-checkbox" style="display: inline-flex;">
+                        <input type="checkbox" id="bookingPriorityCancel" checked>
+                        Mostrar pedidos de cancelamento em prioridade
+                    </label>
+                </div>
                 <div class="filter-grid">
                     <div class="form-group">
                         <label for="bookingSearchClientName">Nome do cliente</label>
@@ -155,9 +162,64 @@
 
         <section id="schedules-tab" class="tab-content">
             <div class="card">
-                <h2>Gestão de Horários dos Barbeiros</h2>
-                <p style="color: var(--color-text-secondary); margin-bottom: 1.5rem;">Edite os dias e horários de trabalho de cada barbeiro.</p>
-                <div id="schedulesBarbersList"></div>
+                <h2>Horário da Loja</h2>
+                <p style="color: var(--color-text-secondary); margin-bottom: 1.5rem;">Defina os dias de abertura, horário geral e pausa de almoço.</p>
+                <form id="storeScheduleForm">
+                    <div class="form-group">
+                        <label>Dias abertos</label>
+                        <div class="working-days-grid" id="storeOpenDays">
+                            <label class="day-checkbox"><input type="checkbox" value="1" checked> Seg</label>
+                            <label class="day-checkbox"><input type="checkbox" value="2" checked> Ter</label>
+                            <label class="day-checkbox"><input type="checkbox" value="3" checked> Qua</label>
+                            <label class="day-checkbox"><input type="checkbox" value="4" checked> Qui</label>
+                            <label class="day-checkbox"><input type="checkbox" value="5" checked> Sex</label>
+                            <label class="day-checkbox"><input type="checkbox" value="6"> Sáb</label>
+                            <label class="day-checkbox"><input type="checkbox" value="0"> Dom</label>
+                        </div>
+                    </div>
+
+                    <div class="schedule-controls">
+                        <div class="form-group">
+                            <label>Abertura</label>
+                            <div class="time-select-group">
+                                <select id="storeOpenHour" class="time-select"></select>
+                                <span>:</span>
+                                <select id="storeOpenMinute" class="time-select"></select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Fecho</label>
+                            <div class="time-select-group">
+                                <select id="storeCloseHour" class="time-select"></select>
+                                <span>:</span>
+                                <select id="storeCloseMinute" class="time-select"></select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="schedule-controls" style="margin-top: 1rem;">
+                        <div class="form-group">
+                            <label>Início almoço</label>
+                            <div class="time-select-group">
+                                <select id="storeLunchStartHour" class="time-select"></select>
+                                <span>:</span>
+                                <select id="storeLunchStartMinute" class="time-select"></select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Fim almoço</label>
+                            <div class="time-select-group">
+                                <select id="storeLunchEndHour" class="time-select"></select>
+                                <span>:</span>
+                                <select id="storeLunchEndMinute" class="time-select"></select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="promotion-form-actions" style="margin-top: 1rem;">
+                        <button type="submit" class="btn btn-primary">Guardar horário da loja</button>
+                    </div>
+                </form>
             </div>
         </section>
 

@@ -7,6 +7,7 @@ let barberId = null
 let barberName = null
 let barberEmail = null
 let allBookings = []
+let currentViewMode = "date"
 
 // Verificar autenticação
 window.addEventListener("load", () => {
@@ -47,8 +48,20 @@ window.addEventListener("load", () => {
     // Carregar marcações
     loadBookings()
 
+    setupStatsFilters()
+
     // Listener para mudança de data
     document.getElementById("dateFilter").addEventListener("change", () => {
+      currentViewMode = "date"
+      updateViewModeLabel()
+      setActiveStatCard(null)
+      displayBookings()
+    })
+
+    document.getElementById("dayModeBtn")?.addEventListener("click", () => {
+      currentViewMode = "date"
+      updateViewModeLabel()
+      setActiveStatCard(null)
       displayBookings()
     })
   })
@@ -101,15 +114,47 @@ function loadBookings() {
 function displayBookings() {
   const container = document.getElementById("appointmentsContainer")
   const selectedDate = document.getElementById("dateFilter").value
-  
-  const filteredBookings = allBookings.filter(booking => booking.date === selectedDate)
+
+  const today = new Date()
+  const todayStr = today.toISOString().split("T")[0]
+  const startOfWeek = new Date(today)
+  startOfWeek.setHours(0, 0, 0, 0)
+  startOfWeek.setDate(today.getDate() - today.getDay())
+  const endOfWeek = new Date(startOfWeek)
+  endOfWeek.setHours(23, 59, 59, 999)
+  endOfWeek.setDate(startOfWeek.getDate() + 6)
+
+  let filteredBookings = allBookings.filter((booking) => booking.date === selectedDate)
+
+  if (currentViewMode === "today") {
+    filteredBookings = allBookings.filter((booking) => booking.date === todayStr)
+  } else if (currentViewMode === "week") {
+    filteredBookings = allBookings.filter((booking) => {
+      const bookingDate = new Date(booking.date)
+      return bookingDate >= startOfWeek && bookingDate <= endOfWeek
+    })
+  } else if (currentViewMode === "month") {
+    filteredBookings = allBookings.filter((booking) => {
+      const bookingDate = new Date(booking.date)
+      return bookingDate.getMonth() === today.getMonth() && bookingDate.getFullYear() === today.getFullYear()
+    })
+  }
 
   autoCancelExpiredBookings(filteredBookings)
 
   if (filteredBookings.length === 0) {
+    const emptyMessage =
+      currentViewMode === "today"
+        ? "Não há marcações para hoje"
+        : currentViewMode === "week"
+          ? "Não há marcações para esta semana"
+          : currentViewMode === "month"
+            ? "Não há marcações para este mês"
+            : "Não há marcações para esta data"
+
     container.innerHTML = `
       <div class="no-appointments">
-        <p>Não há marcações para esta data</p>
+        <p>${emptyMessage}</p>
         <p style="font-size: 0.9rem; color: #999;">Selecione outra data para ver suas marcações</p>
       </div>
     `
@@ -158,7 +203,7 @@ function getLifecycleLabel(booking) {
   if (booking.status === "expired") return "Expirada"
   if (booking.status === "cancelled") return "Anulada"
   if (booking.status === "cancel_requested") return "Cancelamento pendente"
-  return "Ativa"
+  return "Finalizada"
 }
 
 function getLifecycleClass(booking) {
@@ -395,6 +440,58 @@ function updateStats() {
            bookingDate.getFullYear() === today.getFullYear()
   })
   document.getElementById("monthCount").textContent = monthBookings.length
+}
+
+function setupStatsFilters() {
+  const cards = document.querySelectorAll(".stat-card.clickable")
+  if (!cards.length) return
+
+  cards.forEach((card) => {
+    const activate = () => {
+      const mode = card.dataset.viewMode
+      if (!mode) return
+      currentViewMode = mode
+      setActiveStatCard(mode)
+      updateViewModeLabel()
+      displayBookings()
+    }
+
+    card.addEventListener("click", activate)
+    card.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault()
+        activate()
+      }
+    })
+  })
+}
+
+function setActiveStatCard(mode) {
+  document.querySelectorAll(".stat-card.clickable").forEach((card) => {
+    card.classList.toggle("active-filter", !!mode && card.dataset.viewMode === mode)
+  })
+}
+
+function updateViewModeLabel() {
+  const label = document.getElementById("viewModeLabel")
+  if (!label) return
+
+  if (currentViewMode === "today") {
+    label.textContent = "A mostrar: cortes de hoje"
+    return
+  }
+
+  if (currentViewMode === "week") {
+    label.textContent = "A mostrar: cortes desta semana"
+    return
+  }
+
+  if (currentViewMode === "month") {
+    label.textContent = "A mostrar: cortes deste mês"
+    return
+  }
+
+  label.textContent = "A mostrar: dia específico"
 }
 
 // Formatar nome do serviço

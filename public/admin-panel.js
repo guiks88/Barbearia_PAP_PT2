@@ -39,9 +39,11 @@ const state = {
   bookings: {},
   clients: {},
   promotions: {},
+  storeSettings: {},
 }
 
 let editingPromotionId = null
+let editingBarberId = null
 
 function normalize(value) {
   return String(value || "").toLowerCase().trim()
@@ -125,25 +127,18 @@ function setupTopTabs() {
   })
 }
 
-function setupBarberSubTabs() {
+function setupBarberFormMode() {
   const createCard = document.getElementById("barberCreateCard")
-  const listCard = document.getElementById("barberListCard")
-  if (!createCard || !listCard) return
+  const openBtn = document.getElementById("openCreateBarberBtn")
+  const cancelBtn = document.getElementById("cancelBarberFormBtn")
+  if (!createCard || !openBtn || !cancelBtn) return
 
-  document.querySelectorAll(".subtab-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const mode = btn.dataset.subtab
-      document.querySelectorAll(".subtab-btn").forEach((b) => b.classList.remove("active"))
-      btn.classList.add("active")
+  openBtn.addEventListener("click", () => {
+    openBarberForm()
+  })
 
-      if (mode === "create") {
-        createCard.classList.remove("hidden")
-        listCard.classList.add("hidden")
-      } else {
-        listCard.classList.remove("hidden")
-        createCard.classList.add("hidden")
-      }
-    })
+  cancelBtn.addEventListener("click", () => {
+    closeBarberForm()
   })
 }
 
@@ -173,7 +168,7 @@ function setupFilters() {
       renderBarbers()
       renderBookings()
       renderClients()
-      renderSchedules()
+      renderStoreSchedule()
       updateRevenue()
     }
 
@@ -360,7 +355,10 @@ function renderBarbers() {
             <p><strong>Horário:</strong> ${barber.workingHours?.start || "09:00"} - ${barber.workingHours?.end || "19:00"}</p>
             <p><strong>Dias:</strong> ${days}</p>
           </div>
-          <button class="btn btn-danger" onclick="deleteBarber('${id}')">Eliminar</button>
+          <div class="booking-actions">
+            <button class="btn btn-secondary" onclick="editBarber('${id}')">Editar</button>
+            <button class="btn btn-danger" onclick="deleteBarber('${id}')">Eliminar</button>
+          </div>
         </div>
       `
     })
@@ -371,9 +369,19 @@ function renderBookings() {
   const container = document.getElementById("allBookingsList")
   if (!container) return
 
+  const prioritizeCancel = document.getElementById("bookingPriorityCancel")?.checked !== false
   const entries = filterBookingEntries().sort((a, b) => {
-    const left = `${a[1].date || ""} ${a[1].time || ""}`
-    const right = `${b[1].date || ""} ${b[1].time || ""}`
+    const leftBooking = a[1]
+    const rightBooking = b[1]
+
+    if (prioritizeCancel) {
+      const leftPriority = leftBooking.status === "cancel_requested" ? 1 : 0
+      const rightPriority = rightBooking.status === "cancel_requested" ? 1 : 0
+      if (leftPriority !== rightPriority) return rightPriority - leftPriority
+    }
+
+    const left = `${leftBooking.date || ""} ${leftBooking.time || ""}`
+    const right = `${rightBooking.date || ""} ${rightBooking.time || ""}`
     return right.localeCompare(left)
   })
 
@@ -558,96 +566,34 @@ function setupPromotionForm() {
   resetPromotionForm()
 }
 
-function buildScheduleTimePicker(prefix, timeValue, fallbackHour = "09") {
-  const { hour, minute } = parseTimeValue(timeValue, fallbackHour, "00")
-  return `
-    <div class="time-select-group">
-      <select id="${prefix}-hour" class="time-select">${buildHourOptions(hour)}</select>
-      <span>:</span>
-      <select id="${prefix}-minute" class="time-select">${buildMinuteOptions(minute)}</select>
-    </div>
-  `
+function setupStoreScheduleTimes(settings = {}) {
+  const open = parseTimeValue(settings.openingHours?.start || "09:00", "09", "00")
+  const close = parseTimeValue(settings.openingHours?.end || "19:00", "19", "00")
+  const lunchStart = parseTimeValue(settings.lunchBreak?.start || "13:00", "13", "00")
+  const lunchEnd = parseTimeValue(settings.lunchBreak?.end || "14:00", "14", "00")
+
+  const pairs = [
+    ["storeOpenHour", "storeOpenMinute", open.hour, open.minute],
+    ["storeCloseHour", "storeCloseMinute", close.hour, close.minute],
+    ["storeLunchStartHour", "storeLunchStartMinute", lunchStart.hour, lunchStart.minute],
+    ["storeLunchEndHour", "storeLunchEndMinute", lunchEnd.hour, lunchEnd.minute],
+  ]
+
+  pairs.forEach(([hourId, minuteId, hourValue, minuteValue]) => {
+    const hourSelect = document.getElementById(hourId)
+    const minuteSelect = document.getElementById(minuteId)
+    if (!hourSelect || !minuteSelect) return
+    hourSelect.innerHTML = buildHourOptions(hourValue)
+    minuteSelect.innerHTML = buildMinuteOptions(minuteValue)
+  })
 }
 
-function renderSchedules() {
-  const container = document.getElementById("schedulesBarbersList")
-  if (!container) return
-
-  const entries = filterBarberEntries()
-  if (!entries.length) {
-    container.innerHTML = '<div class="empty-state">Nenhum barbeiro encontrado</div>'
-    return
-  }
-
-  container.innerHTML = entries
-    .map(([id, barber]) => {
-      const startTime = barber.workingHours?.start || "09:00"
-      const endTime = barber.workingHours?.end || "19:00"
-      const workingDays = barber.workingDays || [1, 2, 3, 4, 5]
-
-      const dayCheckboxes = DAY_NAMES.map((name, dayIndex) => {
-        const checked = workingDays.includes(dayIndex) ? "checked" : ""
-        return `<label class="day-checkbox"><input type="checkbox" value="${dayIndex}" ${checked}> ${name}</label>`
-      }).join("")
-
-      return `
-        <div class="schedule-item">
-          <h3>${barber.name || "Barbeiro"}</h3>
-
-          <div class="schedule-controls">
-            <div class="form-group">
-              <label>Início</label>
-              ${buildScheduleTimePicker(`schedule-start-${id}`, startTime, "09")}
-            </div>
-            <div class="form-group">
-              <label>Fim</label>
-              ${buildScheduleTimePicker(`schedule-end-${id}`, endTime, "19")}
-            </div>
-            <button class="btn-save" onclick="saveSchedule('${id}')">Guardar padrão</button>
-          </div>
-
-          <div style="margin-top: 1rem;" id="schedule-days-${id}" class="working-days-grid">
-            ${dayCheckboxes}
-          </div>
-
-          <div class="scoped-schedule">
-            <h4>Horário específico</h4>
-            <div class="schedule-controls">
-              <div class="form-group">
-                <label>Aplicar em</label>
-                <select id="schedule-scope-${id}" class="inline-select" onchange="toggleScopedInputs('${id}')">
-                  <option value="day">Dia</option>
-                  <option value="week">Semana</option>
-                  <option value="month">Mês</option>
-                </select>
-              </div>
-              <div class="form-group" id="scope-day-wrap-${id}">
-                <label>Data</label>
-                <input type="date" id="scope-day-${id}">
-              </div>
-              <div class="form-group hidden" id="scope-week-wrap-${id}">
-                <label>Semana</label>
-                <input type="week" id="scope-week-${id}">
-              </div>
-              <div class="form-group hidden" id="scope-month-wrap-${id}">
-                <label>Mês</label>
-                <input type="month" id="scope-month-${id}">
-              </div>
-              <div class="form-group">
-                <label>Início</label>
-                ${buildScheduleTimePicker(`scope-start-${id}`, startTime, "09")}
-              </div>
-              <div class="form-group">
-                <label>Fim</label>
-                ${buildScheduleTimePicker(`scope-end-${id}`, endTime, "19")}
-              </div>
-              <button class="btn btn-primary btn-small" onclick="saveScopedSchedule('${id}')">Guardar específico</button>
-            </div>
-          </div>
-        </div>
-      `
-    })
-    .join("")
+function renderStoreSchedule() {
+  const openDays = state.storeSettings.openDays || [1, 2, 3, 4, 5]
+  document.querySelectorAll('#storeOpenDays input[type="checkbox"]').forEach((checkbox) => {
+    checkbox.checked = openDays.includes(Number(checkbox.value))
+  })
+  setupStoreScheduleTimes(state.storeSettings)
 }
 
 function getRevenueFilteredBookings() {
@@ -778,7 +724,6 @@ function loadBarbers() {
     state.barbers = snapshot.exists() ? snapshot.val() : {}
     renderBarbers()
     renderBookings()
-    renderSchedules()
     updateRevenue()
   })
 }
@@ -803,6 +748,92 @@ function loadPromotions() {
     state.promotions = snapshot.exists() ? snapshot.val() : {}
     renderPromotions()
   })
+}
+
+function loadStoreSettings() {
+  onValue(ref(database, "storeSettings"), (snapshot) => {
+    state.storeSettings = snapshot.exists() ? snapshot.val() : {}
+    renderStoreSchedule()
+  })
+}
+
+function resetBarberForm() {
+  const form = document.getElementById("barberForm")
+  if (!form) return
+
+  editingBarberId = null
+  form.reset()
+  setupBarberFormTimes()
+  document.querySelectorAll('#barberWorkingDays input[type="checkbox"]').forEach((checkbox) => {
+    checkbox.checked = [1, 2, 3, 4, 5].includes(Number(checkbox.value))
+  })
+
+  const title = document.getElementById("barberFormTitle")
+  const submitBtn = document.getElementById("barberSubmitBtn")
+  const passwordGroup = document.getElementById("barberPasswordGroup")
+  const passwordInput = document.getElementById("barberPassword")
+
+  if (title) title.textContent = "Adicionar Barbeiro"
+  if (submitBtn) submitBtn.textContent = "Adicionar Barbeiro"
+  if (passwordGroup) passwordGroup.classList.remove("hidden")
+  if (passwordInput) passwordInput.required = true
+}
+
+function openBarberForm(barber = null, barberId = null) {
+  const createCard = document.getElementById("barberCreateCard")
+  if (!createCard) return
+
+  createCard.classList.remove("hidden")
+
+  if (!barber) {
+    resetBarberForm()
+    return
+  }
+
+  editingBarberId = barberId
+  document.getElementById("barberName").value = barber.name || ""
+  document.getElementById("barberEmail").value = barber.email || ""
+  document.getElementById("barberPhone").value = barber.phone || ""
+  document.getElementById("barberSpecialty").value = barber.specialty || ""
+
+  const start = parseTimeValue(barber.workingHours?.start || "09:00", "09", "00")
+  const end = parseTimeValue(barber.workingHours?.end || "19:00", "19", "00")
+  document.getElementById("barberStartHour").value = start.hour
+  document.getElementById("barberStartMinute").value = start.minute
+  document.getElementById("barberEndHour").value = end.hour
+  document.getElementById("barberEndMinute").value = end.minute
+
+  const workingDays = barber.workingDays || [1, 2, 3, 4, 5]
+  document.querySelectorAll('#barberWorkingDays input[type="checkbox"]').forEach((checkbox) => {
+    checkbox.checked = workingDays.includes(Number(checkbox.value))
+  })
+
+  const title = document.getElementById("barberFormTitle")
+  const submitBtn = document.getElementById("barberSubmitBtn")
+  const passwordGroup = document.getElementById("barberPasswordGroup")
+  const passwordInput = document.getElementById("barberPassword")
+
+  if (title) title.textContent = "Editar Barbeiro"
+  if (submitBtn) submitBtn.textContent = "Guardar Alterações"
+  if (passwordGroup) passwordGroup.classList.add("hidden")
+  if (passwordInput) {
+    passwordInput.required = false
+    passwordInput.value = ""
+  }
+}
+
+function closeBarberForm() {
+  document.getElementById("barberCreateCard")?.classList.add("hidden")
+  resetBarberForm()
+}
+
+window.editBarber = (id) => {
+  const barber = state.barbers[id]
+  if (!barber) {
+    showError("Barbeiro não encontrado.")
+    return
+  }
+  openBarberForm(barber, id)
 }
 
 window.editPromotion = (id) => {
@@ -996,104 +1027,6 @@ window.setExecutionStatus = async (id, statusValue) => {
   }
 }
 
-window.toggleScopedInputs = (barberId) => {
-  const scope = document.getElementById(`schedule-scope-${barberId}`)?.value || "day"
-
-  const dayWrap = document.getElementById(`scope-day-wrap-${barberId}`)
-  const weekWrap = document.getElementById(`scope-week-wrap-${barberId}`)
-  const monthWrap = document.getElementById(`scope-month-wrap-${barberId}`)
-
-  if (dayWrap) dayWrap.classList.toggle("hidden", scope !== "day")
-  if (weekWrap) weekWrap.classList.toggle("hidden", scope !== "week")
-  if (monthWrap) monthWrap.classList.toggle("hidden", scope !== "month")
-}
-
-window.saveSchedule = async (barberId) => {
-  const startTime = getSelectTime(`schedule-start-${barberId}-hour`, `schedule-start-${barberId}-minute`)
-  const endTime = getSelectTime(`schedule-end-${barberId}-hour`, `schedule-end-${barberId}-minute`)
-
-  const daysContainer = document.getElementById(`schedule-days-${barberId}`)
-  const checkedDays = Array.from(daysContainer.querySelectorAll('input[type="checkbox"]:checked')).map((cb) => Number(cb.value))
-
-  if (!checkedDays.length) {
-    showError("Selecione pelo menos um dia de trabalho.")
-    return
-  }
-
-  try {
-    const barberRef = ref(database, `barbers/${barberId}`)
-    const barberSnapshot = await get(barberRef)
-    if (!barberSnapshot.exists()) {
-      showError("Barbeiro não encontrado.")
-      return
-    }
-
-    const barber = barberSnapshot.val()
-    await set(barberRef, {
-      ...barber,
-      workingHours: {
-        start: startTime,
-        end: endTime,
-      },
-      workingDays: checkedDays,
-      updatedAt: new Date().toISOString(),
-    })
-
-    showSuccess("Horário padrão atualizado com sucesso!")
-  } catch (error) {
-    showError("Erro ao atualizar horário: " + error.message)
-  }
-}
-
-window.saveScopedSchedule = async (barberId) => {
-  const scope = document.getElementById(`schedule-scope-${barberId}`)?.value || "day"
-
-  let scopeKey = ""
-  if (scope === "day") scopeKey = document.getElementById(`scope-day-${barberId}`)?.value || ""
-  if (scope === "week") scopeKey = document.getElementById(`scope-week-${barberId}`)?.value || ""
-  if (scope === "month") scopeKey = document.getElementById(`scope-month-${barberId}`)?.value || ""
-
-  if (!scopeKey) {
-    showError("Selecione o período para aplicar este horário específico.")
-    return
-  }
-
-  const startTime = getSelectTime(`scope-start-${barberId}-hour`, `scope-start-${barberId}-minute`)
-  const endTime = getSelectTime(`scope-end-${barberId}-hour`, `scope-end-${barberId}-minute`)
-
-  try {
-    const barberRef = ref(database, `barbers/${barberId}`)
-    const snapshot = await get(barberRef)
-    if (!snapshot.exists()) {
-      showError("Barbeiro não encontrado.")
-      return
-    }
-
-    const barber = snapshot.val()
-    const specialSchedules = barber.specialSchedules || {}
-    const bucket = specialSchedules[scope] || {}
-
-    bucket[scopeKey] = {
-      start: startTime,
-      end: endTime,
-      createdAt: new Date().toISOString(),
-    }
-
-    await set(barberRef, {
-      ...barber,
-      specialSchedules: {
-        ...specialSchedules,
-        [scope]: bucket,
-      },
-      updatedAt: new Date().toISOString(),
-    })
-
-    showSuccess("Horário específico guardado com sucesso!")
-  } catch (error) {
-    showError("Erro ao guardar horário específico: " + error.message)
-  }
-}
-
 async function verifyAdminAccess(user) {
   try {
     const adminRef = ref(database, `admins/${user.uid}`)
@@ -1133,7 +1066,7 @@ document.getElementById("barberForm").addEventListener("submit", async (e) => {
     return
   }
 
-  if (!password || password.length < 6) {
+  if (!editingBarberId && (!password || password.length < 6)) {
     showError("A senha deve ter pelo menos 6 caracteres.")
     return
   }
@@ -1148,9 +1081,6 @@ document.getElementById("barberForm").addEventListener("submit", async (e) => {
   }
 
   try {
-    const barberCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password)
-    const barberUid = barberCredential.user.uid
-
     const newBarber = {
       name: document.getElementById("barberName").value,
       email,
@@ -1164,6 +1094,38 @@ document.getElementById("barberForm").addEventListener("submit", async (e) => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }
+
+    if (editingBarberId) {
+      const existingSnapshot = await get(ref(database, `barbers/${editingBarberId}`))
+      if (!existingSnapshot.exists()) {
+        showError("Barbeiro não encontrado para edição.")
+        return
+      }
+
+      const existing = existingSnapshot.val()
+      await set(ref(database, `barbers/${editingBarberId}`), {
+        ...existing,
+        ...newBarber,
+        createdAt: existing.createdAt || new Date().toISOString(),
+      })
+
+      await setDoc(
+        doc(firestore, "users", editingBarberId),
+        {
+          fullName: newBarber.name,
+          phone: newBarber.phone,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      )
+
+      closeBarberForm()
+      showSuccess("Barbeiro atualizado com sucesso!")
+      return
+    }
+
+    const barberCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password)
+    const barberUid = barberCredential.user.uid
 
     await set(ref(database, `barbers/${barberUid}`), newBarber)
 
@@ -1181,8 +1143,7 @@ document.getElementById("barberForm").addEventListener("submit", async (e) => {
     })
 
     await signOut(secondaryAuth)
-    e.target.reset()
-    setupBarberFormTimes()
+    closeBarberForm()
     showSuccess("Barbeiro adicionado com sucesso!")
   } catch (error) {
     if (error.code === "auth/email-already-in-use") {
@@ -1191,6 +1152,40 @@ document.getElementById("barberForm").addEventListener("submit", async (e) => {
       showError("Erro ao adicionar barbeiro: " + error.message)
     }
   }
+})
+
+document.getElementById("storeScheduleForm").addEventListener("submit", async (e) => {
+  e.preventDefault()
+
+  const openDays = Array.from(document.querySelectorAll('#storeOpenDays input[type="checkbox"]:checked')).map((cb) => Number(cb.value))
+  if (!openDays.length) {
+    showError("Selecione pelo menos um dia em que a loja está aberta.")
+    return
+  }
+
+  const payload = {
+    openDays,
+    openingHours: {
+      start: getSelectTime("storeOpenHour", "storeOpenMinute"),
+      end: getSelectTime("storeCloseHour", "storeCloseMinute"),
+    },
+    lunchBreak: {
+      start: getSelectTime("storeLunchStartHour", "storeLunchStartMinute"),
+      end: getSelectTime("storeLunchEndHour", "storeLunchEndMinute"),
+    },
+    updatedAt: new Date().toISOString(),
+  }
+
+  try {
+    await set(ref(database, "storeSettings"), payload)
+    showSuccess("Horário da loja guardado com sucesso!")
+  } catch (error) {
+    showError("Erro ao guardar horário da loja: " + error.message)
+  }
+})
+
+document.getElementById("bookingPriorityCancel")?.addEventListener("change", () => {
+  renderBookings()
 })
 
 onAuthStateChanged(auth, async (user) => {
@@ -1204,8 +1199,9 @@ onAuthStateChanged(auth, async (user) => {
   if (!ok) return
 
   setupTopTabs()
-  setupBarberSubTabs()
+  setupBarberFormMode()
   setupBarberFormTimes()
+  setupStoreScheduleTimes()
   setupFilters()
   setupRevenueControls()
   setupPromotionForm()
@@ -1214,6 +1210,7 @@ onAuthStateChanged(auth, async (user) => {
   loadBookings()
   loadClients()
   loadPromotions()
+  loadStoreSettings()
 })
 
 document.getElementById("logoutBtn").addEventListener("click", () => {

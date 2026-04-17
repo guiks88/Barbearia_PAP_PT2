@@ -1,3 +1,6 @@
+import { database } from "./firebase-config.js"
+import { ref, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
+
 const helpTexts = {
   register: {
     title: "Como me registo?",
@@ -393,17 +396,58 @@ function initCutsGallery() {
   })
 }
 
+function timeToMinutes(timeStr) {
+  const [hour, minute] = String(timeStr || '00:00').split(':').map(Number)
+  return (hour || 0) * 60 + (minute || 0)
+}
+
+async function initStoreStatusBadge() {
+  const badge = document.getElementById('storeStatusBadge')
+  if (!badge) return
+
+  const fallbackOpen = [1, 2, 3, 4, 5]
+  const fallbackOpening = { start: '09:00', end: '19:00' }
+
+  try {
+    const snapshot = await get(ref(database, 'storeSettings'))
+    const settings = snapshot.exists() ? snapshot.val() : {}
+
+    const openDays = Array.isArray(settings.openDays) && settings.openDays.length ? settings.openDays : fallbackOpen
+    const openingStart = settings.openingHours?.start || fallbackOpening.start
+    const openingEnd = settings.openingHours?.end || fallbackOpening.end
+    const lunchStart = settings.lunchBreak?.start || '13:00'
+    const lunchEnd = settings.lunchBreak?.end || '14:00'
+
+    const now = new Date()
+    const currentDay = now.getDay()
+    const currentMinutes = now.getHours() * 60 + now.getMinutes()
+
+    const isOpenDay = openDays.includes(currentDay)
+    const isInsideOpening = currentMinutes >= timeToMinutes(openingStart) && currentMinutes <= timeToMinutes(openingEnd)
+    const isLunchBreak = currentMinutes >= timeToMinutes(lunchStart) && currentMinutes < timeToMinutes(lunchEnd)
+    const isOpen = isOpenDay && isInsideOpening && !isLunchBreak
+
+    badge.textContent = isOpen ? 'Aberto' : 'Fechado'
+    badge.classList.toggle('status-open', isOpen)
+    badge.classList.toggle('status-closed', !isOpen)
+  } catch (error) {
+    console.error('Erro ao atualizar estado da loja:', error)
+  }
+}
+
 // Initialize tabs when DOM is ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initTabs);
   document.addEventListener('DOMContentLoaded', initActionMenu);
   document.addEventListener('DOMContentLoaded', initDownloadSiteButton);
   document.addEventListener('DOMContentLoaded', initCutsGallery);
+  document.addEventListener('DOMContentLoaded', initStoreStatusBadge);
 } else {
   initTabs();
   initActionMenu();
   initDownloadSiteButton();
   initCutsGallery();
+  initStoreStatusBadge();
 }
 
 // Also initialize on load
@@ -411,3 +455,4 @@ window.addEventListener('load', initTabs);
 window.addEventListener('load', initActionMenu);
 window.addEventListener('load', initDownloadSiteButton);
 window.addEventListener('load', initCutsGallery);
+window.addEventListener('load', initStoreStatusBadge);

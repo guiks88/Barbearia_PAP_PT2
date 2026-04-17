@@ -37,6 +37,12 @@ const bookingState = {
   bookings: []
 }
 
+bookingState.storeSettings = {
+  openDays: [1, 2, 3, 4, 5],
+  openingHours: { start: '09:00', end: '19:00' },
+  lunchBreak: { start: '13:00', end: '14:00' }
+}
+
 // Horários de trabalho padrão (9h às 19h)
 const defaultWorkingHours = ['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00']
 
@@ -61,6 +67,49 @@ function generateWorkingHours(startTime, endTime, stepMinutes = 30) {
   }
 
   return slots
+}
+
+function timeToMinutes(timeStr) {
+  const [hour, minute] = String(timeStr || '00:00').split(':').map(Number)
+  return (hour || 0) * 60 + (minute || 0)
+}
+
+function getStoreRuleValues() {
+  const settings = bookingState.storeSettings || {}
+  const openDays = Array.isArray(settings.openDays) && settings.openDays.length ? settings.openDays : [1, 2, 3, 4, 5]
+  const openingStart = settings.openingHours?.start || '09:00'
+  const openingEnd = settings.openingHours?.end || '19:00'
+  const lunchStart = settings.lunchBreak?.start || '13:00'
+  const lunchEnd = settings.lunchBreak?.end || '14:00'
+
+  return {
+    openDays,
+    openingStart,
+    openingEnd,
+    lunchStart,
+    lunchEnd,
+  }
+}
+
+function applyStoreRulesToSlots(dateStr, slots) {
+  const { openDays, openingStart, openingEnd, lunchStart, lunchEnd } = getStoreRuleValues()
+  const dayOfWeek = parseDateString(dateStr).getDay()
+
+  if (!openDays.includes(dayOfWeek)) {
+    return []
+  }
+
+  const openingStartMinutes = timeToMinutes(openingStart)
+  const openingEndMinutes = timeToMinutes(openingEnd)
+  const lunchStartMinutes = timeToMinutes(lunchStart)
+  const lunchEndMinutes = timeToMinutes(lunchEnd)
+
+  return slots.filter((slot) => {
+    const slotMinutes = timeToMinutes(slot)
+    const insideOpening = slotMinutes >= openingStartMinutes && slotMinutes <= openingEndMinutes
+    const insideLunch = slotMinutes >= lunchStartMinutes && slotMinutes < lunchEndMinutes
+    return insideOpening && !insideLunch
+  })
 }
 
 function getIsoWeekKey(dateStr) {
@@ -89,16 +138,17 @@ function getSpecialScheduleForDate(dateStr) {
 }
 
 function getWorkingHoursForDate(dateStr) {
+  let workingHours = []
   const specialSchedule = getSpecialScheduleForDate(dateStr)
   if (specialSchedule) {
-    return generateWorkingHours(specialSchedule.start, specialSchedule.end)
+    workingHours = generateWorkingHours(specialSchedule.start, specialSchedule.end)
+  } else if (bookingState.barberWorkingHours.length > 0) {
+    workingHours = bookingState.barberWorkingHours
+  } else {
+    workingHours = defaultWorkingHours
   }
 
-  if (bookingState.barberWorkingHours.length > 0) {
-    return bookingState.barberWorkingHours
-  }
-
-  return defaultWorkingHours
+  return applyStoreRulesToSlots(dateStr, workingHours)
 }
 
 function getDateString(dateObj) {
@@ -702,9 +752,33 @@ async function loadBarbers() {
   }
 }
 
+async function loadStoreSettings() {
+  try {
+    const snapshot = await get(ref(database, 'storeSettings'))
+    if (!snapshot.exists()) return
+
+    const settings = snapshot.val() || {}
+    bookingState.storeSettings = {
+      openDays: Array.isArray(settings.openDays) && settings.openDays.length ? settings.openDays : [1, 2, 3, 4, 5],
+      openingHours: {
+        start: settings.openingHours?.start || '09:00',
+        end: settings.openingHours?.end || '19:00'
+      },
+      lunchBreak: {
+        start: settings.lunchBreak?.start || '13:00',
+        end: settings.lunchBreak?.end || '14:00'
+      }
+    }
+  } catch (error) {
+    console.error('Erro ao carregar horário da loja:', error)
+  }
+}
+
 async function selectBarber(barberId, barberName) {
   bookingState.barber = barberId
   bookingState.barberName = barberName
+
+  await loadStoreSettings()
   
   // Carregar horários do barbeiro
   try {
@@ -866,9 +940,10 @@ function renderCalendar() {
     const isToday = dateStr === todayStr
     const isPast = isDateBeforeToday(dateStr)
     
-    // Verificar se o barbeiro trabalha neste dia da semana
+    // Verificar se o barbeiro trabalha e se a loja está aberta no dia
     const dayOfWeek = new Date(year, month, day).getDay()
-    const isWorkingDay = bookingState.barberWorkingDays.includes(dayOfWeek)
+    const { openDays } = getStoreRuleValues()
+    const isWorkingDay = bookingState.barberWorkingDays.includes(dayOfWeek) && openDays.includes(dayOfWeek)
     
     // Calcular slots disponíveis (0 se não é dia de trabalho)
     const availableSlots = isWorkingDay ? calculateAvailableSlots(dateStr) : 0

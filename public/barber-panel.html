@@ -207,6 +207,28 @@
             text-align: center;
         }
 
+        .stat-card.clickable {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .stat-card.clickable:hover {
+            border-color: rgba(103, 232, 249, 0.55);
+            transform: translateY(-2px);
+        }
+
+        .stat-card.active-filter {
+            border-color: rgba(103, 232, 249, 0.75);
+            box-shadow: 0 0 0 2px rgba(103, 232, 249, 0.2);
+        }
+
+        .view-mode-label {
+            color: #9ca3af;
+            font-size: 0.9rem;
+            margin-top: -0.6rem;
+            margin-bottom: 1rem;
+        }
+
         .stat-card h3 {
             margin: 0 0 0.5rem 0;
             font-size: 2rem;
@@ -279,15 +301,15 @@
         </div>
 
         <div class="stats-grid">
-            <div class="stat-card">
+            <div class="stat-card clickable" data-view-mode="today" role="button" tabindex="0" aria-label="Ver cortes de hoje">
                 <h3 id="todayCount">0</h3>
                 <p>Marcações Hoje</p>
             </div>
-            <div class="stat-card">
+            <div class="stat-card clickable" data-view-mode="week" role="button" tabindex="0" aria-label="Ver cortes desta semana">
                 <h3 id="weekCount">0</h3>
                 <p>Marcações esta Semana</p>
             </div>
-            <div class="stat-card">
+            <div class="stat-card clickable" data-view-mode="month" role="button" tabindex="0" aria-label="Ver cortes deste mês">
                 <h3 id="monthCount">0</h3>
                 <p>Marcações este Mês</p>
             </div>
@@ -299,8 +321,11 @@
                 <div class="date-selector">
                     <label for="dateFilter">Data:</label>
                     <input type="date" id="dateFilter">
+                    <button class="btn btn-secondary btn-small" id="dayModeBtn" type="button">Dia específico</button>
                 </div>
             </div>
+
+            <p class="view-mode-label" id="viewModeLabel">A mostrar: dia específico</p>
 
             <div id="appointmentsContainer" class="appointments-grid">
                 <div class="loading">

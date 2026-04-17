@@ -1144,11 +1144,12 @@ main {
 /* ===== ADMIN STYLES ===== */
 .admin-tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   margin: 2rem 0;
   border-bottom: 1px solid var(--color-border);
   padding-bottom: 0;
-  overflow-x: auto;
+  overflow-x: visible;
 }
 
 .tab-btn {
