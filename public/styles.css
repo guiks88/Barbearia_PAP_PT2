@@ -9,8 +9,8 @@
   --color-bg-primary: #0f1115;
   --color-bg-secondary: #151922;
   --color-bg-card: #1a1f2b;
-  --color-accent: #8b5cf6;
-  --color-accent-hover: #7c3aed;
+  --color-accent: #3aa0b8;
+  --color-accent-hover: #2d8398;
   --color-text-primary: #e5e7eb;
   --color-text-secondary: #9ca3af;
   --color-text-muted: #6b7280;
@@ -727,7 +727,7 @@ body {
   color: var(--color-text-primary);
   font-weight: 500;
   margin-bottom: 0.5rem;
-  font-size: 0.95rem;
+  font-size: 0.88rem;
 }
 
 .form-group input,
@@ -752,7 +752,7 @@ body {
 .form-group textarea:focus {
   outline: none;
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  box-shadow: 0 0 0 3px rgba(58, 160, 184, 0.15);
 }
 
 .form-group select option {
@@ -932,18 +932,18 @@ body {
   gap: 0.5rem;
   margin: 2rem 0;
   border-bottom: 1px solid var(--color-border);
-  padding-bottom: 0;
+  padding-bottom: 0.25rem;
   overflow-x: auto;
 }
 
 .tab-btn {
-  padding: 1rem 1.5rem;
+  padding: 0.9rem 1.1rem;
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
   color: var(--color-text-secondary);
-  font-size: 0.95rem;
-  font-weight: 500;
+  font-size: 1rem;
+  font-weight: 600;
   cursor: pointer;
   transition: var(--transition);
   position: relative;
@@ -957,6 +957,40 @@ body {
 .tab-btn.active {
   color: var(--color-accent);
   border-bottom-color: var(--color-accent);
+}
+
+.admin-subtabs {
+  display: inline-flex;
+  gap: 0.25rem;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 0.25rem;
+  margin-bottom: 1rem;
+}
+
+.subtab-btn {
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 0.6rem 0.9rem;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.subtab-btn.active {
+  background: rgba(58, 160, 184, 0.16);
+  color: var(--color-text-primary);
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
 }
 
 .barber-item,
@@ -975,14 +1009,14 @@ body {
 .barber-item:hover,
 .booking-item:hover {
   box-shadow: var(--shadow-md);
-  transform: translateX(3px);
+  transform: translateY(-1px);
 }
 
 .barber-item h3,
 .booking-item h3 {
   color: var(--color-text-primary);
   margin-bottom: 0.5rem;
-  font-size: 1.1rem;
+  font-size: 1rem;
 }
 
 .barber-item p,
@@ -1006,7 +1040,88 @@ body {
 .btn-danger:hover {
   background: #dc2626;
   transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+}
+
+.booking-item-extended {
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.booking-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.4rem 1rem;
+  margin: 0.5rem 0;
+}
+
+.booking-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 210px;
+}
+
+.status-row {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.status-pill.is-active {
+  color: #6ee7b7;
+  background: rgba(110, 231, 183, 0.12);
+  border-color: rgba(110, 231, 183, 0.4);
+}
+
+.status-pill.is-warning {
+  color: #fcd34d;
+  background: rgba(252, 211, 77, 0.12);
+  border-color: rgba(252, 211, 77, 0.4);
+}
+
+.status-pill.is-cancelled {
+  color: #fca5a5;
+  background: rgba(252, 165, 165, 0.12);
+  border-color: rgba(252, 165, 165, 0.4);
+}
+
+.status-pill.is-progress {
+  color: #fdba74;
+  background: rgba(253, 186, 116, 0.12);
+  border-color: rgba(253, 186, 116, 0.4);
+}
+
+.status-pill.is-completed {
+  color: #6ee7b7;
+  background: rgba(110, 231, 183, 0.12);
+  border-color: rgba(110, 231, 183, 0.4);
+}
+
+.status-pill.is-pending {
+  color: #c4b5fd;
+  background: rgba(196, 181, 253, 0.1);
+  border-color: rgba(196, 181, 253, 0.4);
+}
+
+.inline-select {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 0.85rem;
 }
 
 .empty-state {
@@ -1048,6 +1163,22 @@ body {
 .day-checkbox input[type="checkbox"] {
   width: auto;
   accent-color: var(--color-accent);
+}
+
+.time-select-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.time-select {
+  min-width: 70px;
+  width: auto;
+  padding: 0.55rem 0.55rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #111827;
 }
 
 /* ===== REVENUE CARDS ===== */
@@ -1109,6 +1240,18 @@ body {
   background: white;
   color: #1a1a2e;
   font-size: 0.9rem;
+}
+
+.scoped-schedule {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px dashed var(--color-border);
+}
+
+.scoped-schedule h4 {
+  font-size: 0.95rem;
+  color: var(--color-text-primary);
+  margin-bottom: 0.75rem;
 }
 
 .btn-save {
@@ -1202,6 +1345,14 @@ body {
     flex-direction: column;
     gap: 1rem;
     text-align: center;
+  }
+
+  .booking-actions {
+    min-width: 100%;
+  }
+
+  .booking-item-extended {
+    flex-direction: column;
   }
 }
 

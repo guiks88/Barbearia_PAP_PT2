@@ -27,7 +27,12 @@
         </div>
 
         <section id="barbers-tab" class="tab-content active">
-            <div class="card">
+            <div class="admin-subtabs" role="tablist" aria-label="Gestão de barbeiros">
+                <button class="subtab-btn active" data-subtab="create">Adicionar Barbeiro</button>
+                <button class="subtab-btn" data-subtab="list">Ver Barbeiros</button>
+            </div>
+
+            <div class="card" id="barberCreateCard">
                 <h2>Registar Novo Barbeiro</h2>
                 <form id="barberForm">
                     <div class="form-group">
@@ -52,14 +57,20 @@
                         <input type="text" id="barberSpecialty">
                     </div>
                     <div class="form-group">
-                        <label for="barberStartTime">Horário de Início *</label>
-                        <input type="time" id="barberStartTime" required value="09:00">
-                        <small style="color: var(--color-text-secondary); font-size: 0.85rem;">Horário de início do trabalho</small>
+                        <label>Horário de Início *</label>
+                        <div class="time-select-group">
+                            <select id="barberStartHour" class="time-select"></select>
+                            <span>:</span>
+                            <select id="barberStartMinute" class="time-select"></select>
+                        </div>
                     </div>
                     <div class="form-group">
-                        <label for="barberEndTime">Horário de Fim *</label>
-                        <input type="time" id="barberEndTime" required value="19:00">
-                        <small style="color: var(--color-text-secondary); font-size: 0.85rem;">Horário de fim do trabalho</small>
+                        <label>Horário de Fim *</label>
+                        <div class="time-select-group">
+                            <select id="barberEndHour" class="time-select"></select>
+                            <span>:</span>
+                            <select id="barberEndMinute" class="time-select"></select>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>Dias de Trabalho *</label>
@@ -78,8 +89,26 @@
                 </form>
             </div>
 
-            <div class="card">
+            <div class="card hidden" id="barberListCard">
                 <h2>Barbeiros Registados</h2>
+                <div class="filter-grid">
+                    <div class="form-group">
+                        <label for="barberSearchName">Nome</label>
+                        <input type="text" id="barberSearchName" placeholder="Pesquisar por nome">
+                    </div>
+                    <div class="form-group">
+                        <label for="barberSearchEmail">Email</label>
+                        <input type="text" id="barberSearchEmail" placeholder="Pesquisar por email">
+                    </div>
+                    <div class="form-group">
+                        <label for="barberSearchPhone">Telefone</label>
+                        <input type="text" id="barberSearchPhone" placeholder="Pesquisar por telefone">
+                    </div>
+                    <div class="form-group">
+                        <label for="barberSearchSpecialty">Serviço/Especialidade</label>
+                        <input type="text" id="barberSearchSpecialty" placeholder="Ex: Fade, Barba...">
+                    </div>
+                </div>
                 <div id="barbersList"></div>
             </div>
         </section>
@@ -87,6 +116,36 @@
         <section id="bookings-tab" class="tab-content">
             <div class="card">
                 <h2>Todas as Marcações</h2>
+                <div class="filter-grid">
+                    <div class="form-group">
+                        <label for="bookingSearchClientName">Nome do Cliente</label>
+                        <input type="text" id="bookingSearchClientName" placeholder="Pesquisar nome">
+                    </div>
+                    <div class="form-group">
+                        <label for="bookingSearchClientEmail">Email do Cliente</label>
+                        <input type="text" id="bookingSearchClientEmail" placeholder="Pesquisar email">
+                    </div>
+                    <div class="form-group">
+                        <label for="bookingSearchClientPhone">Telefone do Cliente</label>
+                        <input type="text" id="bookingSearchClientPhone" placeholder="Pesquisar telefone">
+                    </div>
+                    <div class="form-group">
+                        <label for="bookingSearchService">Serviço</label>
+                        <input type="text" id="bookingSearchService" placeholder="Pesquisar serviço">
+                    </div>
+                    <div class="form-group">
+                        <label for="bookingSearchBarber">Barbeiro</label>
+                        <input type="text" id="bookingSearchBarber" placeholder="Pesquisar barbeiro">
+                    </div>
+                    <div class="form-group">
+                        <label for="bookingDateStart">Data Inicial</label>
+                        <input type="date" id="bookingDateStart">
+                    </div>
+                    <div class="form-group">
+                        <label for="bookingDateEnd">Data Final</label>
+                        <input type="date" id="bookingDateEnd">
+                    </div>
+                </div>
                 <div id="allBookingsList"></div>
             </div>
         </section>
@@ -94,7 +153,7 @@
         <section id="schedules-tab" class="tab-content">
             <div class="card">
                 <h2>Gestão de Horários dos Barbeiros</h2>
-                <p style="color: var(--color-text-secondary); margin-bottom: 1.5rem;">Edite os dias e horários de trabalho de cada barbeiro.</p>
+                <p style="color: var(--color-text-secondary); margin-bottom: 1.5rem;">Defina horário padrão e horário específico por dia, semana ou mês para cada barbeiro.</p>
                 <div id="schedulesBarbersList"></div>
             </div>
         </section>
@@ -106,14 +165,27 @@
                     <div class="form-group" style="margin-bottom: 0;">
                         <label for="revenueFilter">Período</label>
                         <select id="revenueFilter" style="padding: 0.75rem; border: 1px solid var(--color-border); border-radius: 8px; background: white; color: #1a1a2e; font-size: 0.95rem;">
-                            <option value="month">Este Mês</option>
-                            <option value="year">Este Ano</option>
+                            <option value="day-range">Período de Dias</option>
+                            <option value="month">Período de Mês e Ano</option>
+                            <option value="year">Período no Ano</option>
                             <option value="all">Todo o Período</option>
                         </select>
                     </div>
                     <div class="form-group" style="margin-bottom: 0;">
-                        <label for="revenueMonth">Mês</label>
+                        <label for="revenueMonth">Mês e Ano</label>
                         <input type="month" id="revenueMonth" style="padding: 0.75rem; border: 1px solid var(--color-border); border-radius: 8px; background: white; color: #1a1a2e; font-size: 0.95rem;">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="revenueYear">Ano</label>
+                        <select id="revenueYear" style="padding: 0.75rem; border: 1px solid var(--color-border); border-radius: 8px; background: white; color: #1a1a2e; font-size: 0.95rem;"></select>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="revenueStartDate">Data Inicial</label>
+                        <input type="date" id="revenueStartDate" style="padding: 0.75rem; border: 1px solid var(--color-border); border-radius: 8px; background: white; color: #1a1a2e; font-size: 0.95rem;">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="revenueEndDate">Data Final</label>
+                        <input type="date" id="revenueEndDate" style="padding: 0.75rem; border: 1px solid var(--color-border); border-radius: 8px; background: white; color: #1a1a2e; font-size: 0.95rem;">
                     </div>
                 </div>
                 <div class="revenue-summary" id="revenueSummary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;"></div>
@@ -124,6 +196,20 @@
         <section id="clients-tab" class="tab-content">
             <div class="card">
                 <h2>Clientes Registados</h2>
+                <div class="filter-grid">
+                    <div class="form-group">
+                        <label for="clientSearch">Nome, email ou telefone</label>
+                        <input type="text" id="clientSearch" placeholder="Pesquisar cliente">
+                    </div>
+                    <div class="form-group">
+                        <label for="clientCreatedFrom">Conta criada de</label>
+                        <input type="date" id="clientCreatedFrom">
+                    </div>
+                    <div class="form-group">
+                        <label for="clientCreatedTo">Conta criada até</label>
+                        <input type="date" id="clientCreatedTo">
+                    </div>
+                </div>
                 <div id="clientsList"></div>
             </div>
         </section>
