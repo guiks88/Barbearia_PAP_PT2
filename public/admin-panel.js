@@ -38,7 +38,10 @@ const state = {
   barbers: {},
   bookings: {},
   clients: {},
+  promotions: {},
 }
+
+let editingPromotionId = null
 
 function normalize(value) {
   return String(value || "").toLowerCase().trim()
@@ -444,6 +447,113 @@ function renderClients() {
     .join("")
 }
 
+function resetPromotionForm() {
+  const form = document.getElementById("promotionForm")
+  if (!form) return
+
+  form.reset()
+  const minCuts = document.getElementById("promotionMinCuts")
+  if (minCuts) minCuts.value = "10"
+
+  const status = document.getElementById("promotionActive")
+  if (status) status.value = "true"
+
+  editingPromotionId = null
+  const saveBtn = document.getElementById("promotionSaveBtn")
+  if (saveBtn) saveBtn.textContent = "Guardar promoção"
+}
+
+function renderPromotions() {
+  const container = document.getElementById("promotionsListAdmin")
+  if (!container) return
+
+  const entries = Object.entries(state.promotions).sort((a, b) => {
+    const left = a[1]?.createdAt || ""
+    const right = b[1]?.createdAt || ""
+    return right.localeCompare(left)
+  })
+
+  if (!entries.length) {
+    container.innerHTML = '<div class="empty-state">Sem promoções registadas</div>'
+    return
+  }
+
+  container.innerHTML = entries
+    .map(([id, promo]) => {
+      const isActive = promo.isActive !== false
+      return `
+        <div class="barber-item promotion-item-admin">
+          <div>
+            <h3>${promo.title || "Promoção"}</h3>
+            <p><strong>Descrição:</strong> ${promo.description || "-"}</p>
+            <p><strong>Condição:</strong> ${promo.minCompletedCuts || 10} cortes concluídos</p>
+            <p><strong>Prémio:</strong> ${promo.rewardText || "-"}</p>
+            <p><strong>Estado:</strong> <span class="status-pill ${isActive ? "is-active" : "is-cancelled"}">${isActive ? "Ativa" : "Inativa"}</span></p>
+          </div>
+          <div class="booking-actions">
+            <button class="btn btn-secondary btn-small" onclick="editPromotion('${id}')">Editar</button>
+            <button class="btn btn-danger btn-small" onclick="deletePromotion('${id}')">Eliminar</button>
+          </div>
+        </div>
+      `
+    })
+    .join("")
+}
+
+function setupPromotionForm() {
+  const form = document.getElementById("promotionForm")
+  const cancelBtn = document.getElementById("promotionCancelEditBtn")
+  if (!form || !cancelBtn) return
+
+  if (!form.dataset.bound) {
+    form.dataset.bound = "true"
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault()
+
+      const title = document.getElementById("promotionTitle")?.value?.trim() || ""
+      const minCompletedCuts = Number(document.getElementById("promotionMinCuts")?.value || 10)
+      const rewardText = document.getElementById("promotionRewardText")?.value?.trim() || ""
+      const description = document.getElementById("promotionDescription")?.value?.trim() || ""
+      const isActive = String(document.getElementById("promotionActive")?.value || "true") === "true"
+
+      if (!title || !rewardText || !minCompletedCuts || minCompletedCuts < 1) {
+        showError("Preencha os campos da promoção corretamente.")
+        return
+      }
+
+      const id = editingPromotionId || `promo_${Date.now()}`
+      const previous = state.promotions[id] || {}
+
+      const payload = {
+        title,
+        description,
+        minCompletedCuts,
+        rewardText,
+        isActive,
+        createdAt: previous.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+
+      try {
+        await set(ref(database, `promotions/${id}`), payload)
+        showSuccess(editingPromotionId ? "Promoção atualizada com sucesso!" : "Promoção criada com sucesso!")
+        resetPromotionForm()
+      } catch (error) {
+        showError("Erro ao guardar promoção: " + error.message)
+      }
+    })
+  }
+
+  if (!cancelBtn.dataset.bound) {
+    cancelBtn.dataset.bound = "true"
+    cancelBtn.addEventListener("click", () => {
+      resetPromotionForm()
+    })
+  }
+
+  resetPromotionForm()
+}
+
 function buildScheduleTimePicker(prefix, timeValue, fallbackHour = "09") {
   const { hour, minute } = parseTimeValue(timeValue, fallbackHour, "00")
   return `
@@ -682,6 +792,52 @@ function loadClients() {
     state.clients = snapshot.exists() ? snapshot.val() : {}
     renderClients()
   })
+}
+
+function loadPromotions() {
+  onValue(ref(database, "promotions"), (snapshot) => {
+    state.promotions = snapshot.exists() ? snapshot.val() : {}
+    renderPromotions()
+  })
+}
+
+window.editPromotion = (id) => {
+  const promo = state.promotions[id]
+  if (!promo) {
+    showError("Promoção não encontrada.")
+    return
+  }
+
+  editingPromotionId = id
+  const title = document.getElementById("promotionTitle")
+  const minCuts = document.getElementById("promotionMinCuts")
+  const rewardText = document.getElementById("promotionRewardText")
+  const description = document.getElementById("promotionDescription")
+  const active = document.getElementById("promotionActive")
+  const saveBtn = document.getElementById("promotionSaveBtn")
+
+  if (title) title.value = promo.title || ""
+  if (minCuts) minCuts.value = String(promo.minCompletedCuts || 10)
+  if (rewardText) rewardText.value = promo.rewardText || ""
+  if (description) description.value = promo.description || ""
+  if (active) active.value = promo.isActive === false ? "false" : "true"
+  if (saveBtn) saveBtn.textContent = "Atualizar promoção"
+
+  document.getElementById("promotions-tab")?.scrollIntoView({ behavior: "smooth", block: "start" })
+}
+
+window.deletePromotion = async (id) => {
+  if (!confirm("Tem certeza que deseja eliminar esta promoção?")) return
+
+  try {
+    await remove(ref(database, `promotions/${id}`))
+    if (editingPromotionId === id) {
+      resetPromotionForm()
+    }
+    showSuccess("Promoção eliminada com sucesso!")
+  } catch (error) {
+    showError("Erro ao eliminar promoção: " + error.message)
+  }
 }
 
 window.deleteBarber = async (id) => {
@@ -1048,10 +1204,12 @@ onAuthStateChanged(auth, async (user) => {
   setupBarberFormTimes()
   setupFilters()
   setupRevenueControls()
+  setupPromotionForm()
 
   loadBarbers()
   loadBookings()
   loadClients()
+  loadPromotions()
 })
 
 document.getElementById("logoutBtn").addEventListener("click", () => {

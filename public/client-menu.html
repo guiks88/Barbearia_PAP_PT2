@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Menu do Cliente - Barbearia João Castro</title>
+    <title>Área de Cliente - Barbearia João Castro</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <header class="header">
         <div class="container">
-            <h1 class="logo">Menu do Cliente</h1>
+            <h1 class="logo">Área de Cliente</h1>
             <nav class="nav">
-                <button type="button" class="btn btn-secondary" id="clientMenuLogoutBtn">Sair da Conta</button>
-                <a href="index.html" class="btn btn-secondary">← Menu Principal</a>
+                <a href="index.html" class="btn btn-secondary">Voltar ao Menu Principal</a>
+                <button type="button" class="btn btn-secondary" id="clientMenuBackBtn">Voltar</button>
             </nav>
         </div>
     </header>
@@ -21,7 +21,7 @@
         <section class="card" style="margin-bottom: 1.25rem;">
             <h2 style="text-align: center;">Bem-vindo</h2>
             <p id="clientMenuUserInfo" style="text-align: center; color: var(--color-text-secondary);">
-                Escolha uma opção para gerir a sua conta e marcações.
+                Bem-vindo de volta. Hoje e sempre, o seu estilo vem primeiro.
             </p>
         </section>
 
@@ -38,18 +38,25 @@
                 <a href="bookings.html?mode=manage" class="btn btn-primary" style="width: 100%;">Ver Minhas Marcações</a>
             </article>
 
-            <article class="service-card">
-                <h3>Cancelar Marcação</h3>
-                <p style="color: var(--color-text-secondary); margin-bottom: 1rem;">Anular uma marcação já criada.</p>
-                <a href="bookings.html?mode=cancel" class="btn btn-primary" style="width: 100%;">Cancelar Agora</a>
+            <article class="service-card promotions-card">
+                <h3>
+                    Promoções
+                    <span class="promo-badge hidden" id="promoBadge">1</span>
+                </h3>
+                <p id="promotionsSummary" style="color: var(--color-text-secondary); margin-bottom: 1rem;">Ao 10.\u00ba corte, ganha 1 corte grátis.</p>
+                <button type="button" class="btn btn-primary" id="openPromotionsBtn" style="width: 100%;">Ver Promoções</button>
             </article>
+        </section>
+
+        <section class="card hidden" id="promotionsPanel" style="margin-top: 1.25rem;">
+            <h2 style="text-align: center;">Promoções Ativas</h2>
+            <div id="promotionsList" class="promotions-list"></div>
         </section>
     </main>
 
     <footer class="footer">
         <div class="container">
             <p>&copy; 2026 Barbearia João Castro. Todos os direitos reservados.</p>
-            <a href="index.html" class="admin-link">Início</a>
         </div>
     </footer>
 

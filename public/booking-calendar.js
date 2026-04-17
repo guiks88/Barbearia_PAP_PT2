@@ -1290,26 +1290,25 @@ function initBookingConfirmation() {
     newBookingBtn.addEventListener('click', resetBooking)
   }
   
-  // Botão para sair
+  // Botão para voltar para a área de cliente
   const exitBtn = document.getElementById('exitBtn')
   if (exitBtn) {
     exitBtn.addEventListener('click', () => {
-      window.location.href = 'index.html'
+      window.location.href = 'client-menu.html'
     })
   }
 }
 
-function initClientLogout() {
-  const logoutBtn = document.getElementById('logoutClientBtn')
-  if (!logoutBtn) return
+function initClientNavigation() {
+  const backBtn = document.getElementById('bookingGoBackBtn')
+  if (!backBtn) return
 
-  logoutBtn.addEventListener('click', async () => {
-    try {
-      await signOut(auth)
-    } finally {
-      sessionStorage.clear()
-      window.location.href = 'index.html'
+  backBtn.addEventListener('click', () => {
+    if (window.history.length > 1) {
+      window.history.back()
+      return
     }
+    window.location.href = 'client-menu.html'
   })
 }
 
@@ -1350,7 +1349,7 @@ function resetBooking() {
 document.addEventListener('DOMContentLoaded', () => {
   initPageMode()
   initClientAuth()
-  initClientLogout()
+  initClientNavigation()
 
   initAutoClientSession().then((didAutoLogin) => {
     if (!didAutoLogin) {

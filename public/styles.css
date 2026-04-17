@@ -31,6 +31,13 @@ body {
   color: var(--color-text-primary);
   line-height: 1.6;
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  width: 100%;
+  flex: 1 0 auto;
 }
 
 .container {
@@ -162,8 +169,12 @@ body {
   cursor: pointer;
   transition: var(--transition);
   text-decoration: none;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
   text-align: center;
+  white-space: nowrap;
 }
 
 .btn-book {
@@ -635,8 +646,8 @@ body {
 .footer {
   background: var(--color-bg-primary);
   border-top: 1px solid var(--color-border);
-  padding: 2rem 0;
-  margin-top: 4rem;
+  padding: 1.25rem 0;
+  margin-top: auto;
 }
 
 .footer .container {
@@ -675,6 +686,8 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .logo {
@@ -690,6 +703,12 @@ body {
   display: flex;
   gap: 1rem;
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.nav .btn {
+  min-width: 170px;
 }
 
 /* ===== CARDS ===== */
@@ -778,6 +797,10 @@ body {
   border-radius: 8px;
   padding: 1.5rem;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-height: 220px;
   transition: var(--transition);
 }
 
@@ -791,6 +814,64 @@ body {
   color: var(--color-text-primary);
   font-size: 1rem;
   margin-bottom: 0.75rem;
+  font-weight: 600;
+}
+
+.service-card .btn {
+  margin-top: auto;
+}
+
+.promotions-card h3 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.promo-badge {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.promotions-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.9rem;
+  margin-top: 1rem;
+}
+
+.promotion-item {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 1rem;
+}
+
+.promotion-item.is-eligible {
+  border-color: rgba(16, 185, 129, 0.6);
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.35);
+}
+
+.promotion-item h3 {
+  margin-bottom: 0.5rem;
+}
+
+.promotion-item p {
+  color: var(--color-text-secondary);
+  margin: 0.25rem 0;
+}
+
+.promotion-item .promotion-status {
+  margin-top: 0.5rem;
+  color: var(--color-text-primary);
   font-weight: 600;
 }
 
@@ -1143,6 +1224,17 @@ body {
   border-radius: 12px;
 }
 
+.promotion-form-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.promotion-item-admin .booking-actions {
+  min-width: 180px;
+}
+
 /* ===== WORKING DAYS GRID ===== */
 .working-days-grid {
   display: flex;
@@ -1356,6 +1448,24 @@ body {
     text-align: center;
   }
 
+  .header .container {
+    align-items: flex-start;
+  }
+
+  .logo {
+    width: 100%;
+  }
+
+  .nav {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .nav .btn {
+    min-width: 0;
+    flex: 1;
+  }
+
   .booking-item-extended {
     flex-direction: column;
   }
@@ -1377,6 +1487,7 @@ body {
   .btn {
     padding: 0.625rem 1.25rem;
     font-size: 0.875rem;
+    min-height: 42px;
   }
 
   .tabs-nav .container {
@@ -1394,6 +1505,12 @@ body {
   }
 
   .cuts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .services-grid,
+  .client-menu-grid,
+  .promotions-list {
     grid-template-columns: 1fr;
   }
 

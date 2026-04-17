@@ -24,6 +24,7 @@
             <button class="tab-btn" data-tab="bookings">Marcações</button>
             <button class="tab-btn" data-tab="revenue">Faturamento</button>
             <button class="tab-btn" data-tab="clients">Clientes</button>
+            <button class="tab-btn" data-tab="promotions">Promoções</button>
         </div>
 
         <section id="barbers-tab" class="tab-content active">
@@ -218,6 +219,45 @@
                     </div>
                 </div>
                 <div id="clientsList"></div>
+            </div>
+        </section>
+
+        <section id="promotions-tab" class="tab-content">
+            <div class="card">
+                <h2>Promoções</h2>
+                <form id="promotionForm" class="promotion-form">
+                    <div class="filter-grid">
+                        <div class="form-group">
+                            <label for="promotionTitle">Título da promoção</label>
+                            <input type="text" id="promotionTitle" placeholder="Ex: 10.º corte grátis" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="promotionMinCuts">Cortes necessários</label>
+                            <input type="number" id="promotionMinCuts" min="1" value="10" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="promotionRewardText">Prémio</label>
+                            <input type="text" id="promotionRewardText" placeholder="Ex: 1 corte grátis" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="promotionActive">Estado</label>
+                            <select id="promotionActive">
+                                <option value="true">Ativa</option>
+                                <option value="false">Inativa</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="promotionDescription">Descrição</label>
+                        <textarea id="promotionDescription" rows="3" placeholder="Detalhes para o cliente"></textarea>
+                    </div>
+                    <div class="promotion-form-actions">
+                        <button type="submit" class="btn btn-primary" id="promotionSaveBtn">Guardar promoção</button>
+                        <button type="button" class="btn btn-secondary" id="promotionCancelEditBtn">Cancelar edição</button>
+                    </div>
+                </form>
+
+                <div id="promotionsListAdmin"></div>
             </div>
         </section>
     </main>
