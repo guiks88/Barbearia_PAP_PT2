@@ -1,9 +1,21 @@
 {
+  "functions": {
+    "source": "functions"
+  },
   "database": {
     "rules": "database.rules.json"
   },
   "hosting": {
     "public": "public",
+    "rewrites": [
+      {
+        "source": "/api/send-booking-report",
+        "function": {
+          "functionId": "sendBookingReport",
+          "region": "europe-west1"
+        }
+      }
+    ],
     "ignore": [
       "firebase.json",
       "**/.*",

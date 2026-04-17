@@ -1212,8 +1212,8 @@ function setupReportActions(reportText) {
 
   if (sendEmailBtn && !sendEmailBtn.dataset.bound) {
     sendEmailBtn.dataset.bound = 'true'
-    sendEmailBtn.addEventListener('click', () => {
-      sendReportByEmail(reportText)
+    sendEmailBtn.addEventListener('click', async () => {
+      await sendReportByEmail(reportText)
     })
   }
 
@@ -1245,27 +1245,67 @@ function setupReportActions(reportText) {
   }
 }
 
-function sendReportByEmail(reportText) {
+async function sendReportByEmail(reportText) {
   const clientEmail = bookingState.clientEmail || (bookingState.client ? bookingState.client.email : '')
   if (!clientEmail) {
     showError('Email do cliente não encontrado para envio do relatório.')
     return
   }
 
-  const subject = encodeURIComponent('Relatório da sua marcação - Barbearia João Castro')
-  const body = encodeURIComponent(reportText)
-  const mailtoUrl = `mailto:${clientEmail}?subject=${subject}&body=${body}`
+  const sendEmailBtn = document.getElementById('sendEmailReportBtn')
+  if (sendEmailBtn) {
+    sendEmailBtn.disabled = true
+    sendEmailBtn.textContent = 'A enviar...'
+  }
 
-  window.location.href = mailtoUrl
-  showEmailSentPopup(clientEmail)
+  try {
+    const response = await fetch('/api/send-booking-report', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        to: clientEmail,
+        reportText,
+        booking: {
+          clientName: bookingState.clientName,
+          clientEmail,
+          clientPhone: bookingState.clientPhoneComplete || bookingState.clientPhone || '',
+          serviceName: bookingState.serviceName,
+          serviceDuration: bookingState.serviceDuration,
+          barberName: bookingState.barberName,
+          date: bookingState.date,
+          time: bookingState.time,
+          price: bookingState.servicePrice,
+        },
+      }),
+    })
+
+    const payload = await response.json().catch(() => ({}))
+
+    if (!response.ok || payload?.success !== true) {
+      throw new Error(payload?.message || 'Não foi possível enviar o relatório por email.')
+    }
+
+    showEmailSentPopup(clientEmail, 'Relatório enviado com sucesso para o seu email.')
+    showSuccess('Relatório enviado com sucesso!')
+  } catch (error) {
+    console.error('Erro ao enviar relatório por email:', error)
+    showError(error?.message || 'Falha ao enviar relatório por email.')
+  } finally {
+    if (sendEmailBtn) {
+      sendEmailBtn.disabled = false
+      sendEmailBtn.textContent = 'Enviar Relatório por Email'
+    }
+  }
 }
 
-function showEmailSentPopup(email) {
+function showEmailSentPopup(email, customMessage = '') {
   const popup = document.getElementById('emailSentPopup')
   const message = document.getElementById('emailSentMessage')
   if (!popup || !message) return
 
-  message.textContent = `O relatório foi preparado para envio para ${email}. Confirme o envio no seu cliente de email.`
+  message.textContent = customMessage || `O relatório foi enviado para ${email}.`
   popup.classList.remove('hidden')
 }
 
