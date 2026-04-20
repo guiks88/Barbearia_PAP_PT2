@@ -44,11 +44,105 @@ bookingState.storeSettings = {
   lunchBreak: { start: '13:00', end: '14:00' }
 }
 
-// Horários de trabalho padrão (9h às 19h)
-const defaultWorkingHours = ['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00']
+const SLOT_STEP_MINUTES = 10
+
+const SERVICE_CATALOG = {
+  corte: { name: 'Corte de Cabelo', price: 15, duration: 30 },
+  barba: { name: 'Barba', price: 10, duration: 20 },
+  'corte-barba': { name: 'Corte + Barba', price: 22, duration: 45 },
+  sobrancelha: { name: 'Sobrancelha', price: 5, duration: 10 },
+  completo: { name: 'Pacote Completo', price: 35, duration: 60 },
+}
+
+const BARBER_PROFILES = {
+  'joão pedro': {
+    tier: 'economico',
+    priceMultiplier: 1,
+    durationMultiplier: 1,
+  },
+  ana: {
+    tier: 'intermedio',
+    priceMultiplier: 1.2,
+    durationMultiplier: 1.2,
+  },
+  manuel: {
+    tier: 'premium',
+    priceMultiplier: 1.45,
+    durationMultiplier: 1.5,
+  },
+}
+
+function roundToNearest10(value) {
+  return Math.max(10, Math.ceil(Number(value || 0) / 10) * 10)
+}
+
+function roundPrice(value) {
+  return Math.round(Number(value || 0))
+}
+
+function normalizeName(value) {
+  return String(value || '').trim().toLowerCase()
+}
+
+function getBarberProfile(barberName) {
+  const normalized = normalizeName(barberName)
+  return BARBER_PROFILES[normalized] || { tier: 'economico', priceMultiplier: 1, durationMultiplier: 1 }
+}
+
+function getServiceConfigForBarber(serviceKey, barberName) {
+  const base = SERVICE_CATALOG[serviceKey]
+  if (!base) {
+    return { price: bookingState.servicePrice || 0, duration: bookingState.serviceDuration || 30, name: bookingState.serviceName || 'Serviço' }
+  }
+
+  const profile = getBarberProfile(barberName)
+  const price = roundPrice(base.price * profile.priceMultiplier)
+  const duration = roundToNearest10(base.duration * profile.durationMultiplier)
+
+  return {
+    name: base.name,
+    price,
+    duration,
+  }
+}
+
+function applyServicePricingForSelectedBarber() {
+  if (!bookingState.service) return
+  const config = getServiceConfigForBarber(bookingState.service, bookingState.barberName)
+
+  bookingState.serviceName = config.name
+  bookingState.servicePrice = config.price
+  bookingState.serviceDuration = config.duration
+
+  const stepBarberName = document.getElementById('selected-service-name')
+  const stepBarberPrice = document.getElementById('selected-service-price')
+  const stepDateName = document.getElementById('selected-service-name2')
+  const stepDatePrice = document.getElementById('selected-service-price2')
+
+  if (stepBarberName) stepBarberName.textContent = bookingState.serviceName
+  if (stepBarberPrice) stepBarberPrice.textContent = bookingState.servicePrice
+  if (stepDateName) stepDateName.textContent = bookingState.serviceName
+  if (stepDatePrice) stepDatePrice.textContent = bookingState.servicePrice
+}
+
+// Horários de trabalho padrão (9h às 19h) com intervalos de 10 minutos
+const defaultWorkingHours = (() => {
+  const slots = []
+  let current = timeToMinutes('09:00')
+  const end = timeToMinutes('19:00')
+
+  while (current <= end) {
+    const hour = Math.floor(current / 60)
+    const minute = current % 60
+    slots.push(`${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`)
+    current += SLOT_STEP_MINUTES
+  }
+
+  return slots
+})()
 
 // Função para gerar horários do barbeiro
-function generateWorkingHours(startTime, endTime, stepMinutes = 30) {
+function generateWorkingHours(startTime, endTime, stepMinutes = SLOT_STEP_MINUTES) {
   const slots = []
   const [startHour, startMinute] = String(startTime || '09:00').split(':').map(Number)
   const [endHour, endMinute] = String(endTime || '19:00').split(':').map(Number)
@@ -126,6 +220,81 @@ function applyBarberLunchBreakToSlots(slots) {
     const slotMinutes = timeToMinutes(slot)
     return slotMinutes < lunchStartMinutes || slotMinutes >= lunchEndMinutes
   })
+}
+
+function getDayWorkingWindow(dateStr) {
+  const specialSchedule = getSpecialScheduleForDate(dateStr)
+  if (specialSchedule?.start && specialSchedule?.end) {
+    return {
+      start: specialSchedule.start,
+      end: specialSchedule.end,
+    }
+  }
+
+  const baseStart = bookingState.barberWorkingHours?.[0] || '09:00'
+  const baseEnd = bookingState.barberWorkingHours?.[bookingState.barberWorkingHours.length - 1] || '19:00'
+  return {
+    start: baseStart,
+    end: baseEnd,
+  }
+}
+
+function intervalOverlaps(startA, durationA, startB, durationB) {
+  const endA = startA + durationA
+  const endB = startB + durationB
+  return startA < endB && endA > startB
+}
+
+function getBookingDurationMinutes(booking) {
+  const directDuration = Number(booking?.serviceDuration || 0)
+  if (directDuration > 0) return directDuration
+
+  const byService = Number(SERVICE_CATALOG[booking?.service]?.duration || 0)
+  if (byService > 0) return byService
+
+  return 30
+}
+
+function isSlotConflictWithBookings(dateStr, slotTime, durationMinutes, excludedBookingId = null) {
+  const slotStart = timeToMinutes(slotTime)
+  return bookingState.bookings.some((booking) => {
+    if (!booking) return false
+    if (booking.date !== dateStr) return false
+    if (excludedBookingId && booking.id === excludedBookingId) return false
+    if (booking.status === 'cancelled' || booking.status === 'expired') return false
+
+    const bookingStart = timeToMinutes(booking.time)
+    const bookingDuration = getBookingDurationMinutes(booking)
+    return intervalOverlaps(slotStart, durationMinutes, bookingStart, bookingDuration)
+  })
+}
+
+function canFitSlotInSchedule(dateStr, slotTime, durationMinutes) {
+  const { openingStart, openingEnd, lunchStart, lunchEnd } = getStoreRuleValues()
+  const barberWindow = getDayWorkingWindow(dateStr)
+
+  const windowStart = Math.max(timeToMinutes(openingStart), timeToMinutes(barberWindow.start))
+  const windowEnd = Math.min(timeToMinutes(openingEnd), timeToMinutes(barberWindow.end))
+
+  const slotStart = timeToMinutes(slotTime)
+  const slotEnd = slotStart + durationMinutes
+  if (slotStart < windowStart || slotEnd > windowEnd) return false
+
+  const storeLunchStart = timeToMinutes(lunchStart)
+  const storeLunchEnd = timeToMinutes(lunchEnd)
+  if (intervalOverlaps(slotStart, durationMinutes, storeLunchStart, storeLunchEnd - storeLunchStart)) {
+    return false
+  }
+
+  const barberLunchStart = timeToMinutes(bookingState.barberLunchBreak?.start)
+  const barberLunchEnd = timeToMinutes(bookingState.barberLunchBreak?.end)
+  if (barberLunchEnd > barberLunchStart) {
+    if (intervalOverlaps(slotStart, durationMinutes, barberLunchStart, barberLunchEnd - barberLunchStart)) {
+      return false
+    }
+  }
+
+  return true
 }
 
 function getIsoWeekKey(dateStr) {
@@ -443,15 +612,20 @@ function getBookingById(bookingId) {
   return bookingState.clientBookings.find((booking) => booking.id === bookingId) || null
 }
 
-async function hasBookingConflict(barberId, date, time, bookingIdToIgnore) {
+async function hasBookingConflict(barberId, date, time, bookingIdToIgnore, durationMinutes = 30) {
   const snapshot = await get(ref(database, 'bookings'))
   if (!snapshot.exists()) return false
 
   const allBookings = snapshot.val()
+  const candidateStart = timeToMinutes(time)
   return Object.entries(allBookings).some(([id, booking]) => {
     if (!booking || id === bookingIdToIgnore) return false
     if (booking.status === 'cancelled' || booking.status === 'expired') return false
-    return booking.barberId === barberId && booking.date === date && booking.time === time
+    if (booking.barberId !== barberId || booking.date !== date) return false
+
+    const bookingStart = timeToMinutes(booking.time)
+    const bookingDuration = getBookingDurationMinutes(booking)
+    return intervalOverlaps(candidateStart, durationMinutes, bookingStart, bookingDuration)
   })
 }
 
@@ -601,7 +775,14 @@ async function rescheduleBooking(bookingId) {
   }
 
   try {
-    const conflict = await hasBookingConflict(booking.barberId, newDate, newTime, bookingId)
+    const currentDuration = getBookingDurationMinutes(booking)
+
+    if (!canFitSlotInSchedule(newDate, newTime, currentDuration)) {
+      showError('Esse horário não cabe no período disponível do barbeiro/loja.')
+      return
+    }
+
+    const conflict = await hasBookingConflict(booking.barberId, newDate, newTime, bookingId, currentDuration)
     if (conflict) {
       showError('Esse horário já está ocupado. Escolha outro horário.')
       return
@@ -653,14 +834,16 @@ function initServiceSelection() {
     
     selectBtn.addEventListener('click', () => {
       const service = card.dataset.service
-      const price = parseInt(card.dataset.price)
-      const duration = parseInt(card.dataset.duration)
       const serviceName = card.querySelector('h3').textContent
+      const baseConfig = SERVICE_CATALOG[service] || {
+        price: parseInt(card.dataset.price || '0', 10),
+        duration: parseInt(card.dataset.duration || '30', 10),
+      }
       
       bookingState.service = service
       bookingState.serviceName = serviceName
-      bookingState.servicePrice = price
-      bookingState.serviceDuration = duration
+      bookingState.servicePrice = baseConfig.price
+      bookingState.serviceDuration = baseConfig.duration
       
       // Atualizar UI
       serviceCards.forEach(c => c.classList.remove('selected'))
@@ -670,7 +853,7 @@ function initServiceSelection() {
       setTimeout(() => {
         document.getElementById('step-barber').classList.remove('hidden')
         document.getElementById('selected-service-name').textContent = serviceName
-        document.getElementById('selected-service-price').textContent = price
+        document.getElementById('selected-service-price').textContent = bookingState.servicePrice
         
         // Scroll suave
         document.getElementById('step-barber').scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -794,6 +977,7 @@ async function loadStoreSettings() {
 async function selectBarber(barberId, barberName) {
   bookingState.barber = barberId
   bookingState.barberName = barberName
+  applyServicePricingForSelectedBarber()
 
   await loadStoreSettings()
   
@@ -872,11 +1056,15 @@ async function loadExistingBookings(barberId) {
     if (snapshot.exists()) {
       const allBookings = snapshot.val()
       
-      Object.values(allBookings).forEach(booking => {
+      Object.entries(allBookings).forEach(([bookingId, booking]) => {
         if (booking.barberId === barberId && booking.status !== 'cancelled' && booking.status !== 'expired') {
           bookingState.bookings.push({
+            id: bookingId,
             date: booking.date,
-            time: booking.time
+            time: booking.time,
+            status: booking.status,
+            service: booking.service,
+            serviceDuration: booking.serviceDuration,
           })
         }
       })
@@ -1024,12 +1212,14 @@ function createDayElement(day, isOtherMonth, isToday, dateStr, availableSlots = 
 }
 
 function calculateAvailableSlots(dateStr) {
-  const bookedSlots = bookingState.bookings
-    .filter(b => b.date === dateStr)
-    .map(b => b.time)
-  
+  const selectedDuration = Number(bookingState.serviceDuration || 30)
   const workingHours = getWorkingHoursForDate(dateStr)
-  return workingHours.filter(hour => !bookedSlots.includes(hour) && !isPastTimeSlot(dateStr, hour)).length
+  return workingHours.filter((hour) => {
+    if (isPastTimeSlot(dateStr, hour)) return false
+    if (!canFitSlotInSchedule(dateStr, hour, selectedDuration)) return false
+    if (isSlotConflictWithBookings(dateStr, hour, selectedDuration)) return false
+    return true
+  }).length
 }
 
 function selectDate(dateStr, availableSlots, selectedDayElement) {
@@ -1064,20 +1254,17 @@ function selectDate(dateStr, availableSlots, selectedDayElement) {
 function renderTimeSlots(dateStr) {
   const timeSlotsList = document.getElementById('timeSlotsList')
   timeSlotsList.innerHTML = ''
-  
-  const bookedSlots = bookingState.bookings
-    .filter(b => b.date === dateStr)
-    .map(b => b.time)
-  
+  const selectedDuration = Number(bookingState.serviceDuration || 30)
   const workingHours = getWorkingHoursForDate(dateStr)
   
   workingHours.forEach(hour => {
-    const isBooked = bookedSlots.includes(hour)
+    const isBooked = isSlotConflictWithBookings(dateStr, hour, selectedDuration)
     const isPastSlot = isPastTimeSlot(dateStr, hour)
+    const isOutOfWindow = !canFitSlotInSchedule(dateStr, hour, selectedDuration)
     
     const timeSlot = document.createElement('div')
     timeSlot.className = 'time-slot'
-    if (isBooked) {
+    if (isBooked || isOutOfWindow) {
       timeSlot.classList.add('booked')
     }
     if (isPastSlot) {
@@ -1085,7 +1272,7 @@ function renderTimeSlots(dateStr) {
     }
     timeSlot.textContent = hour
     
-    if (!isBooked && !isPastSlot) {
+    if (!isBooked && !isPastSlot && !isOutOfWindow) {
       timeSlot.addEventListener('click', () => selectTime(hour, timeSlot))
     }
     
@@ -1203,11 +1390,13 @@ async function confirmBooking() {
   try {
     await loadExistingBookings(bookingState.barber)
 
-    const bookedSlots = bookingState.bookings
-      .filter(b => b.date === bookingState.date)
-      .map(b => b.time)
+    const selectedDuration = Number(bookingState.serviceDuration || 30)
 
-    if (bookedSlots.includes(bookingState.time) || isPastTimeSlot(bookingState.date, bookingState.time)) {
+    if (
+      isPastTimeSlot(bookingState.date, bookingState.time) ||
+      !canFitSlotInSchedule(bookingState.date, bookingState.time, selectedDuration) ||
+      isSlotConflictWithBookings(bookingState.date, bookingState.time, selectedDuration)
+    ) {
       showError('Este horário já não está disponível. Escolha outro horário.')
       document.getElementById('step-client-data').classList.add('hidden')
       document.getElementById('step-datetime').classList.remove('hidden')

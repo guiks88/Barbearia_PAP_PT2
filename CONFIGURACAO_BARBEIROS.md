@@ -17,7 +17,9 @@ Para configurar os 3 barbeiros (Ana, João Pedro e Manuel), siga os passos abaix
 - **Telefone**: 912345678
 - **Especialidade**: Cortes femininos e masculinos
 - **Horário de Início**: 09:00
-- **Horário de Fim**: 17:00
+- **Horário de Fim**: 18:00
+- **Início Almoço**: 13:00
+- **Fim Almoço**: 14:00
 
 #### **João Pedro**
 - **Nome**: João Pedro
@@ -25,8 +27,10 @@ Para configurar os 3 barbeiros (Ana, João Pedro e Manuel), siga os passos abaix
 - **Senha**: joao123456
 - **Telefone**: 913456789
 - **Especialidade**: Cortes modernos e barbas
-- **Horário de Início**: 10:00
+- **Horário de Início**: 09:00
 - **Horário de Fim**: 19:00
+- **Início Almoço**: 12:30
+- **Fim Almoço**: 13:30
 
 #### **Manuel**
 - **Nome**: Manuel
@@ -34,8 +38,10 @@ Para configurar os 3 barbeiros (Ana, João Pedro e Manuel), siga os passos abaix
 - **Senha**: manuel123456
 - **Telefone**: 914567890
 - **Especialidade**: Cortes clássicos e penteados
-- **Horário de Início**: 08:00
-- **Horário de Fim**: 16:00
+- **Horário de Início**: 10:00
+- **Horário de Fim**: 19:00
+- **Início Almoço**: 14:00
+- **Fim Almoço**: 15:00
 
 ### 3. Funcionamento do Sistema
 
@@ -45,9 +51,9 @@ Para configurar os 3 barbeiros (Ana, João Pedro e Manuel), siga os passos abaix
 - O horário de cada barbeiro é personalizado de acordo com a sua configuração
 
 #### Horários Personalizados
-- **Ana**: Trabalha das 09:00 às 17:00
-- **João Pedro**: Trabalha das 10:00 às 19:00
-- **Manuel**: Trabalha das 08:00 às 16:00
+- **Ana**: Trabalha das 09:00 às 18:00 (almoço 13:00-14:00)
+- **João Pedro**: Trabalha das 09:00 às 19:00 (almoço 12:30-13:30)
+- **Manuel**: Trabalha das 10:00 às 19:00 (almoço 14:00-15:00)
 
 Quando os clientes fazem marcações, apenas os horários do barbeiro selecionado aparecem disponíveis.
 
