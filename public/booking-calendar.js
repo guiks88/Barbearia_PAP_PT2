@@ -114,15 +114,29 @@ function applyServicePricingForSelectedBarber() {
   bookingState.servicePrice = config.price
   bookingState.serviceDuration = config.duration
 
-  const stepBarberName = document.getElementById('selected-service-name')
-  const stepBarberPrice = document.getElementById('selected-service-price')
   const stepDateName = document.getElementById('selected-service-name2')
   const stepDatePrice = document.getElementById('selected-service-price2')
 
-  if (stepBarberName) stepBarberName.textContent = bookingState.serviceName
-  if (stepBarberPrice) stepBarberPrice.textContent = bookingState.servicePrice
   if (stepDateName) stepDateName.textContent = bookingState.serviceName
   if (stepDatePrice) stepDatePrice.textContent = bookingState.servicePrice
+}
+
+function updateServiceCardsForBarber(barberName) {
+  const serviceCards = document.querySelectorAll('.service-card')
+  serviceCards.forEach((card) => {
+    const service = card.dataset.service
+    if (!service) return
+
+    const config = getServiceConfigForBarber(service, barberName)
+    card.dataset.price = String(config.price)
+    card.dataset.duration = String(config.duration)
+
+    const priceEl = card.querySelector('.price')
+    const durationEl = card.querySelector('p:not(.price)')
+
+    if (priceEl) priceEl.textContent = `${config.price}€`
+    if (durationEl) durationEl.textContent = `${config.duration} minutos`
+  })
 }
 
 // Horários de trabalho padrão (9h às 19h) com intervalos de 10 minutos
@@ -371,7 +385,10 @@ function isPastTimeSlot(dateStr, timeStr) {
 function showBookingSteps() {
   document.getElementById('step-manage-bookings')?.classList.add('hidden')
   document.getElementById('step-auth').classList.add('hidden')
-  document.getElementById('step-services').classList.remove('hidden')
+  document.getElementById('step-services').classList.add('hidden')
+  document.getElementById('step-barber').classList.remove('hidden')
+  document.getElementById('step-datetime').classList.add('hidden')
+  loadBarbers()
 }
 
 function showManageBookingsStep() {
@@ -851,15 +868,17 @@ function initServiceSelection() {
       
       // Mostrar próximo passo
       setTimeout(() => {
-        document.getElementById('step-barber').classList.remove('hidden')
-        document.getElementById('selected-service-name').textContent = serviceName
-        document.getElementById('selected-service-price').textContent = bookingState.servicePrice
+        document.getElementById('step-services').classList.add('hidden')
+        document.getElementById('step-datetime').classList.remove('hidden')
         
         // Scroll suave
-        document.getElementById('step-barber').scrollIntoView({ behavior: 'smooth', block: 'start' })
-        
-        // Carregar barbeiros
-        loadBarbers()
+        document.getElementById('step-datetime').scrollIntoView({ behavior: 'smooth', block: 'start' })
+
+        document.getElementById('selected-service-name2').textContent = bookingState.serviceName
+        document.getElementById('selected-service-price2').textContent = bookingState.servicePrice
+        document.getElementById('selected-barber-name').textContent = bookingState.barberName
+
+        initCalendar()
       }, 300)
     })
   })
@@ -977,6 +996,7 @@ async function loadStoreSettings() {
 async function selectBarber(barberId, barberName) {
   bookingState.barber = barberId
   bookingState.barberName = barberName
+  updateServiceCardsForBarber(barberName)
   applyServicePricingForSelectedBarber()
 
   await loadStoreSettings()
@@ -1032,16 +1052,13 @@ async function selectBarber(barberId, barberName) {
   
   // Mostrar próximo passo
   setTimeout(() => {
-    document.getElementById('step-datetime').classList.remove('hidden')
-    document.getElementById('selected-service-name2').textContent = bookingState.serviceName
-    document.getElementById('selected-service-price2').textContent = bookingState.servicePrice
-    document.getElementById('selected-barber-name').textContent = barberName
+    document.getElementById('step-barber').classList.add('hidden')
+    document.getElementById('step-services').classList.remove('hidden')
+    const selectedBarberNameService = document.getElementById('selected-barber-name-service')
+    if (selectedBarberNameService) selectedBarberNameService.textContent = barberName
     
     // Scroll suave
-    document.getElementById('step-datetime').scrollIntoView({ behavior: 'smooth', block: 'start' })
-    
-    // Inicializar calendário
-    initCalendar()
+    document.getElementById('step-services').scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, 300)
 }
 
@@ -1649,8 +1666,8 @@ function resetBooking() {
   bookingState.time = null
   
   // Resetar UI
-  document.getElementById('step-services').classList.remove('hidden')
-  document.getElementById('step-barber').classList.add('hidden')
+  document.getElementById('step-services').classList.add('hidden')
+  document.getElementById('step-barber').classList.remove('hidden')
   document.getElementById('step-datetime').classList.add('hidden')
   document.getElementById('step-success').classList.add('hidden')
   
@@ -1665,7 +1682,7 @@ function resetBooking() {
   document.querySelectorAll('.time-slot').forEach(t => t.classList.remove('selected'))
   
   // Scroll para o topo
-  document.getElementById('step-services').scrollIntoView({ behavior: 'smooth', block: 'start' })
+  document.getElementById('step-barber').scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 // Inicializar quando o DOM estiver pronto

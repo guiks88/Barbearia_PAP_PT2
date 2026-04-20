@@ -66,9 +66,12 @@
                 <div id="clientBookingsList" class="client-bookings-list"></div>
             </div>
 
-            <!-- Step 1: Serviços -->
+            <!-- Step 2: Serviços -->
             <div class="card hidden" id="step-services">
-                <h2>1. Escolha o Serviço</h2>
+                <h2>2. Escolha o Serviço</h2>
+                <div class="selected-info">
+                    <p><strong>Barbeiro selecionado:</strong> <span id="selected-barber-name-service"></span></p>
+                </div>
                 <div class="services-grid">
                     <div class="service-card" data-service="corte" data-price="15" data-duration="30">
                         <h3>Corte de Cabelo</h3>
@@ -103,12 +106,9 @@
                 </div>
             </div>
 
-            <!-- Step 2: Barbeiro -->
+            <!-- Step 1: Barbeiro -->
             <div class="card hidden" id="step-barber">
-                <h2>2. Escolha o Barbeiro</h2>
-                <div class="selected-info">
-                    <p><strong>Serviço selecionado:</strong> <span id="selected-service-name"></span> - <span id="selected-service-price"></span>€</p>
-                </div>
+                <h2>1. Escolha o Barbeiro</h2>
                 <div id="barbersList" class="barbers-list"></div>
             </div>
 
