@@ -243,6 +243,68 @@
                     </div>
                 </form>
             </div>
+
+            <div class="card" style="margin-top: 1rem;">
+                <h2>Exceções de Horário</h2>
+                <p style="color: var(--color-text-secondary); margin-bottom: 1.5rem;">Defina horários especiais por dia, semana ou mês para loja e barbeiros.</p>
+
+                <form id="specialScheduleForm">
+                    <div class="filter-grid">
+                        <div class="form-group">
+                            <label for="specialScheduleTarget">Aplicar a</label>
+                            <select id="specialScheduleTarget">
+                                <option value="store">Loja</option>
+                                <option value="barber">Barbeiro</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group hidden" id="specialScheduleBarberWrap">
+                            <label for="specialScheduleBarberId">Barbeiro</label>
+                            <select id="specialScheduleBarberId"></select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="specialSchedulePeriod">Período</label>
+                            <select id="specialSchedulePeriod">
+                                <option value="day">Dia específico</option>
+                                <option value="week">Semana</option>
+                                <option value="month">Mês</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="specialScheduleReference">Referência</label>
+                            <input type="date" id="specialScheduleReference" required>
+                        </div>
+                    </div>
+
+                    <div class="schedule-controls" style="margin-top: 0.5rem;">
+                        <div class="form-group">
+                            <label>Início</label>
+                            <div class="time-select-group">
+                                <select id="specialScheduleStartHour" class="time-select"></select>
+                                <span>:</span>
+                                <select id="specialScheduleStartMinute" class="time-select"></select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Fim</label>
+                            <div class="time-select-group">
+                                <select id="specialScheduleEndHour" class="time-select"></select>
+                                <span>:</span>
+                                <select id="specialScheduleEndMinute" class="time-select"></select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="promotion-form-actions" style="margin-top: 1rem;">
+                        <button type="submit" class="btn btn-primary">Guardar exceção</button>
+                    </div>
+                </form>
+
+                <div id="specialSchedulesList" style="margin-top: 1rem;"></div>
+            </div>
         </section>
 
         <section id="revenue-tab" class="tab-content">

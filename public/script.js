@@ -401,6 +401,45 @@ function timeToMinutes(timeStr) {
   return (hour || 0) * 60 + (minute || 0)
 }
 
+function getIsoWeekKey(dateObj) {
+  const utcDate = new Date(Date.UTC(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()))
+  const dayNum = utcDate.getUTCDay() || 7
+  utcDate.setUTCDate(utcDate.getUTCDate() + 4 - dayNum)
+  const yearStart = new Date(Date.UTC(utcDate.getUTCFullYear(), 0, 1))
+  const weekNo = Math.ceil((((utcDate - yearStart) / 86400000) + 1) / 7)
+  return `${utcDate.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`
+}
+
+function getDateString(dateObj) {
+  return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`
+}
+
+function normalizeSpecialSchedules(value) {
+  return {
+    day: value?.day || {},
+    week: value?.week || {},
+    month: value?.month || {},
+  }
+}
+
+function getStoreSpecialScheduleForNow(now, settings) {
+  const special = normalizeSpecialSchedules(settings?.specialSchedules)
+  const dayKey = getDateString(now)
+  const weekKey = getIsoWeekKey(now)
+  const monthKey = dayKey.slice(0, 7)
+
+  const daySchedule = special.day?.[dayKey]
+  if (daySchedule?.start && daySchedule?.end) return daySchedule
+
+  const weekSchedule = special.week?.[weekKey]
+  if (weekSchedule?.start && weekSchedule?.end) return weekSchedule
+
+  const monthSchedule = special.month?.[monthKey]
+  if (monthSchedule?.start && monthSchedule?.end) return monthSchedule
+
+  return null
+}
+
 async function initStoreStatusBadge() {
   const badge = document.getElementById('storeStatusBadge')
   if (!badge) return
@@ -411,18 +450,19 @@ async function initStoreStatusBadge() {
   try {
     const snapshot = await get(ref(database, 'storeSettings'))
     const settings = snapshot.exists() ? snapshot.val() : {}
+    const now = new Date()
+    const specialSchedule = getStoreSpecialScheduleForNow(now, settings)
 
     const openDays = Array.isArray(settings.openDays) && settings.openDays.length ? settings.openDays : fallbackOpen
-    const openingStart = settings.openingHours?.start || fallbackOpening.start
-    const openingEnd = settings.openingHours?.end || fallbackOpening.end
+    const openingStart = specialSchedule?.start || settings.openingHours?.start || fallbackOpening.start
+    const openingEnd = specialSchedule?.end || settings.openingHours?.end || fallbackOpening.end
     const lunchStart = settings.lunchBreak?.start || '13:00'
     const lunchEnd = settings.lunchBreak?.end || '14:00'
 
-    const now = new Date()
     const currentDay = now.getDay()
     const currentMinutes = now.getHours() * 60 + now.getMinutes()
 
-    const isOpenDay = openDays.includes(currentDay)
+    const isOpenDay = specialSchedule ? true : openDays.includes(currentDay)
     const isInsideOpening = currentMinutes >= timeToMinutes(openingStart) && currentMinutes < timeToMinutes(openingEnd)
     const isLunchBreak = currentMinutes >= timeToMinutes(lunchStart) && currentMinutes < timeToMinutes(lunchEnd)
     const isOpen = isOpenDay && isInsideOpening && !isLunchBreak

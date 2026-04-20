@@ -41,7 +41,8 @@ const bookingState = {
 bookingState.storeSettings = {
   openDays: [1, 2, 3, 4, 5],
   openingHours: { start: '09:00', end: '19:00' },
-  lunchBreak: { start: '13:00', end: '14:00' }
+  lunchBreak: { start: '13:00', end: '14:00' },
+  specialSchedules: { day: {}, week: {}, month: {} },
 }
 
 const SLOT_STEP_MINUTES = 10
@@ -183,11 +184,35 @@ function timeToMinutes(timeStr) {
   return (hour || 0) * 60 + (minute || 0)
 }
 
-function getStoreRuleValues() {
+function normalizeSpecialSchedules(value) {
+  return {
+    day: value?.day || {},
+    week: value?.week || {},
+    month: value?.month || {},
+  }
+}
+
+function getStoreSpecialScheduleForDate(dateStr) {
+  const special = normalizeSpecialSchedules(bookingState.storeSettings?.specialSchedules)
+
+  const daySchedule = special.day?.[dateStr]
+  if (daySchedule?.start && daySchedule?.end) return daySchedule
+
+  const weekSchedule = special.week?.[getIsoWeekKey(dateStr)]
+  if (weekSchedule?.start && weekSchedule?.end) return weekSchedule
+
+  const monthSchedule = special.month?.[dateStr.slice(0, 7)]
+  if (monthSchedule?.start && monthSchedule?.end) return monthSchedule
+
+  return null
+}
+
+function getStoreRuleValues(dateStr = null) {
   const settings = bookingState.storeSettings || {}
+  const special = dateStr ? getStoreSpecialScheduleForDate(dateStr) : null
   const openDays = Array.isArray(settings.openDays) && settings.openDays.length ? settings.openDays : [1, 2, 3, 4, 5]
-  const openingStart = settings.openingHours?.start || '09:00'
-  const openingEnd = settings.openingHours?.end || '19:00'
+  const openingStart = special?.start || settings.openingHours?.start || '09:00'
+  const openingEnd = special?.end || settings.openingHours?.end || '19:00'
   const lunchStart = settings.lunchBreak?.start || '13:00'
   const lunchEnd = settings.lunchBreak?.end || '14:00'
 
@@ -197,14 +222,15 @@ function getStoreRuleValues() {
     openingEnd,
     lunchStart,
     lunchEnd,
+    hasSpecialSchedule: !!special,
   }
 }
 
 function applyStoreRulesToSlots(dateStr, slots) {
-  const { openDays, openingStart, openingEnd, lunchStart, lunchEnd } = getStoreRuleValues()
+  const { openDays, openingStart, openingEnd, lunchStart, lunchEnd, hasSpecialSchedule } = getStoreRuleValues(dateStr)
   const dayOfWeek = parseDateString(dateStr).getDay()
 
-  if (!openDays.includes(dayOfWeek)) {
+  if (!hasSpecialSchedule && !openDays.includes(dayOfWeek)) {
     return []
   }
 
@@ -284,7 +310,7 @@ function isSlotConflictWithBookings(dateStr, slotTime, durationMinutes, excluded
 }
 
 function canFitSlotInSchedule(dateStr, slotTime, durationMinutes) {
-  const { openingStart, openingEnd, lunchStart, lunchEnd } = getStoreRuleValues()
+  const { openingStart, openingEnd, lunchStart, lunchEnd } = getStoreRuleValues(dateStr)
   const barberWindow = getDayWorkingWindow(dateStr)
 
   const windowStart = Math.max(timeToMinutes(openingStart), timeToMinutes(barberWindow.start))
@@ -986,7 +1012,8 @@ async function loadStoreSettings() {
       lunchBreak: {
         start: settings.lunchBreak?.start || '13:00',
         end: settings.lunchBreak?.end || '14:00'
-      }
+      },
+      specialSchedules: normalizeSpecialSchedules(settings.specialSchedules),
     }
   } catch (error) {
     console.error('Erro ao carregar horário da loja:', error)

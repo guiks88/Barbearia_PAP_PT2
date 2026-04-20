@@ -688,6 +688,219 @@ function renderStoreSchedule() {
     checkbox.checked = openDays.includes(Number(checkbox.value))
   })
   setupStoreScheduleTimes(state.storeSettings)
+  renderSpecialSchedulesList()
+}
+
+function normalizeSpecialSchedules(value) {
+  return {
+    day: value?.day || {},
+    week: value?.week || {},
+    month: value?.month || {},
+  }
+}
+
+function formatSpecialPeriodLabel(period, key) {
+  if (period === "day") return `Dia ${key}`
+  if (period === "week") return `Semana ${key}`
+  return `Mês ${key}`
+}
+
+function setupSpecialScheduleTimes() {
+  const startHour = document.getElementById("specialScheduleStartHour")
+  const startMinute = document.getElementById("specialScheduleStartMinute")
+  const endHour = document.getElementById("specialScheduleEndHour")
+  const endMinute = document.getElementById("specialScheduleEndMinute")
+  if (!startHour || !startMinute || !endHour || !endMinute) return
+
+  startHour.innerHTML = buildHourOptions("09")
+  startMinute.innerHTML = buildMinuteOptions("00")
+  endHour.innerHTML = buildHourOptions("19")
+  endMinute.innerHTML = buildMinuteOptions("00")
+}
+
+function populateSpecialScheduleBarberSelect() {
+  const select = document.getElementById("specialScheduleBarberId")
+  if (!select) return
+
+  const entries = Object.entries(state.barbers || {})
+  if (!entries.length) {
+    select.innerHTML = "<option value=''>Sem barbeiros disponíveis</option>"
+    return
+  }
+
+  select.innerHTML = entries
+    .map(([id, barber]) => `<option value="${id}">${barber?.name || "Barbeiro"}</option>`)
+    .join("")
+}
+
+function getSpecialScheduleReferenceType(period) {
+  if (period === "week") return "week"
+  if (period === "month") return "month"
+  return "date"
+}
+
+function getCurrentSpecialScheduleSource() {
+  const target = document.getElementById("specialScheduleTarget")?.value || "store"
+  if (target === "store") {
+    return {
+      title: "Loja",
+      schedules: normalizeSpecialSchedules(state.storeSettings?.specialSchedules),
+      target: "store",
+      barberId: null,
+    }
+  }
+
+  const barberId = document.getElementById("specialScheduleBarberId")?.value || ""
+  const barber = state.barbers?.[barberId]
+  return {
+    title: barber?.name || "Barbeiro",
+    schedules: normalizeSpecialSchedules(barber?.specialSchedules),
+    target: "barber",
+    barberId,
+  }
+}
+
+function renderSpecialSchedulesList() {
+  const container = document.getElementById("specialSchedulesList")
+  if (!container) return
+
+  const source = getCurrentSpecialScheduleSource()
+  const rows = []
+
+  ;["day", "week", "month"].forEach((period) => {
+    Object.entries(source.schedules[period] || {}).forEach(([key, schedule]) => {
+      if (!schedule?.start || !schedule?.end) return
+      rows.push({
+        period,
+        key,
+        start: schedule.start,
+        end: schedule.end,
+      })
+    })
+  })
+
+  rows.sort((a, b) => `${a.period}-${a.key}`.localeCompare(`${b.period}-${b.key}`))
+
+  if (!rows.length) {
+    container.innerHTML = `<div class="empty-state">Sem exceções definidas para ${source.title}.</div>`
+    return
+  }
+
+  container.innerHTML = rows
+    .map(
+      (row) => `
+      <div class="barber-item">
+        <div>
+          <h3>${source.title}</h3>
+          <p><strong>Período:</strong> ${formatSpecialPeriodLabel(row.period, row.key)}</p>
+          <p><strong>Horário:</strong> ${row.start} - ${row.end}</p>
+        </div>
+        <div class="booking-actions">
+          <button class="btn btn-danger btn-small" data-action="delete-special-schedule" data-target="${source.target}" data-barber-id="${source.barberId || ""}" data-period="${row.period}" data-key="${row.key}">Remover</button>
+        </div>
+      </div>
+    `,
+    )
+    .join("")
+
+  container.querySelectorAll('[data-action="delete-special-schedule"]').forEach((button) => {
+    button.addEventListener("click", async () => {
+      const target = button.getAttribute("data-target") || "store"
+      const period = button.getAttribute("data-period") || "day"
+      const key = button.getAttribute("data-key") || ""
+      const barberId = button.getAttribute("data-barber-id") || ""
+      if (!key) return
+
+      const path =
+        target === "barber"
+          ? `barbers/${barberId}/specialSchedules/${period}/${key}`
+          : `storeSettings/specialSchedules/${period}/${key}`
+
+      try {
+        await remove(ref(database, path))
+        showSuccess("Exceção removida com sucesso!")
+      } catch (error) {
+        showError("Erro ao remover exceção: " + error.message)
+      }
+    })
+  })
+}
+
+function setupSpecialScheduleManager() {
+  const form = document.getElementById("specialScheduleForm")
+  const target = document.getElementById("specialScheduleTarget")
+  const period = document.getElementById("specialSchedulePeriod")
+  const reference = document.getElementById("specialScheduleReference")
+  const barberWrap = document.getElementById("specialScheduleBarberWrap")
+  const barberSelect = document.getElementById("specialScheduleBarberId")
+
+  if (!form || !target || !period || !reference || !barberWrap || !barberSelect) return
+
+  setupSpecialScheduleTimes()
+  populateSpecialScheduleBarberSelect()
+
+  const syncInputs = () => {
+    barberWrap.classList.toggle("hidden", target.value !== "barber")
+    reference.type = getSpecialScheduleReferenceType(period.value)
+    reference.value = ""
+    renderSpecialSchedulesList()
+  }
+
+  target.addEventListener("change", syncInputs)
+  period.addEventListener("change", syncInputs)
+  barberSelect.addEventListener("change", () => {
+    renderSpecialSchedulesList()
+  })
+
+  if (!form.dataset.bound) {
+    form.dataset.bound = "true"
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault()
+
+      const selectedTarget = target.value
+      const selectedPeriod = period.value
+      const selectedReference = reference.value
+      const selectedBarberId = barberSelect.value
+      const start = getSelectTime("specialScheduleStartHour", "specialScheduleStartMinute")
+      const end = getSelectTime("specialScheduleEndHour", "specialScheduleEndMinute")
+
+      if (!selectedReference) {
+        showError("Indique a referência da exceção (dia/semana/mês).")
+        return
+      }
+
+      if (timeToMinutes(start) >= timeToMinutes(end)) {
+        showError("O horário de início da exceção deve ser anterior ao fim.")
+        return
+      }
+
+      if (selectedTarget === "barber" && !selectedBarberId) {
+        showError("Selecione um barbeiro para aplicar a exceção.")
+        return
+      }
+
+      const payload = {
+        start,
+        end,
+        updatedAt: new Date().toISOString(),
+      }
+
+      const path =
+        selectedTarget === "barber"
+          ? `barbers/${selectedBarberId}/specialSchedules/${selectedPeriod}/${selectedReference}`
+          : `storeSettings/specialSchedules/${selectedPeriod}/${selectedReference}`
+
+      try {
+        await set(ref(database, path), payload)
+        showSuccess("Exceção de horário guardada com sucesso!")
+        reference.value = ""
+      } catch (error) {
+        showError("Erro ao guardar exceção de horário: " + error.message)
+      }
+    })
+  }
+
+  syncInputs()
 }
 
 function getRevenueFilteredBookings() {
@@ -855,6 +1068,8 @@ function loadBarbers() {
     }
 
     state.barbers = normalizedBarbers
+    populateSpecialScheduleBarberSelect()
+    renderSpecialSchedulesList()
     renderBarbers()
     renderBookings()
     updateRevenue()
@@ -1443,6 +1658,7 @@ setupStoreScheduleTimes()
 setupFilters()
 setupRevenueControls()
 setupPromotionForm()
+setupSpecialScheduleManager()
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
