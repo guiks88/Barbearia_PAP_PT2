@@ -112,6 +112,28 @@ async function resolveRoleData(user, email) {
   return roleData
 }
 
+async function ensureClientProfileForAuthenticatedUser(user, email) {
+  const uid = user.uid
+  const clientRef = ref(database, `clients/${uid}`)
+  const snapshot = await get(clientRef)
+
+  if (snapshot.exists()) {
+    return snapshot.val()
+  }
+
+  const profile = {
+    name: user.displayName || "Cliente",
+    email,
+    phone: "",
+    password: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }
+
+  await set(clientRef, profile)
+  return profile
+}
+
 async function migrateLegacyClientAuth(email, password) {
   const clientsSnapshot = await get(ref(database, "clients"))
   if (!clientsSnapshot.exists()) return null
@@ -217,8 +239,9 @@ async function loginAndRoute(email, password) {
   const roleData = await resolveRoleData(user, email)
 
   if (!roleData) {
-    await signOut(auth)
-    throw new Error("Conta autenticada, mas sem perfil de acesso no sistema.")
+    const recoveredProfile = await ensureClientProfileForAuthenticatedUser(user, email)
+    saveRoleSession("client", user.uid, email, recoveredProfile)
+    return "client"
   }
 
   saveRoleSession(roleData.role, user.uid, email, roleData.profile)
@@ -240,8 +263,9 @@ async function loginWithGoogleAndRoute() {
 
   const roleData = await resolveRoleData(user, email)
   if (!roleData) {
-    await signOut(auth)
-    throw new Error("Conta Google autenticada, mas sem perfil no sistema.")
+    const recoveredProfile = await ensureClientProfileForAuthenticatedUser(user, email)
+    saveRoleSession("client", user.uid, email, recoveredProfile)
+    return "client"
   }
 
   saveRoleSession(roleData.role, user.uid, email, roleData.profile)

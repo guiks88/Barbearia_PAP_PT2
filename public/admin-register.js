@@ -1,4 +1,4 @@
-k  import { auth, database, firestore } from "./firebase-config.js"
+import { auth, database, firestore } from "./firebase-config.js"
 import { ref, set, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
 import { createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
 import { doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"

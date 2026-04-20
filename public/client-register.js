@@ -1,5 +1,5 @@
 import { auth, database, firestore } from "./firebase-config.js"
-import { ref, set, get, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
+import { ref, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
 import { doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"
 import {
   GoogleAuthProvider,
@@ -10,55 +10,40 @@ import { formatPhoneNumber, validatePhoneNumber, setupPhoneValidation, showSucce
 
 setupPhoneValidation("clientPhone")
 
-async function findClientByEmail(email) {
-  const snapshot = await get(ref(database, "clients"))
-  if (!snapshot.exists()) return null
-
-  const clients = snapshot.val()
-  const normalizedTarget = (email || "").trim().toLowerCase()
-
-  for (const [id, client] of Object.entries(clients)) {
-    const clientEmail = String(client?.email || "").trim().toLowerCase()
-    if (clientEmail === normalizedTarget) {
-      return { id, client }
-    }
-  }
-
-  return null
-}
-
 async function saveClientProfile(uid, { name, email, phone }) {
   const normalizedEmail = (email || "").trim().toLowerCase()
   const normalizedPhone = formatPhoneNumber(phone || "")
-
-  const existing = await findClientByEmail(normalizedEmail)
 
   const payload = {
     name: name || "Cliente",
     email: normalizedEmail,
     phone: normalizedPhone,
-    createdAt: existing?.client?.createdAt || new Date().toISOString(),
+    createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }
 
   await set(ref(database, `clients/${uid}`), payload)
 
-  if (existing && existing.id !== uid) {
-    await remove(ref(database, `clients/${existing.id}`))
+  try {
+    await setDoc(doc(firestore, "users", uid), {
+      uid,
+      email: normalizedEmail,
+      fullName: payload.name,
+      role: "client",
+      roles: ["client"],
+      birthDate: null,
+      phone: normalizedPhone,
+      isActive: true,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    })
+  } catch (error) {
+    const firestoreErrorCode = error?.code || ""
+    if (firestoreErrorCode !== "permission-denied") {
+      throw error
+    }
+    console.warn("Sem permissão para gravar users no Firestore. A conta cliente foi criada no Auth e RTDB.")
   }
-
-  await setDoc(doc(firestore, "users", uid), {
-    uid,
-    email: normalizedEmail,
-    fullName: payload.name,
-    role: "client",
-    roles: ["client"],
-    birthDate: null,
-    phone: normalizedPhone,
-    isActive: true,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  })
 
   return payload
 }
