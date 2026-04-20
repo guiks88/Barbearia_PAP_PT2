@@ -30,6 +30,11 @@
       "$bookingId": {
         ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (!data.exists() && newData.child('clientUid').val() === auth.uid) || (data.exists() && data.child('clientUid').val() === auth.uid && newData.child('clientUid').val() === auth.uid) || (data.exists() && data.child('barberId').val() === auth.uid && newData.child('barberId').val() === auth.uid))"
       }
+    },
+
+    "storeSettings": {
+      ".read": true,
+      ".write": "auth != null && root.child('admins').child(auth.uid).exists()"
     }
   }
 }

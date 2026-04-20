@@ -423,7 +423,7 @@ async function initStoreStatusBadge() {
     const currentMinutes = now.getHours() * 60 + now.getMinutes()
 
     const isOpenDay = openDays.includes(currentDay)
-    const isInsideOpening = currentMinutes >= timeToMinutes(openingStart) && currentMinutes <= timeToMinutes(openingEnd)
+    const isInsideOpening = currentMinutes >= timeToMinutes(openingStart) && currentMinutes < timeToMinutes(openingEnd)
     const isLunchBreak = currentMinutes >= timeToMinutes(lunchStart) && currentMinutes < timeToMinutes(lunchEnd)
     const isOpen = isOpenDay && isInsideOpening && !isLunchBreak
 
