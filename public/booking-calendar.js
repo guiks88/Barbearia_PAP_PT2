@@ -12,6 +12,15 @@ const urlParams = new URLSearchParams(window.location.search)
 const currentMode = urlParams.get('mode')
 const isManageMode = currentMode === 'manage' || currentMode === 'cancel'
 const isCancelMode = currentMode === 'cancel'
+const preferredBarberParam = (urlParams.get('barber') || '').trim()
+
+function normalizeBarberKey(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+}
 
 // Estado da marcação
 const bookingState = {
@@ -35,7 +44,10 @@ const bookingState = {
   currentMonth: new Date().getMonth(),
   currentYear: new Date().getFullYear(),
   availableSlots: {},
-  bookings: []
+  bookings: [],
+  preferredBarberRaw: preferredBarberParam,
+  preferredBarberKey: normalizeBarberKey(preferredBarberParam),
+  preferredBarberApplied: false,
 }
 
 bookingState.storeSettings = {
@@ -460,6 +472,12 @@ function initPageMode() {
   const registerBox = document.getElementById('authRegisterBox')
   if (registerBox) {
     registerBox.classList.add('hidden')
+  }
+
+  if (!isManageMode && bookingState.preferredBarberRaw) {
+    if (authDescription) {
+      authDescription.textContent = `Faça login para continuar a marcação com ${bookingState.preferredBarberRaw}. Depois pode confirmar ou alterar.`
+    }
   }
 }
 
@@ -988,6 +1006,24 @@ async function loadBarbers() {
         
         barbersList.appendChild(barberCard)
       })
+
+      if (!bookingState.preferredBarberApplied && bookingState.preferredBarberKey) {
+        const preferredMatch = barberEntries.find(([barberId, barber]) => {
+          const barberName = barber?.name || barber?.nome || barber?.fullName || ''
+          return (
+            normalizeBarberKey(barberId) === bookingState.preferredBarberKey ||
+            normalizeBarberKey(barberName) === bookingState.preferredBarberKey
+          )
+        })
+
+        if (preferredMatch) {
+          bookingState.preferredBarberApplied = true
+          const [matchedBarberId, matchedBarber] = preferredMatch
+          const matchedBarberName = matchedBarber?.name || matchedBarber?.nome || matchedBarber?.fullName || 'Barbeiro'
+          showSuccess(`Barbeiro pré-selecionado: ${matchedBarberName}`)
+          await selectBarber(matchedBarberId, matchedBarberName)
+        }
+      }
     } else {
       barbersList.innerHTML = '<p style="text-align: center; color: var(--color-text-secondary);">Nenhum barbeiro disponível no momento.</p>'
     }

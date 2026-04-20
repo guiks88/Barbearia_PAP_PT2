@@ -396,6 +396,38 @@ function initCutsGallery() {
   })
 }
 
+function initTeamQuickBooking() {
+  const teamMembers = document.querySelectorAll('.team-member')
+  if (!teamMembers.length) return
+
+  teamMembers.forEach((member) => {
+    if (member.dataset.quickBookingBound === 'true') return
+    member.dataset.quickBookingBound = 'true'
+
+    const nameEl = member.querySelector('h3')
+    const barberName = nameEl?.textContent?.trim()
+    if (!barberName) return
+
+    member.style.cursor = 'pointer'
+    member.setAttribute('role', 'button')
+    member.setAttribute('tabindex', '0')
+    member.setAttribute('aria-label', `Marcar com ${barberName}`)
+
+    const goToBooking = () => {
+      const url = `bookings.html?barber=${encodeURIComponent(barberName)}`
+      window.location.href = url
+    }
+
+    member.addEventListener('click', goToBooking)
+    member.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        goToBooking()
+      }
+    })
+  })
+}
+
 function timeToMinutes(timeStr) {
   const [hour, minute] = String(timeStr || '00:00').split(':').map(Number)
   return (hour || 0) * 60 + (minute || 0)
@@ -481,12 +513,14 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initActionMenu);
   document.addEventListener('DOMContentLoaded', initDownloadSiteButton);
   document.addEventListener('DOMContentLoaded', initCutsGallery);
+  document.addEventListener('DOMContentLoaded', initTeamQuickBooking);
   document.addEventListener('DOMContentLoaded', initStoreStatusBadge);
 } else {
   initTabs();
   initActionMenu();
   initDownloadSiteButton();
   initCutsGallery();
+  initTeamQuickBooking();
   initStoreStatusBadge();
 }
 
@@ -495,4 +529,5 @@ window.addEventListener('load', initTabs);
 window.addEventListener('load', initActionMenu);
 window.addEventListener('load', initDownloadSiteButton);
 window.addEventListener('load', initCutsGallery);
+window.addEventListener('load', initTeamQuickBooking);
 window.addEventListener('load', initStoreStatusBadge);
