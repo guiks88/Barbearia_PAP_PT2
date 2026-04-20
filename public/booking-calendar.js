@@ -22,6 +22,7 @@ const bookingState = {
   barber: null,
   barberName: '',
   barberWorkingHours: [],
+  barberLunchBreak: { start: null, end: null },
   barberSpecialSchedules: { day: {}, week: {}, month: {} },
   barberWorkingDays: [1, 2, 3, 4, 5], // Seg-Sex por defeito
   date: null,
@@ -112,6 +113,21 @@ function applyStoreRulesToSlots(dateStr, slots) {
   })
 }
 
+function applyBarberLunchBreakToSlots(slots) {
+  const lunchStart = bookingState.barberLunchBreak?.start
+  const lunchEnd = bookingState.barberLunchBreak?.end
+  if (!lunchStart || !lunchEnd) return slots
+
+  const lunchStartMinutes = timeToMinutes(lunchStart)
+  const lunchEndMinutes = timeToMinutes(lunchEnd)
+  if (lunchStartMinutes >= lunchEndMinutes) return slots
+
+  return slots.filter((slot) => {
+    const slotMinutes = timeToMinutes(slot)
+    return slotMinutes < lunchStartMinutes || slotMinutes >= lunchEndMinutes
+  })
+}
+
 function getIsoWeekKey(dateStr) {
   const date = parseDateString(dateStr)
   const utcDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
@@ -148,7 +164,8 @@ function getWorkingHoursForDate(dateStr) {
     workingHours = defaultWorkingHours
   }
 
-  return applyStoreRulesToSlots(dateStr, workingHours)
+  const storeFiltered = applyStoreRulesToSlots(dateStr, workingHours)
+  return applyBarberLunchBreakToSlots(storeFiltered)
 }
 
 function getDateString(dateObj) {
@@ -788,6 +805,12 @@ async function selectBarber(barberId, barberName) {
     if (snapshot.exists()) {
       const barberData = snapshot.val()
       bookingState.barberSpecialSchedules = barberData.specialSchedules || { day: {}, week: {}, month: {} }
+      const fallbackLunchStart = bookingState.storeSettings?.lunchBreak?.start || '13:00'
+      const fallbackLunchEnd = bookingState.storeSettings?.lunchBreak?.end || '14:00'
+      bookingState.barberLunchBreak = {
+        start: barberData.lunchBreak?.start || fallbackLunchStart,
+        end: barberData.lunchBreak?.end || fallbackLunchEnd,
+      }
       if (barberData.workingHours && barberData.workingHours.start && barberData.workingHours.end) {
         bookingState.barberWorkingHours = generateWorkingHours(barberData.workingHours.start, barberData.workingHours.end)
       } else {
@@ -800,13 +823,19 @@ async function selectBarber(barberId, barberName) {
         bookingState.barberWorkingDays = [1, 2, 3, 4, 5] // Seg-Sex por defeito
       }
     } else {
+      const fallbackLunchStart = bookingState.storeSettings?.lunchBreak?.start || '13:00'
+      const fallbackLunchEnd = bookingState.storeSettings?.lunchBreak?.end || '14:00'
       bookingState.barberWorkingHours = defaultWorkingHours
+      bookingState.barberLunchBreak = { start: fallbackLunchStart, end: fallbackLunchEnd }
       bookingState.barberWorkingDays = [1, 2, 3, 4, 5]
       bookingState.barberSpecialSchedules = { day: {}, week: {}, month: {} }
     }
   } catch (error) {
     console.error('Erro ao carregar horários do barbeiro:', error)
+    const fallbackLunchStart = bookingState.storeSettings?.lunchBreak?.start || '13:00'
+    const fallbackLunchEnd = bookingState.storeSettings?.lunchBreak?.end || '14:00'
     bookingState.barberWorkingHours = defaultWorkingHours
+    bookingState.barberLunchBreak = { start: fallbackLunchStart, end: fallbackLunchEnd }
     bookingState.barberSpecialSchedules = { day: {}, week: {}, month: {} }
   }
   

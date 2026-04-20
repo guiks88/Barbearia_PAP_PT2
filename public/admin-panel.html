@@ -28,9 +28,14 @@
         </div>
 
         <section id="barbers-tab" class="tab-content active">
-            <div class="card hidden" id="barberCreateCard">
-                <h2 id="barberFormTitle">Adicionar Barbeiro</h2>
-                <form id="barberForm">
+            <div class="admin-modal hidden" id="barberFormModal" aria-hidden="true">
+                <div class="admin-modal-backdrop" id="barberFormBackdrop"></div>
+                <div class="card admin-modal-card" id="barberCreateCard" role="dialog" aria-modal="true" aria-labelledby="barberFormTitle">
+                    <div class="admin-modal-header">
+                        <h2 id="barberFormTitle">Adicionar Barbeiro</h2>
+                        <button type="button" class="btn btn-secondary btn-small" id="closeBarberModalBtn">Voltar</button>
+                    </div>
+                    <form id="barberForm">
                     <div class="form-group">
                         <label for="barberName">Nome Completo *</label>
                         <input type="text" id="barberName" required>
@@ -71,6 +76,23 @@
                         <small style="color: var(--color-text-secondary); font-size: 0.85rem;">Horário de fim do trabalho</small>
                     </div>
                     <div class="form-group">
+                        <label>Início almoço *</label>
+                        <div class="time-select-group">
+                            <select id="barberLunchStartHour" class="time-select"></select>
+                            <span>:</span>
+                            <select id="barberLunchStartMinute" class="time-select"></select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Fim almoço *</label>
+                        <div class="time-select-group">
+                            <select id="barberLunchEndHour" class="time-select"></select>
+                            <span>:</span>
+                            <select id="barberLunchEndMinute" class="time-select"></select>
+                        </div>
+                        <small style="color: var(--color-text-secondary); font-size: 0.85rem;">A pausa de almoço do barbeiro deve ter 1 hora</small>
+                    </div>
+                    <div class="form-group">
                         <label>Dias de Trabalho *</label>
                         <div class="working-days-grid" id="barberWorkingDays">
                             <label class="day-checkbox"><input type="checkbox" value="1" checked> Seg</label>
@@ -85,9 +107,9 @@
                     </div>
                     <div class="promotion-form-actions">
                         <button type="submit" class="btn btn-primary" id="barberSubmitBtn" style="flex: 1;">Adicionar Barbeiro</button>
-                        <button type="button" class="btn btn-secondary" id="cancelBarberFormBtn" style="flex: 1;">Cancelar</button>
                     </div>
-                </form>
+                    </form>
+                </div>
             </div>
 
             <div class="card" id="barberListCard">

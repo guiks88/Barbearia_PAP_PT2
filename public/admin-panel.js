@@ -44,6 +44,7 @@ const state = {
 
 let editingPromotionId = null
 let editingBarberId = null
+let barberModalEscBound = false
 
 function normalize(value) {
   return String(value || "").toLowerCase().trim()
@@ -80,6 +81,11 @@ function parseTimeValue(timeValue, fallbackHour = "09", fallbackMinute = "00") {
   }
 }
 
+function timeToMinutes(timeValue) {
+  const [hour, minute] = String(timeValue || "00:00").split(":").map(Number)
+  return (hour || 0) * 60 + (minute || 0)
+}
+
 function buildHourOptions(selected) {
   return Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"))
     .map((hour) => `<option value="${hour}" ${selected === hour ? "selected" : ""}>${hour}</option>`)
@@ -99,18 +105,66 @@ function getSelectTime(hourId, minuteId) {
   return toTimeValue(hour, minute)
 }
 
+function setBarberListVisibility(isVisible) {
+  const listCard = document.getElementById("barberListCard")
+  const barbersTab = document.getElementById("barbers-tab")
+  if (!listCard) return
+  listCard.classList.toggle("hidden", !isVisible)
+  if (isVisible) {
+    listCard.style.removeProperty("display")
+  } else {
+    listCard.style.setProperty("display", "none", "important")
+  }
+  barbersTab?.classList.toggle("barber-form-active", !isVisible)
+}
+
+function setBarberEditOnlyMode(isActive) {
+  const barbersTab = document.getElementById("barbers-tab")
+  const modal = document.getElementById("barberFormModal")
+  if (!barbersTab) return
+
+  barbersTab.dataset.editOnly = isActive ? "true" : "false"
+
+  if (modal) {
+    if (isActive) {
+      modal.style.setProperty("display", "flex", "important")
+    } else {
+      modal.style.removeProperty("display")
+    }
+  }
+
+  Array.from(barbersTab.children).forEach((child) => {
+    if (!(child instanceof HTMLElement)) return
+
+    if (child.id === "barberFormModal") {
+      child.style.display = isActive ? "flex" : ""
+      return
+    }
+
+    child.style.display = isActive ? "none" : ""
+  })
+}
+
 function setupBarberFormTimes() {
   const startHour = document.getElementById("barberStartHour")
   const startMinute = document.getElementById("barberStartMinute")
   const endHour = document.getElementById("barberEndHour")
   const endMinute = document.getElementById("barberEndMinute")
+  const lunchStartHour = document.getElementById("barberLunchStartHour")
+  const lunchStartMinute = document.getElementById("barberLunchStartMinute")
+  const lunchEndHour = document.getElementById("barberLunchEndHour")
+  const lunchEndMinute = document.getElementById("barberLunchEndMinute")
 
-  if (!startHour || !startMinute || !endHour || !endMinute) return
+  if (!startHour || !startMinute || !endHour || !endMinute || !lunchStartHour || !lunchStartMinute || !lunchEndHour || !lunchEndMinute) return
 
   startHour.innerHTML = buildHourOptions("09")
   startMinute.innerHTML = buildMinuteOptions("00")
   endHour.innerHTML = buildHourOptions("19")
   endMinute.innerHTML = buildMinuteOptions("00")
+  lunchStartHour.innerHTML = buildHourOptions("13")
+  lunchStartMinute.innerHTML = buildMinuteOptions("00")
+  lunchEndHour.innerHTML = buildHourOptions("14")
+  lunchEndMinute.innerHTML = buildMinuteOptions("00")
 }
 
 function setupTopTabs() {
@@ -127,19 +181,42 @@ function setupTopTabs() {
   })
 }
 
+function activateAdminTab(tab) {
+  document.querySelectorAll(".tab-btn").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.tab === tab)
+  })
+
+  document.querySelectorAll(".tab-content").forEach((content) => content.classList.remove("active"))
+  document.getElementById(`${tab}-tab`)?.classList.add("active")
+}
+
 function setupBarberFormMode() {
-  const createCard = document.getElementById("barberCreateCard")
+  const modal = document.getElementById("barberFormModal")
   const openBtn = document.getElementById("openCreateBarberBtn")
-  const cancelBtn = document.getElementById("cancelBarberFormBtn")
-  if (!createCard || !openBtn || !cancelBtn) return
+  const backBtn = document.getElementById("closeBarberModalBtn")
+  const backdrop = document.getElementById("barberFormBackdrop")
+  if (!modal || !openBtn || !backBtn || !backdrop) return
 
   openBtn.addEventListener("click", () => {
     openBarberForm()
   })
 
-  cancelBtn.addEventListener("click", () => {
+  backBtn.addEventListener("click", () => {
     closeBarberForm()
   })
+
+  backdrop.addEventListener("click", () => {
+    closeBarberForm()
+  })
+
+  if (!barberModalEscBound) {
+    barberModalEscBound = true
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return
+      if (modal.classList.contains("hidden")) return
+      closeBarberForm()
+    })
+  }
 }
 
 function setupFilters() {
@@ -353,16 +430,33 @@ function renderBarbers() {
             <p><strong>Telefone:</strong> ${barber.phone || "-"}</p>
             <p><strong>Especialidade:</strong> ${barber.specialty || "-"}</p>
             <p><strong>Horário:</strong> ${barber.workingHours?.start || "09:00"} - ${barber.workingHours?.end || "19:00"}</p>
+            <p><strong>Almoço:</strong> ${barber.lunchBreak?.start || "13:00"} - ${barber.lunchBreak?.end || "14:00"}</p>
             <p><strong>Dias:</strong> ${days}</p>
           </div>
           <div class="booking-actions">
-            <button class="btn btn-secondary" onclick="editBarber('${id}')">Editar</button>
-            <button class="btn btn-danger" onclick="deleteBarber('${id}')">Eliminar</button>
+            <button class="btn btn-secondary" data-action="edit-barber" data-barber-id="${id}">Editar</button>
+            <button class="btn btn-danger" data-action="delete-barber" data-barber-id="${id}">Eliminar</button>
           </div>
         </div>
       `
     })
     .join("")
+
+  container.querySelectorAll('[data-action="edit-barber"]').forEach((button) => {
+    button.addEventListener("click", () => {
+      const id = button.getAttribute("data-barber-id")
+      if (!id) return
+      window.editBarber(id)
+    })
+  })
+
+  container.querySelectorAll('[data-action="delete-barber"]').forEach((button) => {
+    button.addEventListener("click", () => {
+      const id = button.getAttribute("data-barber-id")
+      if (!id) return
+      window.deleteBarber(id)
+    })
+  })
 }
 
 function renderBookings() {
@@ -721,7 +815,46 @@ function updateRevenue() {
 
 function loadBarbers() {
   onValue(ref(database, "barbers"), (snapshot) => {
-    state.barbers = snapshot.exists() ? snapshot.val() : {}
+    const fallbackLunch = {
+      start: state.storeSettings?.lunchBreak?.start || "13:00",
+      end: state.storeSettings?.lunchBreak?.end || "14:00",
+    }
+
+    const rawBarbers = snapshot.exists() ? snapshot.val() : {}
+    const normalizedBarbers = {}
+    const missingLunchIds = []
+
+    Object.entries(rawBarbers).forEach(([id, barber]) => {
+      if (!barber) return
+
+      const hasLunch = Boolean(barber.lunchBreak?.start && barber.lunchBreak?.end)
+      normalizedBarbers[id] = hasLunch
+        ? barber
+        : {
+            ...barber,
+            lunchBreak: {
+              start: fallbackLunch.start,
+              end: fallbackLunch.end,
+            },
+          }
+
+      if (!hasLunch) {
+        missingLunchIds.push(id)
+      }
+    })
+
+    if (missingLunchIds.length) {
+      missingLunchIds.forEach((id) => {
+        set(ref(database, `barbers/${id}/lunchBreak`), {
+          start: fallbackLunch.start,
+          end: fallbackLunch.end,
+        }).catch((error) => {
+          console.error(`Erro ao gravar hora de almoço para barbeiro ${id}:`, error)
+        })
+      })
+    }
+
+    state.barbers = normalizedBarbers
     renderBarbers()
     renderBookings()
     updateRevenue()
@@ -780,15 +913,30 @@ function resetBarberForm() {
 }
 
 function openBarberForm(barber = null, barberId = null) {
+  const modal = document.getElementById("barberFormModal")
   const createCard = document.getElementById("barberCreateCard")
-  if (!createCard) return
+  const openBtn = document.getElementById("openCreateBarberBtn")
+  if (!modal) return
 
-  createCard.classList.remove("hidden")
+  activateAdminTab("barbers")
+  modal.classList.remove("hidden")
+  modal.setAttribute("aria-hidden", "false")
+  modal.style.setProperty("display", "flex", "important")
+  document.body.classList.add("modal-open")
+  setBarberListVisibility(false)
+  setBarberEditOnlyMode(true)
+  if (createCard) createCard.scrollTop = 0
+  window.scrollTo(0, 0)
+  document.documentElement.scrollTop = 0
+  document.body.scrollTop = 0
 
   if (!barber) {
+    openBtn?.classList.remove("hidden")
     resetBarberForm()
     return
   }
+
+  openBtn?.classList.add("hidden")
 
   editingBarberId = barberId
   document.getElementById("barberName").value = barber.name || ""
@@ -798,10 +946,16 @@ function openBarberForm(barber = null, barberId = null) {
 
   const start = parseTimeValue(barber.workingHours?.start || "09:00", "09", "00")
   const end = parseTimeValue(barber.workingHours?.end || "19:00", "19", "00")
+  const lunchStart = parseTimeValue(barber.lunchBreak?.start || "13:00", "13", "00")
+  const lunchEnd = parseTimeValue(barber.lunchBreak?.end || "14:00", "14", "00")
   document.getElementById("barberStartHour").value = start.hour
   document.getElementById("barberStartMinute").value = start.minute
   document.getElementById("barberEndHour").value = end.hour
   document.getElementById("barberEndMinute").value = end.minute
+  document.getElementById("barberLunchStartHour").value = lunchStart.hour
+  document.getElementById("barberLunchStartMinute").value = lunchStart.minute
+  document.getElementById("barberLunchEndHour").value = lunchEnd.hour
+  document.getElementById("barberLunchEndMinute").value = lunchEnd.minute
 
   const workingDays = barber.workingDays || [1, 2, 3, 4, 5]
   document.querySelectorAll('#barberWorkingDays input[type="checkbox"]').forEach((checkbox) => {
@@ -820,10 +974,23 @@ function openBarberForm(barber = null, barberId = null) {
     passwordInput.required = false
     passwordInput.value = ""
   }
+
+  if (createCard) createCard.scrollIntoView({ behavior: "auto", block: "start" })
+
+  const nameInput = document.getElementById("barberName")
+  nameInput?.focus()
 }
 
 function closeBarberForm() {
-  document.getElementById("barberCreateCard")?.classList.add("hidden")
+  const modal = document.getElementById("barberFormModal")
+  const openBtn = document.getElementById("openCreateBarberBtn")
+  modal?.classList.add("hidden")
+  modal?.setAttribute("aria-hidden", "true")
+  modal?.style.removeProperty("display")
+  document.body.classList.remove("modal-open")
+  setBarberListVisibility(true)
+  setBarberEditOnlyMode(false)
+  openBtn?.classList.remove("hidden")
   resetBarberForm()
 }
 
@@ -833,6 +1000,10 @@ window.editBarber = (id) => {
     showError("Barbeiro não encontrado.")
     return
   }
+
+  activateAdminTab("barbers")
+  setBarberListVisibility(false)
+  setBarberEditOnlyMode(true)
   openBarberForm(barber, id)
 }
 
@@ -1073,10 +1244,57 @@ document.getElementById("barberForm").addEventListener("submit", async (e) => {
 
   const startTime = getSelectTime("barberStartHour", "barberStartMinute")
   const endTime = getSelectTime("barberEndHour", "barberEndMinute")
+  const lunchStartTime = getSelectTime("barberLunchStartHour", "barberLunchStartMinute")
+  const lunchEndTime = getSelectTime("barberLunchEndHour", "barberLunchEndMinute")
+
+  const workStartMinutes = timeToMinutes(startTime)
+  const workEndMinutes = timeToMinutes(endTime)
+  const lunchStartMinutes = timeToMinutes(lunchStartTime)
+  const lunchEndMinutes = timeToMinutes(lunchEndTime)
+
+  if (workStartMinutes >= workEndMinutes) {
+    showError("O horário de início deve ser anterior ao horário de fim.")
+    return
+  }
+
+  if (lunchStartMinutes >= lunchEndMinutes) {
+    showError("O início do almoço deve ser anterior ao fim do almoço.")
+    return
+  }
+
+  if (lunchEndMinutes - lunchStartMinutes !== 60) {
+    showError("A hora de almoço do barbeiro deve ter exatamente 1 hora.")
+    return
+  }
+
+  if (lunchStartMinutes < workStartMinutes || lunchEndMinutes > workEndMinutes) {
+    showError("A hora de almoço do barbeiro deve estar dentro do horário de trabalho.")
+    return
+  }
+
+  const storeOpenStart = state.storeSettings.openingHours?.start || "09:00"
+  const storeOpenEnd = state.storeSettings.openingHours?.end || "19:00"
+  const storeStartMinutes = timeToMinutes(storeOpenStart)
+  const storeEndMinutes = timeToMinutes(storeOpenEnd)
+
+  if (workStartMinutes < storeStartMinutes || workEndMinutes > storeEndMinutes) {
+    showError("O horário do barbeiro deve respeitar o horário da loja.")
+    return
+  }
 
   const workingDays = Array.from(document.querySelectorAll('#barberWorkingDays input[type="checkbox"]:checked')).map((cb) => Number(cb.value))
   if (!workingDays.length) {
     showError("Selecione pelo menos um dia de trabalho.")
+    return
+  }
+
+  const storeOpenDays = Array.isArray(state.storeSettings.openDays) && state.storeSettings.openDays.length
+    ? state.storeSettings.openDays
+    : [1, 2, 3, 4, 5]
+
+  const invalidWorkingDay = workingDays.find((day) => !storeOpenDays.includes(day))
+  if (invalidWorkingDay !== undefined) {
+    showError("Os dias do barbeiro devem estar dentro dos dias de abertura da loja.")
     return
   }
 
@@ -1089,6 +1307,10 @@ document.getElementById("barberForm").addEventListener("submit", async (e) => {
       workingHours: {
         start: startTime,
         end: endTime,
+      },
+      lunchBreak: {
+        start: lunchStartTime,
+        end: lunchEndTime,
       },
       workingDays,
       createdAt: new Date().toISOString(),
@@ -1163,15 +1385,40 @@ document.getElementById("storeScheduleForm").addEventListener("submit", async (e
     return
   }
 
+  const storeStartTime = getSelectTime("storeOpenHour", "storeOpenMinute")
+  const storeEndTime = getSelectTime("storeCloseHour", "storeCloseMinute")
+  const storeLunchStartTime = getSelectTime("storeLunchStartHour", "storeLunchStartMinute")
+  const storeLunchEndTime = getSelectTime("storeLunchEndHour", "storeLunchEndMinute")
+
+  const storeStartMinutes = timeToMinutes(storeStartTime)
+  const storeEndMinutes = timeToMinutes(storeEndTime)
+  const storeLunchStartMinutes = timeToMinutes(storeLunchStartTime)
+  const storeLunchEndMinutes = timeToMinutes(storeLunchEndTime)
+
+  if (storeStartMinutes >= storeEndMinutes) {
+    showError("O horário de abertura da loja deve ser anterior ao fecho.")
+    return
+  }
+
+  if (storeLunchStartMinutes >= storeLunchEndMinutes) {
+    showError("O início do almoço da loja deve ser anterior ao fim do almoço.")
+    return
+  }
+
+  if (storeLunchStartMinutes < storeStartMinutes || storeLunchEndMinutes > storeEndMinutes) {
+    showError("A pausa de almoço da loja deve estar dentro do horário de abertura.")
+    return
+  }
+
   const payload = {
     openDays,
     openingHours: {
-      start: getSelectTime("storeOpenHour", "storeOpenMinute"),
-      end: getSelectTime("storeCloseHour", "storeCloseMinute"),
+      start: storeStartTime,
+      end: storeEndTime,
     },
     lunchBreak: {
-      start: getSelectTime("storeLunchStartHour", "storeLunchStartMinute"),
-      end: getSelectTime("storeLunchEndHour", "storeLunchEndMinute"),
+      start: storeLunchStartTime,
+      end: storeLunchEndTime,
     },
     updatedAt: new Date().toISOString(),
   }
