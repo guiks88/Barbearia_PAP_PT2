@@ -1,13 +1,14 @@
 import { auth, database } from "./firebase-config.js"
 import { ref, get, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
 import {
+  browserSessionPersistence,
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  setPersistence,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
-  signOut,
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
 import { showSuccess, showError } from "./utils.js"
 
@@ -17,6 +18,8 @@ const forgotPasswordLink = document.getElementById("forgotPasswordLink")
 const googleLoginBtn = document.getElementById("googleLoginBtn")
 const googleLoginBtnLabel = document.getElementById("googleLoginBtnLabel")
 
+let authPersistencePromise = null
+
 if (!form || !submitBtn || !forgotPasswordLink || !googleLoginBtn || !googleLoginBtnLabel) {
   throw new Error("Elementos do login não encontrados.")
 }
@@ -24,6 +27,21 @@ if (!form || !submitBtn || !forgotPasswordLink || !googleLoginBtn || !googleLogi
 function normalizeEmail(email) {
   return (email || "").trim().toLowerCase()
 }
+
+function ensureSessionPersistence() {
+  if (!authPersistencePromise) {
+    authPersistencePromise = setPersistence(auth, browserSessionPersistence).catch((error) => {
+      authPersistencePromise = null
+      throw error
+    })
+  }
+
+  return authPersistencePromise
+}
+
+ensureSessionPersistence().catch((error) => {
+  console.error("Erro ao definir persistência de sessão:", error)
+})
 
 async function findRoleByUid(uid) {
   const adminSnapshot = await get(ref(database, `admins/${uid}`))
@@ -236,6 +254,8 @@ onAuthStateChanged(auth, async (user) => {
 })
 
 async function loginAndRoute(email, password) {
+  await ensureSessionPersistence()
+
   let user = null
 
   try {
@@ -273,6 +293,8 @@ async function loginAndRoute(email, password) {
 }
 
 async function loginWithGoogleAndRoute() {
+  await ensureSessionPersistence()
+
   const provider = new GoogleAuthProvider()
   provider.setCustomParameters({ prompt: "select_account" })
 

@@ -1,6 +1,13 @@
 import { auth, database } from "./firebase-config.js"
 import { ref, get, push, set, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
+import {
+  browserSessionPersistence,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  setPersistence,
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
 import { showSuccess, showError } from "./utils.js"
 
 const isBarberSession = sessionStorage.getItem("isBarber") === "true"
@@ -13,6 +20,32 @@ const currentMode = urlParams.get('mode')
 const isManageMode = currentMode === 'manage' || currentMode === 'cancel'
 const isCancelMode = currentMode === 'cancel'
 const preferredBarberParam = (urlParams.get('barber') || '').trim()
+
+let authPersistencePromise = null
+
+function ensureSessionPersistence() {
+  if (!authPersistencePromise) {
+    authPersistencePromise = setPersistence(auth, browserSessionPersistence).catch((error) => {
+      authPersistencePromise = null
+      throw error
+    })
+  }
+
+  return authPersistencePromise
+}
+
+function clearAppSession() {
+  sessionStorage.removeItem('clientEmail')
+  sessionStorage.removeItem('clientName')
+  sessionStorage.removeItem('isClient')
+  sessionStorage.removeItem('barberId')
+  sessionStorage.removeItem('barberName')
+  sessionStorage.removeItem('barberEmail')
+  sessionStorage.removeItem('isBarber')
+  sessionStorage.removeItem('adminId')
+  sessionStorage.removeItem('adminName')
+  sessionStorage.removeItem('isAdmin')
+}
 
 function normalizeBarberKey(value) {
   return String(value || '')
@@ -646,6 +679,8 @@ function initClientAuth() {
     }
 
     try {
+      await ensureSessionPersistence()
+
       const result = await signInWithEmailAndPassword(auth, email, password)
       const user = result.user
       const snap = await get(ref(database, `clients/${user.uid}`))
@@ -689,6 +724,8 @@ function initClientAuth() {
     }
 
     try {
+      await ensureSessionPersistence()
+
       const result = await createUserWithEmailAndPassword(auth, email, password)
       const user = result.user
 
@@ -1775,11 +1812,26 @@ function initBookingConfirmation() {
 
 function initClientNavigation() {
   const backBtn = document.getElementById('bookingGoBackBtn')
-  if (!backBtn) return
+  const logoutBtn = document.getElementById('bookingLogoutBtn')
 
-  backBtn.addEventListener('click', () => {
-    window.location.href = 'index.html'
-  })
+  if (backBtn) {
+    backBtn.addEventListener('click', () => {
+      window.location.href = 'index.html'
+    })
+  }
+
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', async () => {
+      try {
+        await signOut(auth)
+      } catch (error) {
+        console.error('Erro ao terminar sessão:', error)
+      }
+
+      clearAppSession()
+      window.location.href = 'index.html'
+    })
+  }
 }
 
 function resetBooking() {
@@ -1817,6 +1869,10 @@ function resetBooking() {
 
 // Inicializar quando o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', () => {
+  ensureSessionPersistence().catch((error) => {
+    console.error('Erro ao definir persistência de sessão:', error)
+  })
+
   initPageMode()
   initClientAuth()
   initClientNavigation()
