@@ -1,5 +1,6 @@
-import { database } from "./firebase-config.js"
+import { auth, database } from "./firebase-config.js"
 import { ref, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
 
 const helpTexts = {
   register: {
@@ -428,6 +429,36 @@ function initTeamQuickBooking() {
   })
 }
 
+function updateMainAuthButton() {
+  const mainAuthCta = document.getElementById('mainAuthCta')
+  if (!mainAuthCta) return
+
+  const setLoggedOut = () => {
+    mainAuthCta.href = 'login.html'
+    mainAuthCta.textContent = 'Login'
+  }
+
+  const setLoggedIn = () => {
+    mainAuthCta.href = 'bookings.html'
+    mainAuthCta.innerHTML = '<i class="bi bi-calendar-check" aria-hidden="true"></i> Marcar'
+  }
+
+  if (sessionStorage.getItem('isClient') === 'true') {
+    setLoggedIn()
+  } else {
+    setLoggedOut()
+  }
+
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      setLoggedIn()
+      return
+    }
+
+    setLoggedOut()
+  })
+}
+
 function timeToMinutes(timeStr) {
   const [hour, minute] = String(timeStr || '00:00').split(':').map(Number)
   return (hour || 0) * 60 + (minute || 0)
@@ -514,6 +545,7 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initDownloadSiteButton);
   document.addEventListener('DOMContentLoaded', initCutsGallery);
   document.addEventListener('DOMContentLoaded', initTeamQuickBooking);
+  document.addEventListener('DOMContentLoaded', updateMainAuthButton);
   document.addEventListener('DOMContentLoaded', initStoreStatusBadge);
 } else {
   initTabs();
@@ -521,6 +553,7 @@ if (document.readyState === 'loading') {
   initDownloadSiteButton();
   initCutsGallery();
   initTeamQuickBooking();
+  updateMainAuthButton();
   initStoreStatusBadge();
 }
 
@@ -530,4 +563,5 @@ window.addEventListener('load', initActionMenu);
 window.addEventListener('load', initDownloadSiteButton);
 window.addEventListener('load', initCutsGallery);
 window.addEventListener('load', initTeamQuickBooking);
+window.addEventListener('load', updateMainAuthButton);
 window.addEventListener('load', initStoreStatusBadge);

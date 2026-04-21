@@ -173,6 +173,17 @@ async function migrateLegacyClientAuth(email, password) {
 }
 
 function saveRoleSession(role, uid, email, profile) {
+  sessionStorage.removeItem("adminId")
+  sessionStorage.removeItem("adminName")
+  sessionStorage.removeItem("isAdmin")
+  sessionStorage.removeItem("barberId")
+  sessionStorage.removeItem("barberName")
+  sessionStorage.removeItem("barberEmail")
+  sessionStorage.removeItem("isBarber")
+  sessionStorage.removeItem("clientEmail")
+  sessionStorage.removeItem("clientName")
+  sessionStorage.removeItem("isClient")
+
   if (role === "admin") {
     sessionStorage.setItem("adminId", uid)
     sessionStorage.setItem("adminName", profile?.name || "Administrador")
@@ -204,12 +215,25 @@ function redirectByRole(role) {
     return
   }
 
-  window.location.href = "client-menu.html"
+  window.location.href = "index.html"
 }
 
-// Ao entrar no ecrã de login, limpamos sessão ativa para permitir troca de conta.
-signOut(auth).catch(() => {})
-sessionStorage.clear()
+onAuthStateChanged(auth, async (user) => {
+  if (!user) return
+
+  const email = normalizeEmail(user.email)
+  const roleData = await resolveRoleData(user, email)
+
+  if (!roleData) {
+    const profile = await ensureClientProfileForAuthenticatedUser(user, email)
+    saveRoleSession("client", user.uid, email, profile)
+    redirectByRole("client")
+    return
+  }
+
+  saveRoleSession(roleData.role, user.uid, email, roleData.profile)
+  redirectByRole(roleData.role)
+})
 
 async function loginAndRoute(email, password) {
   let user = null
