@@ -68,7 +68,7 @@ const SERVICE_CATALOG = {
 }
 
 const BARBER_PROFILES = {
-  'joão pedro': {
+  joao_pedro: {
     tier: 'economico',
     priceMultiplier: 1,
     durationMultiplier: 1,
@@ -85,6 +85,12 @@ const BARBER_PROFILES = {
   },
 }
 
+const BARBER_PROFILE_ALIASES = {
+  joao_pedro: ['joao pedro', 'joão pedro', 'joao', 'pedro', 'joao-pedro', 'joão-pedro'],
+  ana: ['ana'],
+  manuel: ['manuel'],
+}
+
 function roundToNearest10(value) {
   return Math.max(10, Math.ceil(Number(value || 0) / 10) * 10)
 }
@@ -94,21 +100,49 @@ function roundPrice(value) {
 }
 
 function normalizeName(value) {
-  return String(value || '').trim().toLowerCase()
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
 }
 
-function getBarberProfile(barberName) {
-  const normalized = normalizeName(barberName)
-  return BARBER_PROFILES[normalized] || { tier: 'economico', priceMultiplier: 1, durationMultiplier: 1 }
+function resolveBarberProfileKey(barberName, barberId) {
+  const normalizedName = normalizeName(barberName)
+  const normalizedId = normalizeName(barberId)
+
+  const directKey = normalizedName.replace(/\s+/g, '_')
+  if (BARBER_PROFILES[directKey]) return directKey
+  if (BARBER_PROFILES[normalizedId]) return normalizedId
+
+  const aliases = Object.entries(BARBER_PROFILE_ALIASES)
+  for (const [profileKey, aliasList] of aliases) {
+    const hasAliasName = aliasList.some((alias) => normalizedName.includes(normalizeName(alias)))
+    if (hasAliasName) return profileKey
+
+    const hasAliasId = aliasList.some((alias) => normalizedId.includes(normalizeName(alias)))
+    if (hasAliasId) return profileKey
+  }
+
+  return null
 }
 
-function getServiceConfigForBarber(serviceKey, barberName) {
+function getBarberProfile(barberName, barberId) {
+  const profileKey = resolveBarberProfileKey(barberName, barberId)
+  if (!profileKey) {
+    return { tier: 'economico', priceMultiplier: 1, durationMultiplier: 1 }
+  }
+
+  return BARBER_PROFILES[profileKey]
+}
+
+function getServiceConfigForBarber(serviceKey, barberName, barberId) {
   const base = SERVICE_CATALOG[serviceKey]
   if (!base) {
     return { price: bookingState.servicePrice || 0, duration: bookingState.serviceDuration || 30, name: bookingState.serviceName || 'Serviço' }
   }
 
-  const profile = getBarberProfile(barberName)
+  const profile = getBarberProfile(barberName, barberId)
   const price = roundPrice(base.price * profile.priceMultiplier)
   const duration = roundToNearest10(base.duration * profile.durationMultiplier)
 
@@ -121,7 +155,7 @@ function getServiceConfigForBarber(serviceKey, barberName) {
 
 function applyServicePricingForSelectedBarber() {
   if (!bookingState.service) return
-  const config = getServiceConfigForBarber(bookingState.service, bookingState.barberName)
+  const config = getServiceConfigForBarber(bookingState.service, bookingState.barberName, bookingState.barber)
 
   bookingState.serviceName = config.name
   bookingState.servicePrice = config.price
@@ -140,7 +174,7 @@ function updateServiceCardsForBarber(barberName) {
     const service = card.dataset.service
     if (!service) return
 
-    const config = getServiceConfigForBarber(service, barberName)
+    const config = getServiceConfigForBarber(service, barberName, bookingState.barber)
     card.dataset.price = String(config.price)
     card.dataset.duration = String(config.duration)
 
