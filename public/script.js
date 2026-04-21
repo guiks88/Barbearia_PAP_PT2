@@ -69,27 +69,25 @@ const helpTexts = {
   prices: {
     title: "Tabela de Preços",
     content: `
-      <h3>Serviços e Preços</h3>
+      <h3>Serviços e Preços por Barbeiro</h3>
+      <p><strong>João Pedro (Económico)</strong><br>
+      Corte 14€ (25 min) · Barba 9€ (20 min) · Corte + Barba 20€ (40 min) · Sobrancelha 5€ (10 min) · Completo 32€ (55 min)</p>
+      <p><strong>Ana (Intermédio)</strong><br>
+      Corte 15€ (30 min) · Barba 10€ (20 min) · Corte + Barba 22€ (45 min) · Sobrancelha 5€ (10 min) · Completo 35€ (60 min)</p>
+      <p><strong>Manuel (Premium)</strong><br>
+      Corte 18€ (35 min) · Barba 12€ (25 min) · Corte + Barba 26€ (55 min) · Sobrancelha 6€ (10 min) · Completo 42€ (70 min)</p>
       <ul style="list-style: none; padding: 0;">
         <li style="background: rgba(212, 175, 55, 0.1); padding: 1rem; margin-bottom: 0.5rem; border-radius: 8px; border: 1px solid rgba(212, 175, 55, 0.2);">
-          <strong style="color: #d4af37;">Corte de Cabelo</strong><br>
-          15€ - 30 minutos
+          <strong style="color: #d4af37;">João Pedro</strong><br>
+          Perfil económico
         </li>
         <li style="background: rgba(212, 175, 55, 0.1); padding: 1rem; margin-bottom: 0.5rem; border-radius: 8px; border: 1px solid rgba(212, 175, 55, 0.2);">
-          <strong style="color: #d4af37;">Barba</strong><br>
-          10€ - 20 minutos
+          <strong style="color: #d4af37;">Ana</strong><br>
+          Perfil intermédio
         </li>
         <li style="background: rgba(212, 175, 55, 0.1); padding: 1rem; margin-bottom: 0.5rem; border-radius: 8px; border: 1px solid rgba(212, 175, 55, 0.2);">
-          <strong style="color: #d4af37;">Corte + Barba</strong><br>
-          22€ - 45 minutos (Poupe 3€!)
-        </li>
-        <li style="background: rgba(212, 175, 55, 0.1); padding: 1rem; margin-bottom: 0.5rem; border-radius: 8px; border: 1px solid rgba(212, 175, 55, 0.2);">
-          <strong style="color: #d4af37;">Sobrancelha</strong><br>
-          5€ - 10 minutos
-        </li>
-        <li style="background: rgba(212, 175, 55, 0.1); padding: 1rem; margin-bottom: 0.5rem; border-radius: 8px; border: 1px solid rgba(212, 175, 55, 0.2);">
-          <strong style="color: #d4af37;">Pacote Completo</strong><br>
-          35€ - 60 minutos (Melhor valor!)
+          <strong style="color: #d4af37;">Manuel</strong><br>
+          Perfil premium
         </li>
       </ul>
       <p><strong>Horário de funcionamento:</strong> 09:00 - 19:00</p>
