@@ -1,6 +1,6 @@
 import { auth, database } from "./firebase-config.js"
 import { ref, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
+import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
 
 const helpTexts = {
   register: {
@@ -431,16 +431,47 @@ function initTeamQuickBooking() {
 
 function updateMainAuthButton() {
   const mainAuthCta = document.getElementById('mainAuthCta')
+  const mainLogoutBtn = document.getElementById('mainLogoutBtn')
   if (!mainAuthCta) return
 
   const setLoggedOut = () => {
     mainAuthCta.href = 'login.html'
     mainAuthCta.textContent = 'Login'
+    if (mainLogoutBtn) {
+      mainLogoutBtn.style.display = 'none'
+    }
   }
 
   const setLoggedIn = () => {
     mainAuthCta.href = 'bookings.html'
     mainAuthCta.innerHTML = '<i class="bi bi-calendar-check" aria-hidden="true"></i> Marcar'
+    if (mainLogoutBtn) {
+      mainLogoutBtn.style.display = 'inline-flex'
+    }
+  }
+
+  if (mainLogoutBtn && mainLogoutBtn.dataset.bound !== 'true') {
+    mainLogoutBtn.dataset.bound = 'true'
+    mainLogoutBtn.addEventListener('click', async () => {
+      try {
+        await signOut(auth)
+      } catch (error) {
+        console.error('Erro ao terminar sessão:', error)
+      }
+
+      sessionStorage.removeItem('clientEmail')
+      sessionStorage.removeItem('clientName')
+      sessionStorage.removeItem('isClient')
+      sessionStorage.removeItem('barberId')
+      sessionStorage.removeItem('barberName')
+      sessionStorage.removeItem('barberEmail')
+      sessionStorage.removeItem('isBarber')
+      sessionStorage.removeItem('adminId')
+      sessionStorage.removeItem('adminName')
+      sessionStorage.removeItem('isAdmin')
+
+      window.location.href = 'index.html'
+    })
   }
 
   if (sessionStorage.getItem('isClient') === 'true') {
