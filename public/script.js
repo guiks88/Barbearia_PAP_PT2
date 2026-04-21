@@ -435,6 +435,23 @@ function normalizePersonName(value) {
     .replace(/[\u0300-\u036f]/g, '')
 }
 
+const TEAM_BARBER_SCHEDULES = {
+  ana: { start: '09:00', end: '18:00', lunchStart: '13:00', lunchEnd: '14:00' },
+  'joao pedro': { start: '09:00', end: '19:00', lunchStart: '12:30', lunchEnd: '13:30' },
+  manuel: { start: '10:00', end: '19:00', lunchStart: '14:00', lunchEnd: '15:00' },
+}
+
+function getConfiguredTeamSchedule(barberName) {
+  const normalizedName = normalizePersonName(barberName)
+  if (TEAM_BARBER_SCHEDULES[normalizedName]) return TEAM_BARBER_SCHEDULES[normalizedName]
+
+  const keys = Object.keys(TEAM_BARBER_SCHEDULES)
+  const partialMatch = keys.find((key) => normalizedName.includes(key) || key.includes(normalizedName))
+  if (!partialMatch) return null
+
+  return TEAM_BARBER_SCHEDULES[partialMatch]
+}
+
 async function initTeamSchedules() {
   const members = document.querySelectorAll('.team-member[data-barber-name]')
   if (!members.length) return
@@ -457,25 +474,17 @@ async function initTeamSchedules() {
         if (!candidate) return false
         return candidate.includes(normalizedBarberName) || normalizedBarberName.includes(candidate)
       })
-      if (!barber) return
 
-      const start = barber.workingHours?.start
-      const end = barber.workingHours?.end
+      const configured = getConfiguredTeamSchedule(barberName)
+      const start = configured?.start || barber?.workingHours?.start || null
+      const end = configured?.end || barber?.workingHours?.end || null
 
-      if (start && end) {
-        scheduleEl.textContent = `Horario: ${start} - ${end}`
-      } else {
-        scheduleEl.textContent = 'Horario: a definir'
-      }
+      scheduleEl.textContent = start && end ? `Horario: ${start} - ${end}` : 'Horario: a definir'
 
       if (lunchEl) {
-        const lunchStart = barber.lunchBreak?.start
-        const lunchEnd = barber.lunchBreak?.end
-        if (lunchStart && lunchEnd) {
-          lunchEl.textContent = `Almoco: ${lunchStart} - ${lunchEnd}`
-        } else {
-          lunchEl.textContent = 'Almoco: a definir'
-        }
+        const lunchStart = configured?.lunchStart || barber?.lunchBreak?.start || null
+        const lunchEnd = configured?.lunchEnd || barber?.lunchBreak?.end || null
+        lunchEl.textContent = lunchStart && lunchEnd ? `Almoco: ${lunchStart} - ${lunchEnd}` : 'Almoco: a definir'
       }
     })
   } catch (error) {
