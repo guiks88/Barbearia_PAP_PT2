@@ -30,6 +30,7 @@ const bookingState = {
   serviceDuration: 0,
   barber: null,
   barberName: '',
+  barberSpecialty: '',
   barberWorkingHours: [],
   barberLunchBreak: { start: null, end: null },
   barberSpecialSchedules: { day: {}, week: {}, month: {} },
@@ -70,18 +71,18 @@ const SERVICE_CATALOG = {
 const BARBER_PROFILES = {
   joao_pedro: {
     tier: 'economico',
-    priceMultiplier: 1,
-    durationMultiplier: 1,
+    priceMultiplier: 0.9,
+    durationMultiplier: 0.9,
   },
   ana: {
     tier: 'intermedio',
-    priceMultiplier: 1.2,
-    durationMultiplier: 1.2,
+    priceMultiplier: 1,
+    durationMultiplier: 1,
   },
   manuel: {
     tier: 'premium',
-    priceMultiplier: 1.45,
-    durationMultiplier: 1.5,
+    priceMultiplier: 1.2,
+    durationMultiplier: 1.2,
   },
 }
 
@@ -91,8 +92,8 @@ const BARBER_PROFILE_ALIASES = {
   manuel: ['manuel'],
 }
 
-function roundToNearest10(value) {
-  return Math.max(10, Math.ceil(Number(value || 0) / 10) * 10)
+function roundDuration(value) {
+  return Math.max(10, Math.round(Number(value || 0) / 5) * 5)
 }
 
 function roundPrice(value) {
@@ -105,6 +106,25 @@ function normalizeName(value) {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
+}
+
+function resolveProfileBySpecialty(barberSpecialty) {
+  const specialty = normalizeName(barberSpecialty)
+  if (!specialty) return null
+
+  if (specialty.includes('premium') || specialty.includes('detalhe') || specialty.includes('acabamento')) {
+    return 'manuel'
+  }
+
+  if (specialty.includes('intermedio') || specialty.includes('equilibrio')) {
+    return 'ana'
+  }
+
+  if (specialty.includes('rapido') || specialty.includes('economico') || specialty.includes('eficiencia')) {
+    return 'joao_pedro'
+  }
+
+  return null
 }
 
 function resolveBarberProfileKey(barberName, barberId) {
@@ -127,8 +147,11 @@ function resolveBarberProfileKey(barberName, barberId) {
   return null
 }
 
-function getBarberProfile(barberName, barberId) {
-  const profileKey = resolveBarberProfileKey(barberName, barberId)
+function getBarberProfile(barberName, barberId, barberSpecialty) {
+  const profileKey =
+    resolveBarberProfileKey(barberName, barberId) ||
+    resolveProfileBySpecialty(barberSpecialty)
+
   if (!profileKey) {
     return { tier: 'economico', priceMultiplier: 1, durationMultiplier: 1 }
   }
@@ -136,15 +159,15 @@ function getBarberProfile(barberName, barberId) {
   return BARBER_PROFILES[profileKey]
 }
 
-function getServiceConfigForBarber(serviceKey, barberName, barberId) {
+function getServiceConfigForBarber(serviceKey, barberName, barberId, barberSpecialty) {
   const base = SERVICE_CATALOG[serviceKey]
   if (!base) {
     return { price: bookingState.servicePrice || 0, duration: bookingState.serviceDuration || 30, name: bookingState.serviceName || 'Serviço' }
   }
 
-  const profile = getBarberProfile(barberName, barberId)
+  const profile = getBarberProfile(barberName, barberId, barberSpecialty)
   const price = roundPrice(base.price * profile.priceMultiplier)
-  const duration = roundToNearest10(base.duration * profile.durationMultiplier)
+  const duration = roundDuration(base.duration * profile.durationMultiplier)
 
   return {
     name: base.name,
@@ -155,7 +178,12 @@ function getServiceConfigForBarber(serviceKey, barberName, barberId) {
 
 function applyServicePricingForSelectedBarber() {
   if (!bookingState.service) return
-  const config = getServiceConfigForBarber(bookingState.service, bookingState.barberName, bookingState.barber)
+  const config = getServiceConfigForBarber(
+    bookingState.service,
+    bookingState.barberName,
+    bookingState.barber,
+    bookingState.barberSpecialty,
+  )
 
   bookingState.serviceName = config.name
   bookingState.servicePrice = config.price
@@ -174,7 +202,7 @@ function updateServiceCardsForBarber(barberName) {
     const service = card.dataset.service
     if (!service) return
 
-    const config = getServiceConfigForBarber(service, barberName, bookingState.barber)
+    const config = getServiceConfigForBarber(service, barberName, bookingState.barber, bookingState.barberSpecialty)
     card.dataset.price = String(config.price)
     card.dataset.duration = String(config.duration)
 
@@ -1036,7 +1064,7 @@ async function loadBarbers() {
           <p>${barberSpecialty}</p>
         `
         
-        barberCard.addEventListener('click', () => selectBarber(barberId, barberName))
+        barberCard.addEventListener('click', () => selectBarber(barberId, barberName, barberSpecialty))
         
         barbersList.appendChild(barberCard)
       })
@@ -1055,7 +1083,7 @@ async function loadBarbers() {
           const [matchedBarberId, matchedBarber] = preferredMatch
           const matchedBarberName = matchedBarber?.name || matchedBarber?.nome || matchedBarber?.fullName || 'Barbeiro'
           showSuccess(`Barbeiro pré-selecionado: ${matchedBarberName}`)
-          await selectBarber(matchedBarberId, matchedBarberName)
+          await selectBarber(matchedBarberId, matchedBarberName, matchedBarber?.specialty || matchedBarber?.especialidade || '')
         }
       }
     } else {
@@ -1090,9 +1118,10 @@ async function loadStoreSettings() {
   }
 }
 
-async function selectBarber(barberId, barberName) {
+async function selectBarber(barberId, barberName, barberSpecialty = '') {
   bookingState.barber = barberId
   bookingState.barberName = barberName
+  bookingState.barberSpecialty = barberSpecialty
   updateServiceCardsForBarber(barberName)
   applyServicePricingForSelectedBarber()
 
@@ -1105,6 +1134,7 @@ async function selectBarber(barberId, barberName) {
     
     if (snapshot.exists()) {
       const barberData = snapshot.val()
+      bookingState.barberSpecialty = barberData.specialty || barberData.especialidade || bookingState.barberSpecialty
       bookingState.barberSpecialSchedules = barberData.specialSchedules || { day: {}, week: {}, month: {} }
       const fallbackLunchStart = bookingState.storeSettings?.lunchBreak?.start || '13:00'
       const fallbackLunchEnd = bookingState.storeSettings?.lunchBreak?.end || '14:00'
@@ -1139,6 +1169,9 @@ async function selectBarber(barberId, barberName) {
     bookingState.barberLunchBreak = { start: fallbackLunchStart, end: fallbackLunchEnd }
     bookingState.barberSpecialSchedules = { day: {}, week: {}, month: {} }
   }
+
+  updateServiceCardsForBarber(barberName)
+  applyServicePricingForSelectedBarber()
   
   // Atualizar UI
   document.querySelectorAll('.barber-card').forEach(c => c.classList.remove('selected'))
