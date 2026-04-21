@@ -427,6 +427,49 @@ function initTeamQuickBooking() {
   })
 }
 
+function normalizePersonName(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+}
+
+async function initTeamSchedules() {
+  const members = document.querySelectorAll('.team-member[data-barber-name]')
+  if (!members.length) return
+
+  try {
+    const snapshot = await get(ref(database, 'barbers'))
+    if (!snapshot.exists()) return
+
+    const barbers = Object.values(snapshot.val() || {})
+
+    members.forEach((member) => {
+      const barberName = member.getAttribute('data-barber-name') || ''
+      const scheduleEl = member.querySelector('.member-schedule')
+      const lunchEl = member.querySelector('.member-lunch')
+      if (!barberName || !scheduleEl) return
+
+      const normalizedBarberName = normalizePersonName(barberName)
+      const barber = barbers.find((item) => normalizePersonName(item?.name).includes(normalizedBarberName))
+      if (!barber) return
+
+      const start = barber.workingHours?.start || '09:00'
+      const end = barber.workingHours?.end || '19:00'
+      scheduleEl.textContent = `Horario: ${start} - ${end}`
+
+      if (lunchEl) {
+        const lunchStart = barber.lunchBreak?.start || '13:00'
+        const lunchEnd = barber.lunchBreak?.end || '14:00'
+        lunchEl.textContent = `Almoco: ${lunchStart} - ${lunchEnd}`
+      }
+    })
+  } catch (error) {
+    console.error('Erro ao carregar horarios da equipa:', error)
+  }
+}
+
 function updateMainAuthButton() {
   const mainAuthCta = document.getElementById('mainAuthCta')
   const mainLogoutBtn = document.getElementById('mainLogoutBtn')
@@ -574,6 +617,7 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initDownloadSiteButton);
   document.addEventListener('DOMContentLoaded', initCutsGallery);
   document.addEventListener('DOMContentLoaded', initTeamQuickBooking);
+  document.addEventListener('DOMContentLoaded', initTeamSchedules);
   document.addEventListener('DOMContentLoaded', updateMainAuthButton);
   document.addEventListener('DOMContentLoaded', initStoreStatusBadge);
 } else {
@@ -582,6 +626,7 @@ if (document.readyState === 'loading') {
   initDownloadSiteButton();
   initCutsGallery();
   initTeamQuickBooking();
+  initTeamSchedules();
   updateMainAuthButton();
   initStoreStatusBadge();
 }
@@ -592,5 +637,6 @@ window.addEventListener('load', initActionMenu);
 window.addEventListener('load', initDownloadSiteButton);
 window.addEventListener('load', initCutsGallery);
 window.addEventListener('load', initTeamQuickBooking);
+window.addEventListener('load', initTeamSchedules);
 window.addEventListener('load', updateMainAuthButton);
 window.addEventListener('load', initStoreStatusBadge);
