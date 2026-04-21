@@ -452,17 +452,30 @@ async function initTeamSchedules() {
       if (!barberName || !scheduleEl) return
 
       const normalizedBarberName = normalizePersonName(barberName)
-      const barber = barbers.find((item) => normalizePersonName(item?.name).includes(normalizedBarberName))
+      const barber = barbers.find((item) => {
+        const candidate = normalizePersonName(item?.name)
+        if (!candidate) return false
+        return candidate.includes(normalizedBarberName) || normalizedBarberName.includes(candidate)
+      })
       if (!barber) return
 
-      const start = barber.workingHours?.start || '09:00'
-      const end = barber.workingHours?.end || '19:00'
-      scheduleEl.textContent = `Horario: ${start} - ${end}`
+      const start = barber.workingHours?.start
+      const end = barber.workingHours?.end
+
+      if (start && end) {
+        scheduleEl.textContent = `Horario: ${start} - ${end}`
+      } else {
+        scheduleEl.textContent = 'Horario: a definir'
+      }
 
       if (lunchEl) {
-        const lunchStart = barber.lunchBreak?.start || '13:00'
-        const lunchEnd = barber.lunchBreak?.end || '14:00'
-        lunchEl.textContent = `Almoco: ${lunchStart} - ${lunchEnd}`
+        const lunchStart = barber.lunchBreak?.start
+        const lunchEnd = barber.lunchBreak?.end
+        if (lunchStart && lunchEnd) {
+          lunchEl.textContent = `Almoco: ${lunchStart} - ${lunchEnd}`
+        } else {
+          lunchEl.textContent = 'Almoco: a definir'
+        }
       }
     })
   } catch (error) {
