@@ -19,6 +19,7 @@ const googleLoginBtn = document.getElementById("googleLoginBtn")
 const googleLoginBtnLabel = document.getElementById("googleLoginBtnLabel")
 
 let authPersistencePromise = null
+let hasRoleRedirected = false
 
 if (!form || !submitBtn || !forgotPasswordLink || !googleLoginBtn || !googleLoginBtnLabel) {
   throw new Error("Elementos do login não encontrados.")
@@ -223,13 +224,31 @@ function saveRoleSession(role, uid, email, profile) {
 }
 
 function redirectByRole(role) {
+  if (hasRoleRedirected) return
+
   if (role === "admin") {
+    hasRoleRedirected = true
+    sessionStorage.removeItem("pendingBookingBarber")
     window.location.href = "admin-panel.html"
     return
   }
 
   if (role === "barber") {
+    hasRoleRedirected = true
+    sessionStorage.removeItem("pendingBookingBarber")
     window.location.href = "barber-panel.html"
+    return
+  }
+
+  const pendingFromSession = (sessionStorage.getItem("pendingBookingBarber") || "").trim()
+  const pendingFromQuery = (new URLSearchParams(window.location.search).get("barber") || "").trim()
+  const pendingBarber = pendingFromSession || pendingFromQuery
+
+  hasRoleRedirected = true
+
+  if (pendingBarber) {
+    sessionStorage.removeItem("pendingBookingBarber")
+    window.location.href = `bookings.html?barber=${encodeURIComponent(pendingBarber)}`
     return
   }
 

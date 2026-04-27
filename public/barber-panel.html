@@ -5,298 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel do Barbeiro - Barbearia João Castro</title>
     <link rel="stylesheet" href="styles.css">
-    <style>
-        .barber-panel {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-
-        .barber-header {
-            background: linear-gradient(135deg, #1b2336 0%, #232f46 100%);
-            color: white;
-            padding: 2rem;
-            border-radius: 12px;
-            margin-bottom: 2rem;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
-        }
-
-        .barber-header h1 {
-            margin: 0 0 0.5rem 0;
-            font-size: 2rem;
-        }
-
-        .barber-header p {
-            margin: 0;
-            opacity: 0.9;
-        }
-
-        .schedule-container {
-            background: #121a2d;
-            padding: 2rem;
-            border-radius: 12px;
-            border: 1px solid rgba(156, 163, 175, 0.18);
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
-            margin-bottom: 2rem;
-        }
-
-        .schedule-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
-
-        .schedule-header h2 {
-            margin: 0;
-            color: #e5e7eb;
-        }
-
-        .date-selector {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .date-selector input[type="date"] {
-            padding: 0.5rem 1rem;
-            border: 1px solid rgba(156, 163, 175, 0.28);
-            border-radius: 6px;
-            font-size: 1rem;
-            background: #f9fafb;
-        }
-
-        .appointments-grid {
-            display: grid;
-            gap: 1rem;
-        }
-
-        .appointment-card {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1.25rem;
-            border: 1px solid rgba(156, 163, 175, 0.2);
-            border-radius: 8px;
-            background: #1a2438;
-            transition: all 0.3s ease;
-        }
-
-        .appointment-card:hover {
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            transform: translateY(-2px);
-        }
-
-        .appointment-time {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #7dd3fc;
-            min-width: 80px;
-        }
-
-        .appointment-details {
-            flex: 1;
-            padding: 0 1.5rem;
-        }
-
-        .appointment-details h3 {
-            margin: 0 0 0.5rem 0;
-            font-size: 1.1rem;
-            color: #f3f4f6;
-        }
-
-        .appointment-details p {
-            margin: 0.25rem 0;
-            color: #cbd5e1;
-            font-size: 0.95rem;
-        }
-
-        .appointment-service {
-            padding: 0.4rem 1rem;
-            background: #0f4c5c;
-            color: white;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            white-space: nowrap;
-        }
-
-        .status-badges {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.35rem;
-            margin-top: 0.55rem;
-        }
-
-        .status-pill {
-            border-radius: 999px;
-            padding: 0.22rem 0.6rem;
-            font-size: 0.75rem;
-            font-weight: 700;
-            border: 1px solid transparent;
-        }
-
-        .status-pill.is-pending {
-            color: #c4b5fd;
-            background: rgba(196, 181, 253, 0.12);
-            border-color: rgba(196, 181, 253, 0.4);
-        }
-
-        .status-pill.is-progress {
-            color: #fdba74;
-            background: rgba(253, 186, 116, 0.12);
-            border-color: rgba(253, 186, 116, 0.4);
-        }
-
-        .status-pill.is-completed {
-            color: #6ee7b7;
-            background: rgba(110, 231, 183, 0.12);
-            border-color: rgba(110, 231, 183, 0.4);
-        }
-
-        .status-pill.is-warning {
-            color: #fcd34d;
-            background: rgba(252, 211, 77, 0.12);
-            border-color: rgba(252, 211, 77, 0.4);
-        }
-
-        .status-pill.is-cancelled {
-            color: #fca5a5;
-            background: rgba(252, 165, 165, 0.12);
-            border-color: rgba(252, 165, 165, 0.4);
-        }
-
-        .appointment-actions {
-            margin-top: 0.7rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.45rem;
-        }
-
-        .appointment-actions .btn {
-            width: 100%;
-            padding: 0.45rem 0.7rem;
-            font-size: 0.85rem;
-        }
-
-        .no-appointments {
-            text-align: center;
-            padding: 3rem;
-            color: #999;
-        }
-
-        .no-appointments p {
-            font-size: 1.1rem;
-            margin: 1rem 0;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-
-        .stat-card {
-            background: #121a2d;
-            padding: 1.5rem;
-            border-radius: 12px;
-            border: 1px solid rgba(156, 163, 175, 0.18);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
-            text-align: center;
-        }
-
-        .stat-card.clickable {
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .stat-card.clickable:hover {
-            border-color: rgba(103, 232, 249, 0.55);
-            transform: translateY(-2px);
-        }
-
-        .stat-card.active-filter {
-            border-color: rgba(103, 232, 249, 0.75);
-            box-shadow: 0 0 0 2px rgba(103, 232, 249, 0.2);
-        }
-
-        .view-mode-label {
-            color: #9ca3af;
-            font-size: 0.9rem;
-            margin-top: -0.6rem;
-            margin-bottom: 1rem;
-        }
-
-        .stat-card h3 {
-            margin: 0 0 0.5rem 0;
-            font-size: 2rem;
-            color: #67e8f9;
-        }
-
-        .stat-card p {
-            margin: 0;
-            color: #cbd5e1;
-            font-size: 0.95rem;
-        }
-
-        .logout-btn {
-            background: #dc3545;
-            color: white;
-            border: none;
-            padding: 0.5rem 1.5rem;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: background 0.3s;
-        }
-
-        .logout-btn:hover {
-            background: #c82333;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 3rem;
-            color: #999;
-        }
-
-        @media (max-width: 768px) {
-            .barber-panel {
-                padding: 1rem;
-            }
-
-            .schedule-header {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            .appointment-card {
-                flex-direction: column;
-                text-align: center;
-                gap: 1rem;
-            }
-
-            .appointment-details {
-                padding: 0;
-            }
-
-            .appointment-time {
-                min-width: auto;
-            }
-        }
-    </style>
 </head>
-<body>
+<body class="barber-page">
     <div class="barber-panel">
         <div class="barber-header">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <div class="barber-header-top">
                 <div>
                     <h1><span id="barberNameDisplay">Barbeiro</span></h1>
                     <p id="barberEmailDisplay"></p>
                 </div>
-                <button class="logout-btn" id="logoutBtn">Sair</button>
+                <div class="barber-header-actions">
+                    <a href="index.html" class="btn btn-secondary btn-small" id="menuHomeBtn">Menu Principal</a>
+                    <button class="btn btn-danger btn-small" id="logoutBtn" type="button">Sair</button>
+                </div>
             </div>
         </div>
 
@@ -318,24 +39,40 @@
         <div class="schedule-container">
             <div class="schedule-header">
                 <h2>Pedidos</h2>
-                <div class="date-selector">
-                    <label for="dateFilter">Data:</label>
-                    <input type="date" id="dateFilter">
-                    <button class="btn btn-secondary btn-small" id="dayModeBtn" type="button">Dia específico</button>
+                <div class="filters-wrapper">
+                    <div class="filters-tools">
+                        <button class="btn btn-secondary btn-small filter-toggle-btn" id="toggleDateFilterBtn" type="button">Entre datas</button>
+                        <button class="btn btn-secondary btn-small filter-toggle-btn" id="toggleClientFilterBtn" type="button">Filtrar por nome, email e telefone</button>
+                        <label class="pending-only-toggle" for="pendingOnlyCheckbox">
+                            <input type="checkbox" id="pendingOnlyCheckbox">
+                            Ver só por concluir
+                        </label>
+                    </div>
+
+                    <div class="filters-row">
+                        <div class="filter-group hidden" id="clientFilterGroup">
+                            <label for="clientSearch">Cliente:</label>
+                            <input type="text" id="clientSearch" placeholder="Nome, email ou telefone">
+                        </div>
+
+                        <div class="filter-group hidden" id="dateFilterGroup">
+                            <label for="dateFrom">De:</label>
+                            <input type="date" id="dateFrom">
+
+                            <label for="dateTo">Até:</label>
+                            <input type="date" id="dateTo">
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <p class="view-mode-label" id="viewModeLabel">A mostrar: dia específico</p>
+            <p class="view-mode-label" id="viewModeLabel">A mostrar: cortes deste mês</p>
 
             <div id="appointmentsContainer" class="appointments-grid">
                 <div class="loading">
                     <p>A carregar marcações...</p>
                 </div>
             </div>
-        </div>
-
-        <div style="text-align: center; margin-top: 2rem;">
-            <a href="index.html" class="btn btn-secondary">← Voltar à página inicial</a>
         </div>
     </div>
 

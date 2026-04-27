@@ -7,7 +7,18 @@ let barberId = null
 let barberName = null
 let barberEmail = null
 let allBookings = []
-let currentViewMode = "date"
+let currentViewMode = "today"
+const activeFilters = {
+  date: true,
+  client: false,
+}
+
+function clearBarberSession() {
+  sessionStorage.removeItem("barberId")
+  sessionStorage.removeItem("barberName")
+  sessionStorage.removeItem("barberEmail")
+  sessionStorage.removeItem("isBarber")
+}
 
 // Verificar autenticação
 window.addEventListener("load", () => {
@@ -26,10 +37,7 @@ window.addEventListener("load", () => {
 
   onAuthStateChanged(auth, (user) => {
     if (!user || user.uid !== barberId) {
-      sessionStorage.removeItem("barberId")
-      sessionStorage.removeItem("barberName")
-      sessionStorage.removeItem("barberEmail")
-      sessionStorage.removeItem("isBarber")
+      clearBarberSession()
       showError("Sessão expirada. Faça login novamente.")
       setTimeout(() => {
         window.location.href = "barber-login.html"
@@ -41,45 +49,27 @@ window.addEventListener("load", () => {
     document.getElementById("barberNameDisplay").textContent = barberName || "Barbeiro"
     document.getElementById("barberEmailDisplay").textContent = barberEmail || ""
 
-    // Definir data de hoje como padrão
-    const today = new Date().toISOString().split("T")[0]
-    document.getElementById("dateFilter").value = today
-
-    // Carregar marcações
-    loadBookings()
-
+    initializeDateRangeControls()
     setupStatsFilters()
-
-    // Listener para mudança de data
-    document.getElementById("dateFilter").addEventListener("change", () => {
-      currentViewMode = "date"
-      updateViewModeLabel()
-      setActiveStatCard(null)
-      displayBookings()
-    })
-
-    document.getElementById("dayModeBtn")?.addEventListener("click", () => {
-      currentViewMode = "date"
-      updateViewModeLabel()
-      setActiveStatCard(null)
-      displayBookings()
-    })
+    setupSearchAndRangeFilters()
+    loadBookings()
   })
 })
 
 // Logout
-document.getElementById("logoutBtn").addEventListener("click", () => {
-  signOut(auth).catch(() => {})
-  sessionStorage.removeItem("barberId")
-  sessionStorage.removeItem("barberName")
-  sessionStorage.removeItem("barberEmail")
-  sessionStorage.removeItem("isBarber")
-  
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+  try {
+    await signOut(auth)
+  } catch (_) {
+    // Ignorado para garantir limpeza local mesmo em falha de rede.
+  }
+
+  clearBarberSession()
   showSuccess("Logout efetuado com sucesso!")
-  
+
   setTimeout(() => {
-    window.location.href = "barber-login.html"
-  }, 1000)
+    window.location.href = "index.html"
+  }, 900)
 })
 
 // Carregar marcações em tempo real
@@ -110,52 +100,227 @@ function loadBookings() {
   })
 }
 
-// Exibir marcações filtradas por data
+function getDateOnly(dateValue) {
+  return new Date(`${dateValue}T00:00:00`)
+}
+
+function toDateInputValue(dateObj) {
+  return dateObj.toISOString().split("T")[0]
+}
+
+function getFilterElements() {
+  return {
+    toggleDateFilterBtn: document.getElementById("toggleDateFilterBtn"),
+    toggleClientFilterBtn: document.getElementById("toggleClientFilterBtn"),
+    dateFilterGroup: document.getElementById("dateFilterGroup"),
+    clientFilterGroup: document.getElementById("clientFilterGroup"),
+    dateFromInput: document.getElementById("dateFrom"),
+    dateToInput: document.getElementById("dateTo"),
+    clientSearchInput: document.getElementById("clientSearch"),
+  }
+}
+
+function syncFilterControlsUI() {
+  const { toggleDateFilterBtn, toggleClientFilterBtn, dateFilterGroup, clientFilterGroup } = getFilterElements()
+
+  if (toggleDateFilterBtn) {
+    toggleDateFilterBtn.classList.toggle("active-filter", activeFilters.date)
+    toggleDateFilterBtn.setAttribute("aria-pressed", activeFilters.date ? "true" : "false")
+  }
+
+  if (toggleClientFilterBtn) {
+    toggleClientFilterBtn.classList.toggle("active-filter", activeFilters.client)
+    toggleClientFilterBtn.setAttribute("aria-pressed", activeFilters.client ? "true" : "false")
+  }
+
+  if (dateFilterGroup) {
+    dateFilterGroup.classList.toggle("hidden", !activeFilters.date)
+  }
+
+  if (clientFilterGroup) {
+    clientFilterGroup.classList.toggle("hidden", !activeFilters.client)
+  }
+}
+
+function getTodayWeekMonthRanges() {
+  const now = new Date()
+  const todayStart = new Date(now)
+  todayStart.setHours(0, 0, 0, 0)
+  const todayEnd = new Date(now)
+  todayEnd.setHours(23, 59, 59, 999)
+
+  const weekStart = new Date(todayStart)
+  weekStart.setDate(todayStart.getDate() - todayStart.getDay())
+  const weekEnd = new Date(weekStart)
+  weekEnd.setDate(weekStart.getDate() + 6)
+  weekEnd.setHours(23, 59, 59, 999)
+
+  const monthStart = new Date(todayStart.getFullYear(), todayStart.getMonth(), 1)
+  const monthEnd = new Date(todayStart.getFullYear(), todayStart.getMonth() + 1, 0)
+  monthEnd.setHours(23, 59, 59, 999)
+
+  return { now, todayStart, todayEnd, weekStart, weekEnd, monthStart, monthEnd }
+}
+
+function setDateRangeInputs(startDate, endDate) {
+  const fromInput = document.getElementById("dateFrom")
+  const toInput = document.getElementById("dateTo")
+  if (!fromInput || !toInput) return
+
+  fromInput.value = toDateInputValue(startDate)
+  toInput.value = toDateInputValue(endDate)
+}
+
+function initializeDateRangeControls() {
+  const { todayStart, todayEnd } = getTodayWeekMonthRanges()
+  setDateRangeInputs(todayStart, todayEnd)
+  setActiveStatCard("today")
+  syncFilterControlsUI()
+  updateViewModeLabel()
+}
+
+function setDateRangeForMode(mode) {
+  const { todayStart, todayEnd, weekStart, weekEnd, monthStart, monthEnd } = getTodayWeekMonthRanges()
+  if (mode === "today") {
+    setDateRangeInputs(todayStart, todayEnd)
+    return
+  }
+
+  if (mode === "week") {
+    setDateRangeInputs(weekStart, weekEnd)
+    return
+  }
+
+  if (mode === "month") {
+    setDateRangeInputs(monthStart, monthEnd)
+  }
+}
+
+function getDateRangeForFilter() {
+  if (!activeFilters.date) return null
+
+  const fromInput = document.getElementById("dateFrom")
+  const toInput = document.getElementById("dateTo")
+  if (!fromInput || !toInput || !fromInput.value || !toInput.value) return null
+
+  const start = getDateOnly(fromInput.value)
+  const end = getDateOnly(toInput.value)
+  end.setHours(23, 59, 59, 999)
+
+  if (start > end) {
+    const swappedStart = getDateOnly(toInput.value)
+    const swappedEnd = getDateOnly(fromInput.value)
+    swappedEnd.setHours(23, 59, 59, 999)
+    return {
+      start: swappedStart,
+      end: swappedEnd,
+    }
+  }
+
+  return { start, end }
+}
+
+function normalizeText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+}
+
+function formatBookingDateLabel(dateValue) {
+  if (!dateValue) return "Data não definida"
+  const dateObj = new Date(`${dateValue}T00:00:00`)
+  if (Number.isNaN(dateObj.getTime())) return "Data não definida"
+  return new Intl.DateTimeFormat("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric" }).format(dateObj)
+}
+
+function getBookingTimestamp(booking) {
+  const dateTime = getBookingDateTime(booking)
+  return dateTime ? dateTime.getTime() : Number.POSITIVE_INFINITY
+}
+
+function sortBookingsByClosestExecution(bookings) {
+  const now = Date.now()
+
+  return [...bookings].sort((a, b) => {
+    const aTime = getBookingTimestamp(a)
+    const bTime = getBookingTimestamp(b)
+    const aFuture = aTime >= now
+    const bFuture = bTime >= now
+
+    if (aFuture && bFuture) {
+      return aTime - bTime
+    }
+
+    if (aFuture && !bFuture) {
+      return -1
+    }
+
+    if (!aFuture && bFuture) {
+      return 1
+    }
+
+    return bTime - aTime
+  })
+}
+
+// Exibir marcações filtradas por intervalo e pesquisa
 function displayBookings() {
   const container = document.getElementById("appointmentsContainer")
-  const selectedDate = document.getElementById("dateFilter").value
+  const queryInput = document.getElementById("clientSearch")
+  const pendingOnlyCheckbox = document.getElementById("pendingOnlyCheckbox")
+  const searchValue = activeFilters.client ? normalizeText(queryInput?.value) : ""
+  const pendingOnly = !!pendingOnlyCheckbox?.checked
+  const dateRange = getDateRangeForFilter()
 
-  const today = new Date()
-  const todayStr = today.toISOString().split("T")[0]
-  const startOfWeek = new Date(today)
-  startOfWeek.setHours(0, 0, 0, 0)
-  startOfWeek.setDate(today.getDate() - today.getDay())
-  const endOfWeek = new Date(startOfWeek)
-  endOfWeek.setHours(23, 59, 59, 999)
-  endOfWeek.setDate(startOfWeek.getDate() + 6)
+  let filteredBookings = allBookings
 
-  let filteredBookings = allBookings.filter((booking) => booking.date === selectedDate)
-
-  if (currentViewMode === "today") {
-    filteredBookings = allBookings.filter((booking) => booking.date === todayStr)
-  } else if (currentViewMode === "week") {
-    filteredBookings = allBookings.filter((booking) => {
-      const bookingDate = new Date(booking.date)
-      return bookingDate >= startOfWeek && bookingDate <= endOfWeek
-    })
-  } else if (currentViewMode === "month") {
-    filteredBookings = allBookings.filter((booking) => {
-      const bookingDate = new Date(booking.date)
-      return bookingDate.getMonth() === today.getMonth() && bookingDate.getFullYear() === today.getFullYear()
+  if (dateRange) {
+    filteredBookings = filteredBookings.filter((booking) => {
+      const bookingDate = getDateOnly(booking.date)
+      return bookingDate >= dateRange.start && bookingDate <= dateRange.end
     })
   }
+
+  if (searchValue) {
+    filteredBookings = filteredBookings.filter((booking) => {
+      const haystack = [booking.clientName, booking.clientEmail, booking.clientPhone, booking.service]
+        .map((value) => normalizeText(value))
+        .join(" ")
+      return haystack.includes(searchValue)
+    })
+  }
+
+  if (pendingOnly) {
+    filteredBookings = filteredBookings.filter((booking) => {
+      const executionStatus = booking.executionStatus || "pending"
+      const lifecycleStatus = booking.status || ""
+      if (executionStatus === "completed") return false
+      if (lifecycleStatus === "expired" || lifecycleStatus === "cancelled" || lifecycleStatus === "cancel_requested") return false
+      return true
+    })
+  }
+
+  filteredBookings = sortBookingsByClosestExecution(filteredBookings)
 
   autoCancelExpiredBookings(filteredBookings)
 
   if (filteredBookings.length === 0) {
-    const emptyMessage =
-      currentViewMode === "today"
-        ? "Não há marcações para hoje"
-        : currentViewMode === "week"
-          ? "Não há marcações para esta semana"
-          : currentViewMode === "month"
-            ? "Não há marcações para este mês"
-            : "Não há marcações para esta data"
+    let emptyMessage = "Não há marcações com os filtros atuais"
+
+    if (searchValue) {
+      emptyMessage = "Nenhuma marcação encontrada para a pesquisa aplicada"
+    } else if (pendingOnly) {
+      emptyMessage = "Não há marcações por concluir para os filtros aplicados"
+    } else if (activeFilters.date) {
+      emptyMessage = "Não há marcações no intervalo selecionado"
+    }
 
     container.innerHTML = `
       <div class="no-appointments">
         <p>${emptyMessage}</p>
-        <p style="font-size: 0.9rem; color: #999;">Selecione outra data para ver suas marcações</p>
+        <p style="font-size: 0.9rem; color: #999;">Ajuste o intervalo ou a pesquisa para tentar novamente.</p>
       </div>
     `
     return
@@ -165,6 +330,7 @@ function displayBookings() {
     <div class="appointment-card">
       <div class="appointment-time">
         ${booking.time}
+        <div class="appointment-date">${formatBookingDateLabel(booking.date)}</div>
       </div>
       <div class="appointment-details">
         <h3>👤 ${booking.clientName}</h3>
@@ -450,8 +616,26 @@ function setupStatsFilters() {
     const activate = () => {
       const mode = card.dataset.viewMode
       if (!mode) return
+
+      if (currentViewMode === mode && activeFilters.date) {
+        activeFilters.date = false
+        const dateFromInput = document.getElementById("dateFrom")
+        const dateToInput = document.getElementById("dateTo")
+        if (dateFromInput) dateFromInput.value = ""
+        if (dateToInput) dateToInput.value = ""
+        setActiveStatCard(null)
+        currentViewMode = "all"
+        syncFilterControlsUI()
+        updateViewModeLabel()
+        displayBookings()
+        return
+      }
+
       currentViewMode = mode
+      activeFilters.date = true
+      setDateRangeForMode(mode)
       setActiveStatCard(mode)
+      syncFilterControlsUI()
       updateViewModeLabel()
       displayBookings()
     }
@@ -466,6 +650,91 @@ function setupStatsFilters() {
   })
 }
 
+function setupSearchAndRangeFilters() {
+  const {
+    toggleDateFilterBtn,
+    toggleClientFilterBtn,
+    dateFromInput,
+    dateToInput,
+    clientSearchInput,
+  } = getFilterElements()
+  const pendingOnlyCheckbox = document.getElementById("pendingOnlyCheckbox")
+
+  const setTodayDateRange = () => {
+    const { todayStart, todayEnd } = getTodayWeekMonthRanges()
+    setDateRangeInputs(todayStart, todayEnd)
+  }
+
+  if (toggleDateFilterBtn) {
+    toggleDateFilterBtn.addEventListener("click", () => {
+      activeFilters.date = !activeFilters.date
+
+      if (activeFilters.date) {
+        currentViewMode = "today"
+        setActiveStatCard("today")
+        if (!dateFromInput?.value || !dateToInput?.value) {
+          setTodayDateRange()
+        }
+      } else {
+        if (dateFromInput) dateFromInput.value = ""
+        if (dateToInput) dateToInput.value = ""
+        setActiveStatCard(null)
+        currentViewMode = "range"
+      }
+
+      syncFilterControlsUI()
+      updateViewModeLabel()
+      displayBookings()
+    })
+  }
+
+  if (toggleClientFilterBtn) {
+    toggleClientFilterBtn.addEventListener("click", () => {
+      activeFilters.client = !activeFilters.client
+      if (!activeFilters.client && clientSearchInput) {
+        clientSearchInput.value = ""
+      }
+
+      syncFilterControlsUI()
+      displayBookings()
+    })
+  }
+
+  if (clientSearchInput) {
+    clientSearchInput.addEventListener("input", () => {
+      displayBookings()
+    })
+  }
+
+  if (pendingOnlyCheckbox) {
+    pendingOnlyCheckbox.addEventListener("change", () => {
+      displayBookings()
+    })
+  }
+
+  if (dateFromInput) {
+    dateFromInput.addEventListener("change", () => {
+      activeFilters.date = true
+      currentViewMode = "range"
+      setActiveStatCard(null)
+      syncFilterControlsUI()
+      updateViewModeLabel()
+      displayBookings()
+    })
+  }
+
+  if (dateToInput) {
+    dateToInput.addEventListener("change", () => {
+      activeFilters.date = true
+      currentViewMode = "range"
+      setActiveStatCard(null)
+      syncFilterControlsUI()
+      updateViewModeLabel()
+      displayBookings()
+    })
+  }
+}
+
 function setActiveStatCard(mode) {
   document.querySelectorAll(".stat-card.clickable").forEach((card) => {
     card.classList.toggle("active-filter", !!mode && card.dataset.viewMode === mode)
@@ -475,6 +744,11 @@ function setActiveStatCard(mode) {
 function updateViewModeLabel() {
   const label = document.getElementById("viewModeLabel")
   if (!label) return
+
+  if (!activeFilters.date) {
+    label.textContent = "A mostrar: todas as marcações (sem filtro de datas)"
+    return
+  }
 
   if (currentViewMode === "today") {
     label.textContent = "A mostrar: cortes de hoje"
@@ -491,7 +765,7 @@ function updateViewModeLabel() {
     return
   }
 
-  label.textContent = "A mostrar: dia específico"
+  label.textContent = "A mostrar: entre datas"
 }
 
 // Formatar nome do serviço

@@ -398,6 +398,7 @@ function initCutsGallery() {
 function initTeamQuickBooking() {
   const teamMembers = document.querySelectorAll('.team-member')
   if (!teamMembers.length) return
+  const isBarberSession = sessionStorage.getItem('isBarber') === 'true'
 
   teamMembers.forEach((member) => {
     if (member.dataset.quickBookingBound === 'true') return
@@ -407,12 +408,27 @@ function initTeamQuickBooking() {
     const barberName = nameEl?.textContent?.trim()
     if (!barberName) return
 
+    if (isBarberSession) {
+      member.style.cursor = 'default'
+      member.removeAttribute('role')
+      member.removeAttribute('tabindex')
+      member.removeAttribute('aria-label')
+      return
+    }
+
     member.style.cursor = 'pointer'
     member.setAttribute('role', 'button')
     member.setAttribute('tabindex', '0')
     member.setAttribute('aria-label', `Marcar com ${barberName}`)
 
     const goToBooking = () => {
+      const isClientSession = sessionStorage.getItem('isClient') === 'true'
+      if (!isClientSession) {
+        sessionStorage.setItem('pendingBookingBarber', barberName)
+        window.location.href = `login.html?barber=${encodeURIComponent(barberName)}`
+        return
+      }
+
       const url = `bookings.html?barber=${encodeURIComponent(barberName)}`
       window.location.href = url
     }
@@ -513,6 +529,14 @@ function updateMainAuthButton() {
     }
   }
 
+  const setBarberLoggedIn = () => {
+    mainAuthCta.href = 'barber-panel.html'
+    mainAuthCta.innerHTML = '<i class="bi bi-journal-check" aria-hidden="true"></i> Ver marcações dos clientes'
+    if (mainLogoutBtn) {
+      mainLogoutBtn.style.display = 'inline-flex'
+    }
+  }
+
   if (mainLogoutBtn && mainLogoutBtn.dataset.bound !== 'true') {
     mainLogoutBtn.dataset.bound = 'true'
     mainLogoutBtn.addEventListener('click', async () => {
@@ -537,14 +561,21 @@ function updateMainAuthButton() {
     })
   }
 
-  if (sessionStorage.getItem('isClient') === 'true') {
+  if (sessionStorage.getItem('isBarber') === 'true') {
+    setBarberLoggedIn()
+  } else if (sessionStorage.getItem('isClient') === 'true') {
     setLoggedIn()
   } else {
     setLoggedOut()
   }
 
   onAuthStateChanged(auth, (user) => {
-    if (user) {
+    if (user && sessionStorage.getItem('isBarber') === 'true') {
+      setBarberLoggedIn()
+      return
+    }
+
+    if (user && sessionStorage.getItem('isClient') === 'true') {
       setLoggedIn()
       return
     }
