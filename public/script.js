@@ -119,6 +119,10 @@ const helpTexts = {
   },
 }
 
+let teamSchedulesListenerBound = false
+let promotionsListenerBound = false
+let storeHoursListenerBound = false
+
 // Only add event listeners if elements exist
 const helpButton = document.getElementById("helpButton")
 const helpModal = document.getElementById("helpModal")
@@ -492,14 +496,14 @@ async function initTeamSchedules() {
       })
 
       const configured = getConfiguredTeamSchedule(barberName)
-      const start = configured?.start || barber?.workingHours?.start || null
-      const end = configured?.end || barber?.workingHours?.end || null
+      const start = barber?.workingHours?.start || configured?.start || null
+      const end = barber?.workingHours?.end || configured?.end || null
 
       scheduleEl.textContent = start && end ? `Horario: ${start} - ${end}` : 'Horario: a definir'
 
       if (lunchEl) {
-        const lunchStart = configured?.lunchStart || barber?.lunchBreak?.start || null
-        const lunchEnd = configured?.lunchEnd || barber?.lunchBreak?.end || null
+        const lunchStart = barber?.lunchBreak?.start || configured?.lunchStart || null
+        const lunchEnd = barber?.lunchBreak?.end || configured?.lunchEnd || null
         lunchEl.textContent = lunchStart && lunchEnd ? `Almoco: ${lunchStart} - ${lunchEnd}` : 'Almoco: a definir'
       }
     })
@@ -510,6 +514,8 @@ async function initTeamSchedules() {
 
 // Real-time listening for barber updates to sync team schedule
 function setupTeamSchedulesListener() {
+  if (teamSchedulesListenerBound) return
+  teamSchedulesListenerBound = true
   onValue(ref(database, 'barbers'), () => {
     initTeamSchedules()
   })
@@ -520,6 +526,8 @@ async function loadPromotions() {
   const promotionsList = document.getElementById('promotionsList')
   const emptyPromotions = document.getElementById('emptyPromotions')
   if (!promotionsList) return
+  if (promotionsListenerBound) return
+  promotionsListenerBound = true
 
   try {
     onValue(ref(database, 'promotions'), (snapshot) => {
@@ -563,19 +571,24 @@ async function loadPromotions() {
 async function loadStoreHours() {
   const storeHoursDisplay = document.getElementById('storeHoursDisplay')
   if (!storeHoursDisplay) return
+  if (storeHoursListenerBound) return
+  storeHoursListenerBound = true
 
   try {
     onValue(ref(database, 'storeSettings'), (snapshot) => {
       const settings = snapshot.exists() ? snapshot.val() : {}
-      const openingStart = settings.openingHours?.start || '09:00'
-      const openingEnd = settings.openingHours?.end || '19:00'
+      const now = new Date()
+      const specialSchedule = getStoreSpecialScheduleForNow(now, settings)
+      const openingStart = specialSchedule?.start || settings.openingHours?.start || '09:00'
+      const openingEnd = specialSchedule?.end || settings.openingHours?.end || '19:00'
       const lunchStart = settings.lunchBreak?.start || '13:00'
       const lunchEnd = settings.lunchBreak?.end || '14:00'
+      const scheduleLabel = specialSchedule ? 'Horario especial hoje' : 'Horario'
       
       storeHoursDisplay.innerHTML = `
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.5rem;">
           <div>
-            <strong style="color: var(--color-accent);">Horário:</strong> ${openingStart} - ${openingEnd}
+            <strong style="color: var(--color-accent);">${scheduleLabel}:</strong> ${openingStart} - ${openingEnd}
           </div>
           <div>
             <strong style="color: var(--color-accent);">Almoço:</strong> ${lunchStart} - ${lunchEnd}
@@ -763,6 +776,9 @@ if (document.readyState === 'loading') {
   initCutsGallery();
   initTeamQuickBooking();
   initTeamSchedules();
+  setupTeamSchedulesListener();
+  loadPromotions();
+  loadStoreHours();
   updateMainAuthButton();
   initStoreStatusBadge();
 }

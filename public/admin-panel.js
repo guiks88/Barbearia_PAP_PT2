@@ -719,6 +719,8 @@ function renderStoreSchedule() {
     checkbox.checked = openDays.includes(Number(checkbox.value))
   })
   setupStoreScheduleTimes(state.storeSettings)
+  const storeDefaults = getSpecialScheduleDefaults("store", "")
+  setupSpecialScheduleTimes(storeDefaults)
   renderSpecialSchedulesList()
 }
 
@@ -736,17 +738,35 @@ function formatSpecialPeriodLabel(period, key) {
   return `Mês ${key}`
 }
 
-function setupSpecialScheduleTimes() {
+function getSpecialScheduleDefaults(targetValue, barberIdValue) {
+  const storeStart = state.storeSettings.openingHours?.start || "09:00"
+  const storeEnd = state.storeSettings.openingHours?.end || "19:00"
+
+  if (targetValue === "barber") {
+    const barber = state.barbers?.[barberIdValue]
+    return {
+      start: barber?.workingHours?.start || storeStart,
+      end: barber?.workingHours?.end || storeEnd,
+    }
+  }
+
+  return { start: storeStart, end: storeEnd }
+}
+
+function setupSpecialScheduleTimes(defaults = {}) {
   const startHour = document.getElementById("specialScheduleStartHour")
   const startMinute = document.getElementById("specialScheduleStartMinute")
   const endHour = document.getElementById("specialScheduleEndHour")
   const endMinute = document.getElementById("specialScheduleEndMinute")
   if (!startHour || !startMinute || !endHour || !endMinute) return
 
-  startHour.innerHTML = buildHourOptions("09")
-  startMinute.innerHTML = buildMinuteOptions("00")
-  endHour.innerHTML = buildHourOptions("19")
-  endMinute.innerHTML = buildMinuteOptions("00")
+  const start = parseTimeValue(defaults.start || "09:00", "09", "00")
+  const end = parseTimeValue(defaults.end || "19:00", "19", "00")
+
+  startHour.innerHTML = buildHourOptions(start.hour)
+  startMinute.innerHTML = buildMinuteOptions(start.minute)
+  endHour.innerHTML = buildHourOptions(end.hour)
+  endMinute.innerHTML = buildMinuteOptions(end.minute)
 }
 
 function populateSpecialScheduleBarberSelect() {
@@ -867,19 +887,21 @@ function setupSpecialScheduleManager() {
 
   if (!form || !target || !period || !reference || !barberWrap || !barberSelect) return
 
-  setupSpecialScheduleTimes()
+  setupSpecialScheduleTimes(getSpecialScheduleDefaults(target.value, barberSelect.value))
   populateSpecialScheduleBarberSelect()
 
   const syncInputs = () => {
     barberWrap.classList.toggle("hidden", target.value !== "barber")
     reference.type = getSpecialScheduleReferenceType(period.value)
     reference.value = ""
+    setupSpecialScheduleTimes(getSpecialScheduleDefaults(target.value, barberSelect.value))
     renderSpecialSchedulesList()
   }
 
   target.addEventListener("change", syncInputs)
   period.addEventListener("change", syncInputs)
   barberSelect.addEventListener("change", () => {
+    setupSpecialScheduleTimes(getSpecialScheduleDefaults(target.value, barberSelect.value))
     renderSpecialSchedulesList()
   })
 
