@@ -30,6 +30,7 @@
                             <span class="divider">·</span>
                             <span id="storeStatusBadge" class="status status-open">Aberto</span>
                         </div>
+                        <div id="storeHoursDisplay" style="margin-top: 0.5rem; font-size: 0.9rem; color: var(--color-text-secondary);"></div>
                     </div>
                     <div class="profile-actions">
                         <a href="login.html" id="mainAuthCta" class="btn btn-book">Login</a>
@@ -51,6 +52,7 @@
     <nav class="tabs-nav">
         <div class="container">
             <button class="tab-link active" data-tab="team">Início</button>
+            <button class="tab-link" data-tab="promotions">Promoções</button>
             <button class="tab-link" data-tab="about">Sobre Nós</button>
             <button class="tab-link" data-tab="prices">Preços</button>
             <button class="tab-link" data-tab="location">Localização</button>
@@ -117,6 +119,15 @@
                             <p>Detalhes finos e acabamento preciso.</p>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Promotions Tab -->
+            <div id="promotions" class="tab-content">
+                <h2 class="section-title">Promoções</h2>
+                <div id="promotionsList" style="display: grid; gap: 1.5rem;"></div>
+                <div id="emptyPromotions" style="text-align: center; padding: 2rem; color: var(--color-text-secondary);">
+                    <p>Sem promoções ativas no momento.</p>
                 </div>
             </div>
 

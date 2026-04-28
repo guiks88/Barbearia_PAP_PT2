@@ -1,5 +1,5 @@
 import { auth, database } from "./firebase-config.js"
-import { ref, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
+import { ref, get, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
 
 const helpTexts = {
@@ -508,6 +508,86 @@ async function initTeamSchedules() {
   }
 }
 
+// Real-time listening for barber updates to sync team schedule
+function setupTeamSchedulesListener() {
+  onValue(ref(database, 'barbers'), () => {
+    initTeamSchedules()
+  })
+}
+
+// Load and display promotions
+async function loadPromotions() {
+  const promotionsList = document.getElementById('promotionsList')
+  const emptyPromotions = document.getElementById('emptyPromotions')
+  if (!promotionsList) return
+
+  try {
+    onValue(ref(database, 'promotions'), (snapshot) => {
+      const promotions = snapshot.exists() ? snapshot.val() : {}
+      const activePromotions = Object.entries(promotions)
+        .filter(([_, promo]) => promo.isActive !== false)
+        .sort((a, b) => new Date(b[1].createdAt || 0) - new Date(a[1].createdAt || 0))
+
+      if (activePromotions.length === 0) {
+        promotionsList.innerHTML = ''
+        if (emptyPromotions) emptyPromotions.style.display = 'block'
+        return
+      }
+
+      if (emptyPromotions) emptyPromotions.style.display = 'none'
+      
+      promotionsList.innerHTML = activePromotions
+        .map(([_, promo]) => `
+          <div style="background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: 12px; padding: 1.5rem; box-shadow: var(--shadow);">
+            <div style="display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: start;">
+              <div>
+                <h3 style="font-size: 1.25rem; margin-bottom: 0.5rem;">${promo.title || 'Promoção'}</h3>
+                <p style="color: var(--color-text-secondary); margin-bottom: 1rem;">${promo.description || ''}</p>
+                <div style="background: rgba(62, 167, 184, 0.1); padding: 1rem; border-radius: 8px; border-left: 3px solid var(--color-accent);">
+                  <p style="margin: 0.5rem 0;"><strong>Condição:</strong> ${promo.minCompletedCuts || 10} cortes concluídos</p>
+                  <p style="margin: 0.5rem 0;"><strong>Prémio:</strong> ${promo.rewardText || 'Não especificado'}</p>
+                </div>
+              </div>
+              <span style="background: var(--color-accent); color: white; padding: 0.5rem 1rem; border-radius: 8px; font-weight: 600; font-size: 0.9rem;">Ativa</span>
+            </div>
+          </div>
+        `)
+        .join('')
+    })
+  } catch (error) {
+    console.error('Erro ao carregar promoções:', error)
+  }
+}
+
+// Load and display store hours
+async function loadStoreHours() {
+  const storeHoursDisplay = document.getElementById('storeHoursDisplay')
+  if (!storeHoursDisplay) return
+
+  try {
+    onValue(ref(database, 'storeSettings'), (snapshot) => {
+      const settings = snapshot.exists() ? snapshot.val() : {}
+      const openingStart = settings.openingHours?.start || '09:00'
+      const openingEnd = settings.openingHours?.end || '19:00'
+      const lunchStart = settings.lunchBreak?.start || '13:00'
+      const lunchEnd = settings.lunchBreak?.end || '14:00'
+      
+      storeHoursDisplay.innerHTML = `
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.5rem;">
+          <div>
+            <strong style="color: var(--color-accent);">Horário:</strong> ${openingStart} - ${openingEnd}
+          </div>
+          <div>
+            <strong style="color: var(--color-accent);">Almoço:</strong> ${lunchStart} - ${lunchEnd}
+          </div>
+        </div>
+      `
+    })
+  } catch (error) {
+    console.error('Erro ao carregar horário da loja:', error)
+  }
+}
+
 function updateMainAuthButton() {
   const mainAuthCta = document.getElementById('mainAuthCta')
   const mainLogoutBtn = document.getElementById('mainLogoutBtn')
@@ -671,6 +751,9 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initCutsGallery);
   document.addEventListener('DOMContentLoaded', initTeamQuickBooking);
   document.addEventListener('DOMContentLoaded', initTeamSchedules);
+  document.addEventListener('DOMContentLoaded', setupTeamSchedulesListener);
+  document.addEventListener('DOMContentLoaded', loadPromotions);
+  document.addEventListener('DOMContentLoaded', loadStoreHours);
   document.addEventListener('DOMContentLoaded', updateMainAuthButton);
   document.addEventListener('DOMContentLoaded', initStoreStatusBadge);
 } else {
@@ -691,5 +774,8 @@ window.addEventListener('load', initDownloadSiteButton);
 window.addEventListener('load', initCutsGallery);
 window.addEventListener('load', initTeamQuickBooking);
 window.addEventListener('load', initTeamSchedules);
+window.addEventListener('load', setupTeamSchedulesListener);
+window.addEventListener('load', loadPromotions);
+window.addEventListener('load', loadStoreHours);
 window.addEventListener('load', updateMainAuthButton);
 window.addEventListener('load', initStoreStatusBadge);

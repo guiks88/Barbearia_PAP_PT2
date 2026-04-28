@@ -45,6 +45,7 @@ const state = {
 let editingPromotionId = null
 let editingBarberId = null
 let barberModalEscBound = false
+let revenueViewMode = 'barber' // 'barber' or 'service'
 
 function normalize(value) {
   return String(value || "").toLowerCase().trim()
@@ -232,7 +233,9 @@ function setupFilters() {
     "bookingSearchBarber",
     "bookingDateFrom",
     "bookingDateTo",
-    "clientSearch",
+    "clientSearchName",
+    "clientSearchEmail",
+    "clientSearchPhone",
     "clientDateFrom",
     "clientDateTo",
   ]
@@ -255,6 +258,31 @@ function setupFilters() {
 }
 
 function setupRevenueControls() {
+  // Revenue view mode buttons
+  const byBarberBtn = document.getElementById("revenueByBarberBtn")
+  const byServiceBtn = document.getElementById("revenueByServiceBtn")
+  
+  if (byBarberBtn && byServiceBtn) {
+    byBarberBtn.addEventListener("click", () => {
+      revenueViewMode = 'barber'
+      byBarberBtn.classList.add('btn-primary')
+      byBarberBtn.classList.remove('btn-secondary')
+      byServiceBtn.classList.remove('btn-primary')
+      byServiceBtn.classList.add('btn-secondary')
+      updateRevenue()
+    })
+    
+    byServiceBtn.addEventListener("click", () => {
+      revenueViewMode = 'service'
+      byServiceBtn.classList.add('btn-primary')
+      byServiceBtn.classList.remove('btn-secondary')
+      byBarberBtn.classList.remove('btn-primary')
+      byBarberBtn.classList.add('btn-secondary')
+      updateRevenue()
+    })
+  }
+  
+  // Period filter controls
   const filter = document.getElementById("revenueFilter")
   const dayInput = document.getElementById("revenueDay")
   const monthInput = document.getElementById("revenueMonth")
@@ -330,7 +358,9 @@ function getBookingFilterValues() {
 
 function getClientFilterValues() {
   return {
-    search: normalize(document.getElementById("clientSearch")?.value),
+    name: normalize(document.getElementById("clientSearchName")?.value),
+    email: normalize(document.getElementById("clientSearchEmail")?.value),
+    phone: normalize(document.getElementById("clientSearchPhone")?.value),
     dateFrom: document.getElementById("clientDateFrom")?.value || "",
     dateTo: document.getElementById("clientDateTo")?.value || "",
   }
@@ -374,8 +404,9 @@ function filterClientEntries() {
   const filters = getClientFilterValues()
 
   return Object.entries(state.clients).filter(([, client]) => {
-    const searchTarget = `${client.name || ""} ${client.email || ""} ${client.phone || ""}`.toLowerCase()
-    if (filters.search && !searchTarget.includes(filters.search)) return false
+    if (filters.name && !normalize(client.name).includes(filters.name)) return false
+    if (filters.email && !normalize(client.email).includes(filters.email)) return false
+    if (filters.phone && !normalize(client.phone).includes(filters.phone)) return false
 
     const createdAtDate = String(client.createdAt || "").split("T")[0]
     if ((filters.dateFrom || filters.dateTo) && !isDateInRange(createdAtDate, filters.dateFrom, filters.dateTo)) {
@@ -999,29 +1030,33 @@ function updateRevenue() {
     </div>
   `
 
-  let details = '<h3 style="color: var(--color-text-primary); margin-bottom: 1rem;">Faturamento por Barbeiro</h3>'
-  Object.entries(revenueByBarber)
-    .sort((a, b) => b[1] - a[1])
-    .forEach(([name, value]) => {
-      details += `
-        <div class="barber-item">
-          <div><h3>${name}</h3></div>
-          <div style="text-align: right;"><p style="font-size: 1.4rem; font-weight: 800; color: var(--color-success);">${value.toFixed(2)}€</p></div>
-        </div>
-      `
-    })
-
-  details += '<h3 style="color: var(--color-text-primary); margin: 1.5rem 0 1rem;">Faturamento por Serviço</h3>'
-  Object.entries(revenueByService)
-    .sort((a, b) => b[1] - a[1])
-    .forEach(([service, value]) => {
-      details += `
-        <div class="barber-item">
-          <div><h3>${service}</h3></div>
-          <div style="text-align: right;"><p style="font-size: 1.4rem; font-weight: 800; color: var(--color-accent);">${value.toFixed(2)}€</p></div>
-        </div>
-      `
-    })
+  let details = ''
+  
+  if (revenueViewMode === 'barber') {
+    details += '<h3 style="color: var(--color-text-primary); margin-bottom: 1rem;">Faturamento por Barbeiro</h3>'
+    Object.entries(revenueByBarber)
+      .sort((a, b) => b[1] - a[1])
+      .forEach(([name, value]) => {
+        details += `
+          <div class="barber-item">
+            <div><h3>${name}</h3></div>
+            <div style="text-align: right;"><p style="font-size: 1.4rem; font-weight: 800; color: var(--color-success);">${value.toFixed(2)}€</p></div>
+          </div>
+        `
+      })
+  } else {
+    details += '<h3 style="color: var(--color-text-primary); margin-bottom: 1rem;">Faturamento por Serviço</h3>'
+    Object.entries(revenueByService)
+      .sort((a, b) => b[1] - a[1])
+      .forEach(([service, value]) => {
+        details += `
+          <div class="barber-item">
+            <div><h3>${service}</h3></div>
+            <div style="text-align: right;"><p style="font-size: 1.4rem; font-weight: 800; color: var(--color-accent);">${value.toFixed(2)}€</p></div>
+          </div>
+        `
+      })
+  }
 
   detailsContainer.innerHTML = details
 }
