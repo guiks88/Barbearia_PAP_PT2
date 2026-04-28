@@ -548,7 +548,7 @@ function renderBookings() {
               <option value="completed" ${execution.className === "is-completed" ? "selected" : ""}>Concluída</option>
             </select>
             ${booking.status === "cancel_requested" ? `<button class="btn btn-primary btn-small" onclick="approveCancellation('${id}')">Aprovar cancelamento</button>` : ""}
-            <button class="btn btn-danger btn-small" onclick="deleteBooking('${id}')">Cancelar</button>
+            ${booking.executionStatus === "completed" ? `<button class="btn btn-secondary btn-small" disabled>Concluída</button>` : `<button class="btn btn-danger btn-small" onclick="deleteBooking('${id}')">Cancelar</button>`}
           </div>
         </div>
       `
@@ -1352,6 +1352,10 @@ window.deleteBooking = async (id) => {
     }
 
     const booking = snapshot.val()
+    if (booking.executionStatus === "completed") {
+      showError("Não é possível cancelar uma marcação concluída.")
+      return
+    }
     await set(bookingRef, {
       ...booking,
       status: "cancelled",
@@ -1421,6 +1425,17 @@ window.editBooking = async (id) => {
 
     if (!/^\d{2}:\d{2}$/.test(newTime)) {
       showError("Horário inválido. Use o formato HH:MM.")
+      return
+    }
+
+    const newDateTime = new Date(`${newDate}T${newTime}:00`)
+    if (Number.isNaN(newDateTime.getTime())) {
+      showError("Data ou horário inválidos.")
+      return
+    }
+
+    if (newDateTime < new Date()) {
+      showError("Não é possível mover para uma data no passado.")
       return
     }
 

@@ -615,7 +615,7 @@ function updateMainAuthButton() {
   }
 
   const setLoggedIn = () => {
-    mainAuthCta.href = 'bookings.html'
+    mainAuthCta.href = 'client-menu.html'
     mainAuthCta.innerHTML = '<i class="bi bi-calendar-check" aria-hidden="true"></i> Marcar'
     if (mainLogoutBtn) {
       mainLogoutBtn.style.display = 'inline-flex'

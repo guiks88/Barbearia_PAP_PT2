@@ -412,7 +412,9 @@ function renderActions(booking) {
     buttons.push(`<button class="btn btn-secondary" disabled>Corte concluído</button>`)
   }
 
-  buttons.push(`<button class="btn btn-secondary" onclick="requestCancel('${booking.id}')">Pedir cancelamento</button>`)
+  if (executionStatus !== "completed") {
+    buttons.push(`<button class="btn btn-secondary" onclick="requestCancel('${booking.id}')">Pedir cancelamento</button>`)
+  }
   return buttons.join("")
 }
 
@@ -549,6 +551,11 @@ window.completeCut = async (bookingId) => {
 }
 
 window.requestCancel = async (bookingId) => {
+  const booking = allBookings.find((item) => item.id === bookingId)
+  if (booking?.executionStatus === "completed") {
+    showError("Não é possível cancelar uma marcação concluída.")
+    return
+  }
   const shouldRequest = window.confirm("Pretende pedir cancelamento desta marcação? O administrador precisa aprovar.")
   if (!shouldRequest) return
 

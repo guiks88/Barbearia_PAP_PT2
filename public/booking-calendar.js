@@ -813,12 +813,20 @@ function renderClientBookings() {
     setManageBookingsStatus('Selecione uma marcação para anular.', 'success')
   }
   listEl.innerHTML = bookingState.clientBookings.map((booking) => {
-    const statusLabel = booking.status === 'expired' ? 'Expirada' : booking.status === 'cancelled' ? 'Anulada' : 'Confirmada'
+    const isCompleted = booking.executionStatus === 'completed'
+    const statusLabel = booking.status === 'expired'
+      ? 'Expirada'
+      : booking.status === 'cancelled'
+        ? 'Anulada'
+        : isCompleted
+          ? 'Concluída'
+          : 'Confirmada'
     const isCancelled = booking.status === 'cancelled' || booking.status === 'expired'
+    const isLocked = isCancelled || isCompleted
     const safeDate = booking.date || ''
     const safeTime = booking.time || ''
     return `
-      <div class="client-booking-card ${isCancelled ? 'is-cancelled' : ''}" data-booking-id="${booking.id}">
+      <div class="client-booking-card ${isLocked ? 'is-cancelled' : ''}" data-booking-id="${booking.id}">
         <div class="client-booking-main">
           <h3>${booking.serviceName || 'Serviço'}</h3>
           <p><strong>Barbeiro:</strong> ${booking.barberName || '-'}</p>
@@ -826,7 +834,7 @@ function renderClientBookings() {
           <p><strong>Hora:</strong> ${safeTime || '-'}</p>
           <p><strong>Estado:</strong> ${statusLabel}</p>
         </div>
-        ${isCancelled ? '' : `
+        ${isLocked ? '' : `
           <div class="client-booking-actions">
             ${isCancelMode ? '' : `<button type="button" class="btn btn-secondary manage-reschedule-btn" data-booking-id="${booking.id}">Adiar</button>`}
             <button type="button" class="btn btn-primary manage-cancel-btn" data-booking-id="${booking.id}">Anular</button>
@@ -965,6 +973,11 @@ async function cancelBookingByClient(bookingId) {
   const booking = getBookingById(bookingId)
   if (!booking) {
     showError('Marcação não encontrada.')
+    return
+  }
+
+  if (booking.executionStatus === 'completed') {
+    showError('Não é possível anular uma marcação concluída.')
     return
   }
 
@@ -1263,9 +1276,12 @@ function initCalendar() {
   const yearSelect = document.getElementById('yearSelect')
   const prevBtn = document.getElementById('prevMonth')
   const nextBtn = document.getElementById('nextMonth')
+  const today = new Date()
+  const minYear = today.getFullYear()
+  const minMonth = today.getMonth()
   
   // Preencher anos (ano atual até +2 anos)
-  const currentYear = new Date().getFullYear()
+  const currentYear = minYear
   yearSelect.innerHTML = ''
   for (let i = 0; i < 3; i++) {
     const year = currentYear + i
@@ -1280,21 +1296,47 @@ function initCalendar() {
   
   // Event listeners
   monthSelect.addEventListener('change', (e) => {
-    bookingState.currentMonth = parseInt(e.target.value)
+    const selectedMonth = parseInt(e.target.value)
+    const selectedYear = parseInt(yearSelect.value)
+    if (selectedYear === minYear && selectedMonth < minMonth) {
+      bookingState.currentMonth = minMonth
+      monthSelect.value = minMonth
+    } else {
+      bookingState.currentMonth = selectedMonth
+    }
     renderCalendar()
   })
   
   yearSelect.addEventListener('change', (e) => {
-    bookingState.currentYear = parseInt(e.target.value)
+    const selectedYear = parseInt(e.target.value)
+    if (selectedYear < minYear) {
+      bookingState.currentYear = minYear
+      yearSelect.value = String(minYear)
+      bookingState.currentMonth = minMonth
+      monthSelect.value = String(minMonth)
+    } else {
+      bookingState.currentYear = selectedYear
+      if (selectedYear === minYear && bookingState.currentMonth < minMonth) {
+        bookingState.currentMonth = minMonth
+        monthSelect.value = String(minMonth)
+      }
+    }
     renderCalendar()
   })
   
   prevBtn.addEventListener('click', () => {
-    bookingState.currentMonth--
-    if (bookingState.currentMonth < 0) {
-      bookingState.currentMonth = 11
-      bookingState.currentYear--
+    const nextMonth = bookingState.currentMonth - 1
+    const nextYear = nextMonth < 0 ? bookingState.currentYear - 1 : bookingState.currentYear
+    const normalizedMonth = nextMonth < 0 ? 11 : nextMonth
+
+    if (nextYear < minYear || (nextYear === minYear && normalizedMonth < minMonth)) {
+      bookingState.currentYear = minYear
+      bookingState.currentMonth = minMonth
+    } else {
+      bookingState.currentYear = nextYear
+      bookingState.currentMonth = normalizedMonth
     }
+
     monthSelect.value = bookingState.currentMonth
     yearSelect.value = bookingState.currentYear
     renderCalendar()
