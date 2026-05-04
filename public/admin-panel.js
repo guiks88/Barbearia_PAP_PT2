@@ -93,6 +93,18 @@ function buildHourOptions(selected) {
     .join("")
 }
 
+function buildHourOptionsRange(selected, minHour, maxHour) {
+  const min = Number(minHour)
+  const max = Number(maxHour)
+  if (!Number.isFinite(min) || !Number.isFinite(max) || min > max) {
+    return buildHourOptions(selected)
+  }
+
+  return Array.from({ length: max - min + 1 }, (_, i) => String(i + min).padStart(2, "0"))
+    .map((hour) => `<option value="${hour}" ${selected === hour ? "selected" : ""}>${hour}</option>`)
+    .join("")
+}
+
 function buildMinuteOptions(selected) {
   const minutes = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0"))
   return minutes
@@ -146,7 +158,7 @@ function setBarberEditOnlyMode(isActive) {
   })
 }
 
-function setupBarberFormTimes() {
+function setupBarberFormTimes(storeSettings = state.storeSettings) {
   const startHour = document.getElementById("barberStartHour")
   const startMinute = document.getElementById("barberStartMinute")
   const endHour = document.getElementById("barberEndHour")
@@ -158,14 +170,19 @@ function setupBarberFormTimes() {
 
   if (!startHour || !startMinute || !endHour || !endMinute || !lunchStartHour || !lunchStartMinute || !lunchEndHour || !lunchEndMinute) return
 
-  startHour.innerHTML = buildHourOptions("09")
-  startMinute.innerHTML = buildMinuteOptions("00")
-  endHour.innerHTML = buildHourOptions("19")
-  endMinute.innerHTML = buildMinuteOptions("00")
-  lunchStartHour.innerHTML = buildHourOptions("13")
-  lunchStartMinute.innerHTML = buildMinuteOptions("00")
-  lunchEndHour.innerHTML = buildHourOptions("14")
-  lunchEndMinute.innerHTML = buildMinuteOptions("00")
+  const storeStart = parseTimeValue(storeSettings?.openingHours?.start || "09:00", "09", "00")
+  const storeEnd = parseTimeValue(storeSettings?.openingHours?.end || "19:00", "19", "00")
+  const lunchStart = parseTimeValue(storeSettings?.lunchBreak?.start || "13:00", "13", "00")
+  const lunchEnd = parseTimeValue(storeSettings?.lunchBreak?.end || "14:00", "14", "00")
+
+  startHour.innerHTML = buildHourOptionsRange(storeStart.hour, storeStart.hour, storeEnd.hour)
+  startMinute.innerHTML = buildMinuteOptions(storeStart.minute)
+  endHour.innerHTML = buildHourOptionsRange(storeEnd.hour, storeStart.hour, storeEnd.hour)
+  endMinute.innerHTML = buildMinuteOptions(storeEnd.minute)
+  lunchStartHour.innerHTML = buildHourOptionsRange(lunchStart.hour, storeStart.hour, storeEnd.hour)
+  lunchStartMinute.innerHTML = buildMinuteOptions(lunchStart.minute)
+  lunchEndHour.innerHTML = buildHourOptionsRange(lunchEnd.hour, storeStart.hour, storeEnd.hour)
+  lunchEndMinute.innerHTML = buildMinuteOptions(lunchEnd.minute)
 }
 
 function setupTopTabs() {
@@ -1159,6 +1176,7 @@ function loadStoreSettings() {
   onValue(ref(database, "storeSettings"), (snapshot) => {
     state.storeSettings = snapshot.exists() ? snapshot.val() : {}
     renderStoreSchedule()
+    setupBarberFormTimes(state.storeSettings)
   })
 }
 
@@ -1168,7 +1186,7 @@ function resetBarberForm() {
 
   editingBarberId = null
   form.reset()
-  setupBarberFormTimes()
+  setupBarberFormTimes(state.storeSettings)
   document.querySelectorAll('#barberWorkingDays input[type="checkbox"]').forEach((checkbox) => {
     checkbox.checked = [1, 2, 3, 4, 5].includes(Number(checkbox.value))
   })
@@ -1211,6 +1229,7 @@ function openBarberForm(barber = null, barberId = null) {
   openBtn?.classList.add("hidden")
 
   editingBarberId = barberId
+  setupBarberFormTimes(state.storeSettings)
   document.getElementById("barberName").value = barber.name || ""
   document.getElementById("barberEmail").value = barber.email || ""
   document.getElementById("barberPhone").value = barber.phone || ""

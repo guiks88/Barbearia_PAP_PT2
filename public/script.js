@@ -199,6 +199,25 @@ function initTabs() {
     return;
   }
 
+  const activateTab = (targetTab, activeLink = null) => {
+    if (!targetTab) return
+
+    tabLinks.forEach(l => l.classList.remove('active'));
+    tabContents.forEach(c => c.classList.remove('active'));
+
+    const targetLink = activeLink || Array.from(tabLinks).find((l) => l.getAttribute('data-tab') === targetTab)
+    if (targetLink) {
+      targetLink.classList.add('active')
+    }
+
+    const targetContent = document.getElementById(targetTab);
+    if (targetContent) {
+      targetContent.classList.add('active');
+    } else {
+      console.warn('Content element not found for tab:', targetTab);
+    }
+  }
+
   tabLinks.forEach((link, index) => {
     console.log(`Tab ${index}:`, link.getAttribute('data-tab'), link);
     
@@ -209,25 +228,20 @@ function initTabs() {
       const targetTab = this.getAttribute('data-tab');
       console.log('Tab clicked:', targetTab);
       
-      // Remove active class from all tabs and contents
-      tabLinks.forEach(l => l.classList.remove('active'));
-      tabContents.forEach(c => c.classList.remove('active'));
-      
-      // Add active class to clicked tab and corresponding content
-      this.classList.add('active');
+      activateTab(targetTab, this)
       console.log('Tab classes after click:', this.className);
-      
       const targetContent = document.getElementById(targetTab);
       console.log('Target content element:', targetContent);
-      
-      if (targetContent) {
-        targetContent.classList.add('active');
-        console.log('Content classes after click:', targetContent.className);
-      } else {
-        console.warn('Content element not found for tab:', targetTab);
-      }
     });
   });
+
+  const params = new URLSearchParams(window.location.search)
+  const queryTab = params.get('tab')
+  const hashTab = window.location.hash.replace('#', '').trim()
+  const initialTab = (queryTab || hashTab || '').trim()
+  if (initialTab) {
+    activateTab(initialTab)
+  }
 }
 
 function initActionMenu() {
@@ -484,15 +498,10 @@ function getConfiguredTeamSchedule(barberName) {
   return TEAM_BARBER_SCHEDULES[partialMatch]
 }
 
-function formatRatingValue(value, fallback) {
+function formatRatingValue(value) {
   const numericValue = Number(value)
   if (Number.isFinite(numericValue) && numericValue > 0) {
     return numericValue.toFixed(1)
-  }
-
-  const fallbackValue = Number(fallback)
-  if (Number.isFinite(fallbackValue) && fallbackValue > 0) {
-    return fallbackValue.toFixed(1)
   }
 
   return '0.0'
@@ -525,12 +534,15 @@ function initTeamRatings() {
         stats[key] = { ratingTotal: 0, ratingCount: 0, completedCuts: 0 }
       }
 
-      if (booking.executionStatus === 'completed') {
+      const lifecycle = booking.status || ''
+      const isCancelled = lifecycle === 'cancelled' || lifecycle === 'expired'
+
+      if (booking.executionStatus === 'completed' && !isCancelled) {
         stats[key].completedCuts += 1
       }
 
       const ratingValue = Number(booking.rating)
-      if (Number.isFinite(ratingValue) && ratingValue > 0) {
+      if (!isCancelled && Number.isFinite(ratingValue) && ratingValue > 0) {
         stats[key].ratingTotal += ratingValue
         stats[key].ratingCount += 1
       }
@@ -543,14 +555,11 @@ function initTeamRatings() {
       const ratingWrap = member.querySelector('.member-rating')
       const cutsEl = member.querySelector('.member-cuts-count')
 
-      const fallbackRating = ratingValueEl?.dataset.defaultRating || 0
-      const fallbackCuts = cutsEl?.dataset.defaultCuts || 0
-
       if (ratingValueEl) {
         const average = statsKey && stats[statsKey].ratingCount
           ? stats[statsKey].ratingTotal / stats[statsKey].ratingCount
           : null
-        const ratingText = formatRatingValue(average, fallbackRating)
+        const ratingText = formatRatingValue(average)
         ratingValueEl.textContent = ratingText
         if (ratingWrap) {
           ratingWrap.setAttribute('aria-label', `Nota ${ratingText} de 5`)
@@ -559,7 +568,7 @@ function initTeamRatings() {
 
       if (cutsEl) {
         const cutsValue = statsKey ? stats[statsKey].completedCuts : 0
-        cutsEl.textContent = String(cutsValue || fallbackCuts || 0)
+        cutsEl.textContent = String(cutsValue || 0)
       }
     })
   })

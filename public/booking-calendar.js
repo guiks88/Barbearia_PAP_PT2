@@ -773,6 +773,54 @@ function getBookingById(bookingId) {
   return bookingState.clientBookings.find((booking) => booking.id === bookingId) || null
 }
 
+function isBookingExpiredForClient(booking) {
+  if (!booking?.date || !booking?.time) return false
+
+  const lifecycle = booking.status || ''
+  if (lifecycle === 'cancelled' || lifecycle === 'expired' || lifecycle === 'cancel_requested') {
+    return false
+  }
+
+  const execution = booking.executionStatus || 'pending'
+  if (execution !== 'pending') return false
+
+  if (isDateBeforeToday(booking.date)) return true
+
+  const todayStr = getDateString(new Date())
+  if (booking.date === todayStr && isPastTimeSlot(booking.date, booking.time)) {
+    return true
+  }
+
+  return false
+}
+
+async function expirePastClientBookings(bookings) {
+  const candidates = bookings.filter((booking) => isBookingExpiredForClient(booking))
+  if (!candidates.length) return bookings
+
+  const nowIso = new Date().toISOString()
+  await Promise.all(
+    candidates.map((booking) =>
+      update(ref(database, `bookings/${booking.id}`), {
+        status: 'expired',
+        cancelledBy: 'system',
+        cancellationReason: 'Data da marcacao ja passou',
+        cancelledAt: nowIso,
+        updatedAt: nowIso,
+      }).catch((error) => {
+        console.error('Erro ao expirar marcacao:', error)
+      }),
+    ),
+  )
+
+  const expiredIds = new Set(candidates.map((booking) => booking.id))
+  return bookings.map((booking) =>
+    expiredIds.has(booking.id)
+      ? { ...booking, status: 'expired', cancelledBy: 'system', cancellationReason: 'Data da marcacao ja passou', cancelledAt: nowIso }
+      : booking,
+  )
+}
+
 async function hasBookingConflict(barberId, date, time, bookingIdToIgnore, durationMinutes = 30) {
   const snapshot = await get(ref(database, 'bookings'))
   if (!snapshot.exists()) return false
@@ -941,7 +989,7 @@ async function loadClientBookings() {
         const right = `${b.date || ''} ${b.time || ''}`
         return left.localeCompare(right)
       })
-
+    bookingState.clientBookings = await expirePastClientBookings(bookingState.clientBookings)
     renderClientBookings()
   } catch (error) {
     setManageBookingsStatus('Erro ao carregar as suas marcações.', 'error')

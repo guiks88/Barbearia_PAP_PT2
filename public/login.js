@@ -252,7 +252,7 @@ function redirectByRole(role) {
     return
   }
 
-  window.location.href = "client-menu.html"
+  window.location.href = "index.html"
 }
 
 onAuthStateChanged(auth, async (user) => {

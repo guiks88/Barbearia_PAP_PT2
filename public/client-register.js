@@ -82,7 +82,7 @@ document.getElementById("clientRegisterForm").addEventListener("submit", async (
     sessionStorage.setItem("clientName", name)
 
     setTimeout(() => {
-      window.location.href = "client-menu.html"
+      window.location.href = "index.html"
     }, 2000)
   } catch (error) {
     if (error.code === "auth/email-already-in-use") {
@@ -134,7 +134,7 @@ if (googleRegisterBtn && googleRegisterBtnLabel) {
 
       showSuccess("Conta criada com Google com sucesso! Redirecionando...")
       setTimeout(() => {
-        window.location.href = "client-menu.html"
+        window.location.href = "index.html"
       }, 1500)
     } catch (error) {
       if (error.code === "auth/popup-closed-by-user") {
