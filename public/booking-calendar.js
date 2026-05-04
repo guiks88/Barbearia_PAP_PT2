@@ -20,6 +20,7 @@ const currentMode = urlParams.get('mode')
 const isManageMode = currentMode === 'manage' || currentMode === 'cancel'
 const isCancelMode = currentMode === 'cancel'
 const preferredBarberParam = (urlParams.get('barber') || '').trim()
+const REPORTS_ENABLED = false
 
 let authPersistencePromise = null
 
@@ -823,6 +824,8 @@ function renderClientBookings() {
           : 'Confirmada'
     const isCancelled = booking.status === 'cancelled' || booking.status === 'expired'
     const isLocked = isCancelled || isCompleted
+    const ratingValue = Number(booking.rating || 0)
+    const canRate = isCompleted && !isCancelled
     const safeDate = booking.date || ''
     const safeTime = booking.time || ''
     return `
@@ -853,6 +856,27 @@ function renderClientBookings() {
             <button type="button" class="btn btn-primary save-reschedule-btn" data-booking-id="${booking.id}">Guardar Nova Data</button>
           </div>
         `}
+        ${canRate ? `
+          <div class="client-booking-rating">
+            <label for="rating-${booking.id}">Avaliar barbeiro</label>
+            <div class="client-rating-controls">
+              <select id="rating-${booking.id}" class="rating-select">
+                <option value="">Escolha a nota</option>
+                <option value="5" ${ratingValue === 5 ? 'selected' : ''}>5 - Excelente</option>
+                <option value="4" ${ratingValue === 4 ? 'selected' : ''}>4 - Muito bom</option>
+                <option value="3" ${ratingValue === 3 ? 'selected' : ''}>3 - Bom</option>
+                <option value="2" ${ratingValue === 2 ? 'selected' : ''}>2 - Razoavel</option>
+                <option value="1" ${ratingValue === 1 ? 'selected' : ''}>1 - Fraco</option>
+              </select>
+              <button type="button" class="btn btn-primary btn-small save-rating-btn" data-booking-id="${booking.id}">Guardar</button>
+            </div>
+            <p class="rating-hint">${ratingValue > 0 ? `Avaliacao atual: ${ratingValue}/5` : 'Deixe a sua avaliacao ao barbeiro.'}</p>
+          </div>
+        ` : isCancelled ? '' : `
+          <div class="client-booking-rating is-disabled">
+            <p class="rating-hint">A avaliacao fica disponivel apos a conclusao do corte.</p>
+          </div>
+        `}
       </div>
     `
   }).join('')
@@ -880,6 +904,13 @@ function renderClientBookings() {
     btn.addEventListener('click', async () => {
       const bookingId = btn.dataset.bookingId
       await cancelBookingByClient(bookingId)
+    })
+  })
+
+  listEl.querySelectorAll('.save-rating-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const bookingId = btn.dataset.bookingId
+      await saveBookingRating(bookingId)
     })
   })
 }
@@ -995,6 +1026,39 @@ async function cancelBookingByClient(bookingId) {
     await loadClientBookings()
   } catch (error) {
     showError('Não foi possível anular a marcação.')
+  }
+}
+
+async function saveBookingRating(bookingId) {
+  const booking = getBookingById(bookingId)
+  if (!booking) {
+    showError('Marcação não encontrada.')
+    return
+  }
+
+  if (booking.executionStatus !== 'completed') {
+    showError('A avaliação fica disponível após a conclusão do corte.')
+    return
+  }
+
+  const ratingSelect = document.getElementById(`rating-${bookingId}`)
+  const rating = Number(ratingSelect?.value || 0)
+
+  if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
+    showError('Escolha uma nota entre 1 e 5 para avaliar.')
+    return
+  }
+
+  try {
+    await update(ref(database, `bookings/${bookingId}`), {
+      rating,
+      ratingAt: new Date().toISOString(),
+    })
+
+    showSuccess('Avaliação guardada com sucesso. Obrigado!')
+    await loadClientBookings()
+  } catch (error) {
+    showError('Não foi possível guardar a avaliação.')
   }
 }
 
@@ -1557,7 +1621,7 @@ function showClientDataForm() {
         <p><strong>Telefone:</strong> ${bookingState.clientPhoneComplete || ''}</p>
       </div>
       <form id="clientDataForm" class="auth-form">
-        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Confirmar Marcação e Enviar Relatório</button>
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Confirmar Marcação</button>
       </form>
     `
     document.querySelector('.booking-steps').appendChild(clientDataStep)
@@ -1650,6 +1714,8 @@ async function confirmBooking() {
       clientPhone: bookingState.clientPhone,
       clientPhoneComplete: bookingState.clientPhoneComplete,
       status: 'confirmed',
+      rating: null,
+      ratingAt: null,
       createdAt: new Date().toISOString()
     })
     
@@ -1694,15 +1760,15 @@ function showSuccessScreen() {
   document.getElementById('success-time').textContent = bookingState.time
   document.getElementById('success-price').textContent = `${bookingState.servicePrice}€`
 
-  const reportText = buildBookingReport(formattedDate)
-  const reportEl = document.getElementById('bookingReportText')
-  if (reportEl) {
-    reportEl.textContent = reportText
+  if (REPORTS_ENABLED) {
+    const reportText = buildBookingReport(formattedDate)
+    const reportEl = document.getElementById('bookingReportText')
+    if (reportEl) {
+      reportEl.textContent = reportText
+    }
+    setupReportActions(reportText)
+    sendReportByEmail(reportText)
   }
-  setupReportActions(reportText)
-
-  // Tenta abrir a composição de email automaticamente ao confirmar.
-  sendReportByEmail(reportText)
   
   // Mostrar tela de sucesso
   document.getElementById('step-success').classList.remove('hidden')
@@ -1710,11 +1776,13 @@ function showSuccessScreen() {
 }
 
 function buildBookingReport(formattedDate) {
-  const clientEmail = bookingState.clientEmail || (bookingState.client ? bookingState.client.email : '')
+  const companyName = 'Barbearia João Castro'
+  const companyEmail = 'joaoguilhermesftc88@gmail.com'
+  const companyPhone = '937277447'
   return `Relatório da Marcação\n\n` +
-    `Cliente: ${bookingState.clientName}\n` +
-    `Email: ${clientEmail}\n` +
-    `Telefone: ${bookingState.clientPhoneComplete || bookingState.clientPhone || ''}\n\n` +
+    `Empresa: ${companyName}\n` +
+    `Email: ${companyEmail}\n` +
+    `Telefone: ${companyPhone}\n\n` +
     `Serviço: ${bookingState.serviceName} (${bookingState.serviceDuration} min)\n` +
     `Barbeiro: ${bookingState.barberName}\n` +
     `Data: ${formattedDate}\n` +
@@ -1853,14 +1921,7 @@ function initBookingConfirmation() {
 }
 
 function initClientNavigation() {
-  const backBtn = document.getElementById('bookingGoBackBtn')
   const logoutBtn = document.getElementById('bookingLogoutBtn')
-
-  if (backBtn) {
-    backBtn.addEventListener('click', () => {
-      window.location.href = 'index.html'
-    })
-  }
 
   if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {
@@ -1926,6 +1987,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     initServiceSelection()
     initBookingConfirmation()
-    initEmailPopup()
+    if (REPORTS_ENABLED) {
+      initEmailPopup()
+    }
   })
 })

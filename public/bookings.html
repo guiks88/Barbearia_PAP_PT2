@@ -12,8 +12,7 @@
             <h1 class="logo">Área de Cliente</h1>
             <nav class="nav">
                 <a href="client-menu.html" class="btn btn-secondary">Voltar para Área de Cliente</a>
-                <button type="button" class="btn btn-secondary" id="bookingGoBackBtn">Voltar para Página Inicial</button>
-                   <button type="button" class="btn btn-danger" id="bookingLogoutBtn">Sair</button>
+                <button type="button" class="btn btn-danger" id="bookingLogoutBtn">Sair</button>
             </nav>
         </div>
     </header>
@@ -200,29 +199,10 @@
                     <div class="success-actions">
                         <button class="btn btn-secondary" id="exitBtn">Voltar para Área de Cliente</button>
                     </div>
-
-                    <div class="report-section">
-                        <h3>Relatório da Marcação</h3>
-                        <pre id="bookingReportText" class="booking-report"></pre>
-                        <div class="report-actions">
-                            <button class="btn btn-primary" id="sendEmailReportBtn">Enviar Relatório por Email</button>
-                            <button class="btn btn-secondary" id="copyReportBtn">Copiar Relatório</button>
-                            <button class="btn btn-secondary" id="downloadReportBtn">Download Relatório</button>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
     </main>
-
-    <div class="email-popup hidden" id="emailSentPopup" role="dialog" aria-modal="true" aria-labelledby="emailSentTitle">
-        <div class="email-popup-backdrop" id="emailSentBackdrop"></div>
-        <div class="email-popup-card">
-            <h3 id="emailSentTitle">Relatório Preparado</h3>
-            <p id="emailSentMessage">O relatório foi enviado para o email indicado.</p>
-            <button class="btn btn-primary" id="emailSentOkBtn">Percebi</button>
-        </div>
-    </div>
 
     <footer class="footer">
         <div class="container">

@@ -131,6 +131,23 @@ main {
   flex-wrap: wrap;
 }
 
+.store-hours-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+}
+
+.store-hours-item strong {
+  color: var(--color-accent);
+}
+
+.store-hours-divider {
+  color: var(--color-text-muted);
+  padding: 0 0.2rem;
+}
+
 .rating {
   color: var(--color-gold);
   font-weight: 600;
@@ -473,17 +490,53 @@ main {
 }
 
 .team-member {
+  background: transparent;
+  border: none;
+  padding: 0;
+  text-align: center;
+  perspective: 1000px;
+}
+
+.team-card-inner {
+  position: relative;
+  width: 100%;
+  min-height: 260px;
+  transform-style: preserve-3d;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.team-card-face {
+  position: absolute;
+  inset: 0;
   background: var(--color-bg-card);
   border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 1.5rem;
-  text-align: center;
-  transition: var(--transition);
+  backface-visibility: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  transition: box-shadow 0.3s ease;
 }
 
-.team-member:hover {
+.team-card-front {
+  transform: rotateY(0deg);
+}
+
+.team-card-back {
+  transform: rotateY(180deg);
+}
+
+.team-member:hover .team-card-inner,
+.team-member.is-flipped .team-card-inner,
+.team-member:focus-within .team-card-inner {
+  transform: rotateY(180deg);
+}
+
+.team-member:hover .team-card-face {
   box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
 }
 
 .member-avatar {
@@ -504,7 +557,45 @@ main {
 .member-role {
   color: var(--color-text-secondary);
   font-size: 0.875rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.45rem;
+}
+
+.member-schedule,
+.member-lunch {
+  margin-bottom: 0.25rem;
+}
+
+.member-description {
+  margin-top: 0.35rem;
+  margin-bottom: 0.6rem;
+}
+
+.member-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--color-gold);
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.member-rating-value {
+  font-size: 1.2rem;
+}
+
+.member-rating-total {
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}
+
+.member-cuts {
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.team-book-btn {
+  min-width: 140px;
 }
 
 /* ===== CUTS SECTION ===== */
@@ -2678,6 +2769,46 @@ body.barber-page {
   gap: 0.75rem;
   flex-wrap: wrap;
   margin-top: 0.8rem;
+}
+
+.client-booking-rating {
+  margin-top: 0.9rem;
+  border-top: 1px solid var(--color-border);
+  padding-top: 0.8rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.client-booking-rating.is-disabled {
+  opacity: 0.7;
+}
+
+.client-booking-rating label {
+  color: var(--color-text-primary);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.client-rating-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.rating-select {
+  min-width: 150px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #111827;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.9rem;
+}
+
+.rating-hint {
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
 }
 
 .manage-reschedule-panel {

@@ -122,6 +122,7 @@ const helpTexts = {
 let teamSchedulesListenerBound = false
 let promotionsListenerBound = false
 let storeHoursListenerBound = false
+let teamStatsListenerBound = false
 
 // Only add event listeners if elements exist
 const helpButton = document.getElementById("helpButton")
@@ -405,25 +406,20 @@ function initTeamQuickBooking() {
   const isBarberSession = sessionStorage.getItem('isBarber') === 'true'
 
   teamMembers.forEach((member) => {
-    if (member.dataset.quickBookingBound === 'true') return
-    member.dataset.quickBookingBound = 'true'
-
     const nameEl = member.querySelector('h3')
     const barberName = nameEl?.textContent?.trim()
-    if (!barberName) return
+    const bookButton = member.querySelector('.team-book-btn')
+    if (!barberName || !bookButton) return
+    if (bookButton.dataset.quickBookingBound === 'true') return
+    bookButton.dataset.quickBookingBound = 'true'
 
     if (isBarberSession) {
-      member.style.cursor = 'default'
-      member.removeAttribute('role')
-      member.removeAttribute('tabindex')
-      member.removeAttribute('aria-label')
+      bookButton.disabled = true
+      bookButton.textContent = 'Indisponivel'
       return
     }
 
-    member.style.cursor = 'pointer'
-    member.setAttribute('role', 'button')
-    member.setAttribute('tabindex', '0')
-    member.setAttribute('aria-label', `Marcar com ${barberName}`)
+    bookButton.setAttribute('aria-label', `Marcar com ${barberName}`)
 
     const goToBooking = () => {
       const isClientSession = sessionStorage.getItem('isClient') === 'true'
@@ -437,12 +433,28 @@ function initTeamQuickBooking() {
       window.location.href = url
     }
 
-    member.addEventListener('click', goToBooking)
-    member.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault()
-        goToBooking()
-      }
+    bookButton.addEventListener('click', (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      goToBooking()
+    })
+  })
+}
+
+function initTeamFlipCards() {
+  const teamMembers = document.querySelectorAll('.team-member')
+  if (!teamMembers.length) return
+
+  const isTouchDevice = window.matchMedia('(hover: none)').matches
+  if (!isTouchDevice) return
+
+  teamMembers.forEach((member) => {
+    if (member.dataset.flipBound === 'true') return
+    member.dataset.flipBound = 'true'
+
+    member.addEventListener('click', (e) => {
+      if (e.target.closest('.team-book-btn')) return
+      member.classList.toggle('is-flipped')
     })
   })
 }
@@ -470,6 +482,87 @@ function getConfiguredTeamSchedule(barberName) {
   if (!partialMatch) return null
 
   return TEAM_BARBER_SCHEDULES[partialMatch]
+}
+
+function formatRatingValue(value, fallback) {
+  const numericValue = Number(value)
+  if (Number.isFinite(numericValue) && numericValue > 0) {
+    return numericValue.toFixed(1)
+  }
+
+  const fallbackValue = Number(fallback)
+  if (Number.isFinite(fallbackValue) && fallbackValue > 0) {
+    return fallbackValue.toFixed(1)
+  }
+
+  return '0.0'
+}
+
+function resolveTeamStatsKey(stats, barberName) {
+  const normalizedName = normalizePersonName(barberName)
+  if (stats[normalizedName]) return normalizedName
+
+  const keys = Object.keys(stats)
+  return keys.find((key) => normalizedName.includes(key) || key.includes(normalizedName)) || null
+}
+
+function initTeamRatings() {
+  const members = document.querySelectorAll('.team-member[data-barber-name]')
+  if (!members.length) return
+  if (teamStatsListenerBound) return
+  teamStatsListenerBound = true
+
+  onValue(ref(database, 'bookings'), (snapshot) => {
+    const stats = {}
+    const bookings = snapshot.exists() ? Object.values(snapshot.val() || {}) : []
+
+    bookings.forEach((booking) => {
+      const barberName = booking?.barberName || booking?.barber || booking?.barberId
+      if (!barberName) return
+
+      const key = normalizePersonName(barberName)
+      if (!stats[key]) {
+        stats[key] = { ratingTotal: 0, ratingCount: 0, completedCuts: 0 }
+      }
+
+      if (booking.executionStatus === 'completed') {
+        stats[key].completedCuts += 1
+      }
+
+      const ratingValue = Number(booking.rating)
+      if (Number.isFinite(ratingValue) && ratingValue > 0) {
+        stats[key].ratingTotal += ratingValue
+        stats[key].ratingCount += 1
+      }
+    })
+
+    members.forEach((member) => {
+      const barberName = member.getAttribute('data-barber-name') || ''
+      const statsKey = resolveTeamStatsKey(stats, barberName)
+      const ratingValueEl = member.querySelector('.member-rating-value')
+      const ratingWrap = member.querySelector('.member-rating')
+      const cutsEl = member.querySelector('.member-cuts-count')
+
+      const fallbackRating = ratingValueEl?.dataset.defaultRating || 0
+      const fallbackCuts = cutsEl?.dataset.defaultCuts || 0
+
+      if (ratingValueEl) {
+        const average = statsKey && stats[statsKey].ratingCount
+          ? stats[statsKey].ratingTotal / stats[statsKey].ratingCount
+          : null
+        const ratingText = formatRatingValue(average, fallbackRating)
+        ratingValueEl.textContent = ratingText
+        if (ratingWrap) {
+          ratingWrap.setAttribute('aria-label', `Nota ${ratingText} de 5`)
+        }
+      }
+
+      if (cutsEl) {
+        const cutsValue = statsKey ? stats[statsKey].completedCuts : 0
+        cutsEl.textContent = String(cutsValue || fallbackCuts || 0)
+      }
+    })
+  })
 }
 
 async function initTeamSchedules() {
@@ -586,13 +679,10 @@ async function loadStoreHours() {
       const scheduleLabel = specialSchedule ? 'Horario especial hoje' : 'Horario'
       
       storeHoursDisplay.innerHTML = `
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.5rem;">
-          <div>
-            <strong style="color: var(--color-accent);">${scheduleLabel}:</strong> ${openingStart} - ${openingEnd}
-          </div>
-          <div>
-            <strong style="color: var(--color-accent);">Almoço:</strong> ${lunchStart} - ${lunchEnd}
-          </div>
+        <div class="store-hours-row">
+          <span class="store-hours-item"><strong>${scheduleLabel}:</strong> ${openingStart} - ${openingEnd}</span>
+          <span class="store-hours-divider">|</span>
+          <span class="store-hours-item"><strong>Almoco:</strong> ${lunchStart} - ${lunchEnd}</span>
         </div>
       `
     })
@@ -763,7 +853,9 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initDownloadSiteButton);
   document.addEventListener('DOMContentLoaded', initCutsGallery);
   document.addEventListener('DOMContentLoaded', initTeamQuickBooking);
+  document.addEventListener('DOMContentLoaded', initTeamFlipCards);
   document.addEventListener('DOMContentLoaded', initTeamSchedules);
+  document.addEventListener('DOMContentLoaded', initTeamRatings);
   document.addEventListener('DOMContentLoaded', setupTeamSchedulesListener);
   document.addEventListener('DOMContentLoaded', loadPromotions);
   document.addEventListener('DOMContentLoaded', loadStoreHours);
@@ -775,7 +867,9 @@ if (document.readyState === 'loading') {
   initDownloadSiteButton();
   initCutsGallery();
   initTeamQuickBooking();
+  initTeamFlipCards();
   initTeamSchedules();
+  initTeamRatings();
   setupTeamSchedulesListener();
   loadPromotions();
   loadStoreHours();
@@ -789,7 +883,9 @@ window.addEventListener('load', initActionMenu);
 window.addEventListener('load', initDownloadSiteButton);
 window.addEventListener('load', initCutsGallery);
 window.addEventListener('load', initTeamQuickBooking);
+window.addEventListener('load', initTeamFlipCards);
 window.addEventListener('load', initTeamSchedules);
+window.addEventListener('load', initTeamRatings);
 window.addEventListener('load', setupTeamSchedulesListener);
 window.addEventListener('load', loadPromotions);
 window.addEventListener('load', loadStoreHours);
