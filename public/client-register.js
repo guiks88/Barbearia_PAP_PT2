@@ -5,6 +5,7 @@ import {
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
   sendEmailVerification,
+  signOut,
   signInWithPopup,
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
 import { formatPhoneNumber, validatePhoneNumber, setupPhoneValidation, showSuccess, showError } from "./utils.js"
@@ -82,15 +83,16 @@ document.getElementById("clientRegisterForm").addEventListener("submit", async (
       phone,
     })
 
-    showSuccess("Cliente registado com sucesso! Redirecionando...")
+    await signOut(auth)
+    sessionStorage.removeItem("clientEmail")
+    sessionStorage.removeItem("clientName")
+    sessionStorage.removeItem("isClient")
 
-    sessionStorage.setItem("clientEmail", email)
-    sessionStorage.setItem("clientName", name)
-    sessionStorage.setItem("isClient", "true")
+    showSuccess("Conta criada! Enviamos um email de verificacao. Confirme o email antes de entrar.")
 
     setTimeout(() => {
-      window.location.href = "index.html"
-    }, 2000)
+      window.location.href = "login.html"
+    }, 3000)
   } catch (error) {
     if (error.code === "auth/email-already-in-use") {
       showError("Este email já está registado. Faça login.")

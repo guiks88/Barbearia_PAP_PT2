@@ -6,9 +6,11 @@ import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
   setPersistence,
+  sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
+  signOut,
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
 import { showSuccess, showError } from "./utils.js"
 
@@ -255,11 +257,37 @@ function redirectByRole(role) {
   window.location.href = "client-menu.html"
 }
 
+function needsClientEmailVerification(user, roleData) {
+  const isClient = !roleData || roleData.role === "client"
+  const usesPasswordLogin = user.providerData.some((provider) => provider.providerId === "password")
+  return isClient && usesPasswordLogin && !user.emailVerified
+}
+
+async function blockUnverifiedClient(user, roleData, shouldResendEmail = false) {
+  if (!needsClientEmailVerification(user, roleData)) return false
+
+  if (shouldResendEmail) {
+    await sendEmailVerification(user, {
+      url: AUTH_ACTION_URL,
+      handleCodeInApp: true,
+    })
+  }
+
+  await signOut(auth)
+  sessionStorage.clear()
+  return true
+}
+
 onAuthStateChanged(auth, async (user) => {
   if (!user) return
 
   const email = normalizeEmail(user.email)
   const roleData = await resolveRoleData(user, email)
+
+  if (await blockUnverifiedClient(user, roleData)) {
+    showError("Confirme o seu email antes de entrar. Veja a caixa de entrada ou spam.")
+    return
+  }
 
   if (!roleData) {
     const profile = await ensureClientProfileForAuthenticatedUser(user, email)
@@ -300,6 +328,10 @@ async function loginAndRoute(email, password) {
   }
 
   const roleData = await resolveRoleData(user, email)
+
+  if (await blockUnverifiedClient(user, roleData, true)) {
+    throw new Error("Confirme o seu email antes de entrar. Enviamos novo email de verificacao.")
+  }
 
   if (!roleData) {
     const recoveredProfile = await ensureClientProfileForAuthenticatedUser(user, email)
