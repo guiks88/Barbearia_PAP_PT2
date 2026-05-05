@@ -12,6 +12,30 @@ import { formatPhoneNumber, validatePhoneNumber, setupPhoneValidation, showSucce
 
 setupPhoneValidation("clientPhone")
 
+const registerForm = document.getElementById("clientRegisterForm")
+const registerSubmitBtn = document.getElementById("clientRegisterSubmitBtn")
+const registerStatus = document.getElementById("clientRegisterStatus")
+const registerStatusText = document.getElementById("clientRegisterStatusText")
+
+function showRegisterStatus(email) {
+  if (registerStatusText) {
+    registerStatusText.textContent = `Enviamos um email de verificacao para ${email}. Abra esse email e confirme a conta antes de fazer login. Se nao aparecer, veja tambem a pasta Spam ou Lixo.`
+  }
+
+  if (registerStatus) {
+    registerStatus.classList.remove("hidden")
+    registerStatus.scrollIntoView({ behavior: "smooth", block: "center" })
+  }
+
+  if (registerForm) {
+    registerForm.classList.add("hidden")
+  }
+
+  if (googleRegisterBtn) {
+    googleRegisterBtn.classList.add("hidden")
+  }
+}
+
 async function saveClientProfile(uid, { name, email, phone }) {
   const normalizedEmail = (email || "").trim().toLowerCase()
   const normalizedPhone = formatPhoneNumber(phone || "")
@@ -50,7 +74,7 @@ async function saveClientProfile(uid, { name, email, phone }) {
   return payload
 }
 
-document.getElementById("clientRegisterForm").addEventListener("submit", async (e) => {
+registerForm.addEventListener("submit", async (e) => {
   e.preventDefault()
 
   const phone = document.getElementById("clientPhone").value
@@ -69,6 +93,11 @@ document.getElementById("clientRegisterForm").addEventListener("submit", async (
   }
 
   try {
+    if (registerSubmitBtn) {
+      registerSubmitBtn.disabled = true
+      registerSubmitBtn.textContent = "A registar..."
+    }
+
     const credential = await createUserWithEmailAndPassword(auth, email, password)
     const uid = credential.user.uid
 
@@ -88,12 +117,14 @@ document.getElementById("clientRegisterForm").addEventListener("submit", async (
     sessionStorage.removeItem("clientName")
     sessionStorage.removeItem("isClient")
 
-    showSuccess("Conta criada! Enviamos um email de verificacao. Confirme o email antes de entrar.")
-
-    setTimeout(() => {
-      window.location.href = "login.html"
-    }, 3000)
+    showRegisterStatus(email)
+    showSuccess("Conta criada. Verifique o seu email antes de entrar.")
   } catch (error) {
+    if (registerSubmitBtn) {
+      registerSubmitBtn.disabled = false
+      registerSubmitBtn.textContent = "Registar"
+    }
+
     if (error.code === "auth/email-already-in-use") {
       showError("Este email já está registado. Faça login.")
       return

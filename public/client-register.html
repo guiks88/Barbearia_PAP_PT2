@@ -20,7 +20,12 @@
         <section class="card" style="margin-bottom: 1.5rem;">
             <h2 style="text-align: center;">Crie a sua conta</h2>
             <p style="color: var(--color-text-secondary); margin-top: 0.5rem; text-align: center;">Registar-se para fazer marcações</p>
-            
+            <div id="clientRegisterStatus" class="hidden" style="margin-top: 1rem; padding: 1rem; border-radius: 10px; border: 1px solid rgba(16, 185, 129, 0.35); background: rgba(16, 185, 129, 0.12); color: var(--color-text-primary);">
+                <strong id="clientRegisterStatusTitle">Verifique o seu email</strong>
+                <p id="clientRegisterStatusText" style="margin: 0.5rem 0 0; color: var(--color-text-secondary);"></p>
+                <a href="login.html" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Ir para Login</a>
+            </div>
+
             <form id="clientRegisterForm" class="auth-form" style="margin-top: 1.25rem;">
                 <div class="form-group">
                     <label for="clientName">Nome Completo *</label>
@@ -44,7 +49,7 @@
                     <small style="color: var(--color-text-secondary); font-size: 0.85rem;">Mínimo 6 caracteres</small>
                 </div>
                 
-                <button type="submit" class="btn btn-primary" style="width: 100%;">Registar</button>
+                <button type="submit" class="btn btn-primary" id="clientRegisterSubmitBtn" style="width: 100%;">Registar</button>
             </form>
 
             <div style="text-align: center; color: var(--color-text-secondary); margin: 0.9rem 0;">ou</div>
