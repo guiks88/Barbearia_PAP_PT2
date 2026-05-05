@@ -17,6 +17,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig)
 const database = getDatabase(app)
 const auth = getAuth(app)
+auth.languageCode = "pt"
 const firestore = getFirestore(app)
 const AUTH_ACTION_URL = `${window.location.origin}/auth-action.html`
 

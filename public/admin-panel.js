@@ -15,6 +15,7 @@ import {
 
 const secondaryApp = initializeApp(firebaseConfig, "secondary")
 const secondaryAuth = getAuth(secondaryApp)
+secondaryAuth.languageCode = "pt"
 
 const SERVICE_PRICES = {
   corte: 15,
