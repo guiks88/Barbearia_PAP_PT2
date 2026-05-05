@@ -36,7 +36,7 @@ document.getElementById("clientLoginForm").addEventListener("submit", async (e) 
     )
 
     if (!client) {
-      showError("Email/Nome ou senha incorretos.")
+      showError("Senha ou usuario incorretos.")
       return
     }
 

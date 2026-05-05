@@ -703,7 +703,7 @@ function initClientAuth() {
       showSuccess('Login confirmado com sucesso.')
       handlePostAuthSuccess()
     } catch (error) {
-      showError('Email ou senha inválidos.')
+      showError('Senha ou usuario incorretos.')
     }
   })
 

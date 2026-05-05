@@ -252,7 +252,7 @@ function redirectByRole(role) {
     return
   }
 
-  window.location.href = "index.html"
+  window.location.href = "client-menu.html"
 }
 
 onAuthStateChanged(auth, async (user) => {
@@ -366,7 +366,7 @@ form.addEventListener("submit", async (event) => {
     const code = error?.code || ""
 
     if (code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found") {
-      showError("Email ou senha incorretos.")
+      showError("Senha ou usuario incorretos.")
     } else {
       showError(error?.message || "Não foi possível fazer login.")
     }

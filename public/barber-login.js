@@ -36,7 +36,7 @@ document.getElementById("barberLoginForm").addEventListener("submit", async (e) 
     }, 1500)
   } catch (error) {
     if (error.code === "auth/invalid-credential" || error.code === "auth/wrong-password") {
-      showError("Email ou senha incorretos.")
+      showError("Senha ou usuario incorretos.")
     } else {
       showError("Erro ao fazer login: " + error.message)
     }

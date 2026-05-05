@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Promoções - Área de Cliente</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <h1 class="logo">Promoções</h1>
+            <nav class="nav">
+                <a href="client-menu.html" class="btn btn-secondary">Voltar à Área de Cliente</a>
+                <button type="button" class="btn btn-secondary" id="clientPromotionsBackBtn">Voltar</button>
+                <button type="button" class="btn btn-danger" id="clientPromotionsLogoutBtn">Sair</button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container" style="max-width: 900px; padding-top: 2rem; padding-bottom: 2rem;">
+        <section class="card">
+            <h2 style="text-align: center;">Promoções disponíveis</h2>
+            <div id="promotionsList" style="display: grid; gap: 1.5rem;"></div>
+            <div id="emptyPromotions" style="text-align: center; padding: 2rem; color: var(--color-text-secondary);">
+                <p>Sem promoções ativas no momento.</p>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2026 Barbearia João Castro. Todos os direitos reservados.</p>
+        </div>
+    </footer>
+
+    <script type="module" src="client-promotions.js"></script>
+</body>
+</html>
