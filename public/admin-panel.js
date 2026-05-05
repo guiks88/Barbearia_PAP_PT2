@@ -1,7 +1,7 @@
-import { auth, database, firebaseConfig, firestore } from "./firebase-config.js"
+import { auth, database, firebaseConfig, firestore, AUTH_ACTION_URL } from "./firebase-config.js"
 import { ref, set, onValue, remove, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js"
-import { getAuth, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
+import { getAuth, createUserWithEmailAndPassword, onAuthStateChanged, sendEmailVerification, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
 import { doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"
 import {
   formatPhoneNumber,
@@ -1654,6 +1654,11 @@ document.getElementById("barberForm").addEventListener("submit", async (e) => {
 
     const barberCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password)
     const barberUid = barberCredential.user.uid
+
+    await sendEmailVerification(barberCredential.user, {
+      url: AUTH_ACTION_URL,
+      handleCodeInApp: true,
+    })
 
     await set(ref(database, `barbers/${barberUid}`), newBarber)
 

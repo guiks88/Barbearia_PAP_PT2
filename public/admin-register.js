@@ -1,6 +1,6 @@
-import { auth, database, firestore } from "./firebase-config.js"
+import { auth, database, firestore, AUTH_ACTION_URL } from "./firebase-config.js"
 import { ref, set, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
-import { createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
+import { createUserWithEmailAndPassword, sendEmailVerification, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
 import { doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"
 import { formatPhoneNumber, validatePhoneNumber, setupPhoneValidation, showSuccess, showError } from "./utils.js"
 
@@ -61,6 +61,11 @@ document.getElementById("adminRegisterForm").addEventListener("submit", async (e
 
     const userCredential = await createUserWithEmailAndPassword(auth, email, password)
     const uid = userCredential.user.uid
+
+    await sendEmailVerification(userCredential.user, {
+      url: AUTH_ACTION_URL,
+      handleCodeInApp: true,
+    })
 
     const newAdmin = {
       name,

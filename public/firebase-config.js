@@ -18,5 +18,6 @@ const app = initializeApp(firebaseConfig)
 const database = getDatabase(app)
 const auth = getAuth(app)
 const firestore = getFirestore(app)
+const AUTH_ACTION_URL = `${window.location.origin}/auth-action.html`
 
-export { firebaseConfig, app, database, auth, firestore }
+export { firebaseConfig, app, database, auth, firestore, AUTH_ACTION_URL }

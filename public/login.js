@@ -1,4 +1,4 @@
-import { auth, database } from "./firebase-config.js"
+import { auth, database, AUTH_ACTION_URL } from "./firebase-config.js"
 import { ref, get, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
 import {
   browserSessionPersistence,
@@ -388,7 +388,10 @@ forgotPasswordLink.addEventListener("click", async (event) => {
   }
 
   try {
-    await sendPasswordResetEmail(auth, email)
+    await sendPasswordResetEmail(auth, email, {
+      url: AUTH_ACTION_URL,
+      handleCodeInApp: true,
+    })
     showSuccess("Email de recuperação enviado. Verifique a sua caixa de entrada.")
   } catch (error) {
     const code = error?.code || ""

@@ -1,9 +1,10 @@
-import { auth, database, firestore } from "./firebase-config.js"
+import { auth, database, firestore, AUTH_ACTION_URL } from "./firebase-config.js"
 import { ref, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
 import { doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"
 import {
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
+  sendEmailVerification,
   signInWithPopup,
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
 import { formatPhoneNumber, validatePhoneNumber, setupPhoneValidation, showSuccess, showError } from "./utils.js"
@@ -69,6 +70,11 @@ document.getElementById("clientRegisterForm").addEventListener("submit", async (
   try {
     const credential = await createUserWithEmailAndPassword(auth, email, password)
     const uid = credential.user.uid
+
+    await sendEmailVerification(credential.user, {
+      url: AUTH_ACTION_URL,
+      handleCodeInApp: true,
+    })
 
     await saveClientProfile(uid, {
       name,

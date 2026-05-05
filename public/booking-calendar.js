@@ -1,8 +1,9 @@
-import { auth, database } from "./firebase-config.js"
+import { auth, database, AUTH_ACTION_URL } from "./firebase-config.js"
 import { ref, get, push, set, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
 import {
   browserSessionPersistence,
   createUserWithEmailAndPassword,
+  sendEmailVerification,
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
@@ -734,6 +735,11 @@ function initClientAuth() {
 
       const result = await createUserWithEmailAndPassword(auth, email, password)
       const user = result.user
+
+      await sendEmailVerification(user, {
+        url: AUTH_ACTION_URL,
+        handleCodeInApp: true,
+      })
 
       const payload = {
         name,

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirmacao de Conta</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <h1 class="logo">Confirmacao de conta</h1>
+            <nav class="nav">
+                <a href="login.html" class="btn btn-secondary">Ir para Login</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container" style="max-width: 720px; padding-top: 2rem; padding-bottom: 2rem;">
+        <section class="card" style="margin-bottom: 1.25rem;">
+            <h2 id="actionTitle" style="text-align: center;">A validar pedido</h2>
+            <p id="actionStatus" style="text-align: center; color: var(--color-text-secondary);">Aguarde um momento.</p>
+            <p id="actionDetail" style="text-align: center; color: var(--color-text-secondary);"></p>
+        </section>
+
+        <section class="card hidden" id="resetCard">
+            <h2 style="text-align: center;">Nova senha</h2>
+            <form id="resetForm" class="auth-form" style="margin-top: 1rem;">
+                <label for="newPassword">Nova senha *</label>
+                <input type="password" id="newPassword" placeholder="Minimo 6 caracteres" required>
+
+                <label for="confirmPassword" style="margin-top: 1rem;">Confirmar senha *</label>
+                <input type="password" id="confirmPassword" placeholder="Repita a senha" required>
+
+                <button type="submit" class="btn btn-primary" id="resetBtn" style="width: 100%; margin-top: 1rem;">Guardar nova senha</button>
+            </form>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2026 Barbearia Joao Castro. Todos os direitos reservados.</p>
+        </div>
+    </footer>
+
+    <script type="module" src="auth-action.js"></script>
+</body>
+</html>
