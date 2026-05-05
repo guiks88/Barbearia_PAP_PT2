@@ -2854,6 +2854,28 @@ body.barber-page {
   font-size: 0.85rem;
 }
 
+.register-verification-wait {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.register-verification-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: register-spin 0.9s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes register-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .manage-reschedule-panel {
   margin-top: 0.8rem;
   border-top: 1px solid var(--color-border);

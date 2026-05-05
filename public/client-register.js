@@ -4,7 +4,9 @@ import { doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs
 import {
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
+  reload,
   sendEmailVerification,
+  signOut,
   signInWithPopup,
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
 import { formatPhoneNumber, validatePhoneNumber, setupPhoneValidation, showSuccess, showError } from "./utils.js"
@@ -15,6 +17,96 @@ const registerForm = document.getElementById("clientRegisterForm")
 const registerSubmitBtn = document.getElementById("clientRegisterSubmitBtn")
 const registerStatus = document.getElementById("clientRegisterStatus")
 const registerStatusText = document.getElementById("clientRegisterStatusText")
+const registerCountdown = document.getElementById("clientRegisterCountdown")
+
+let verificationIntervalId = null
+let countdownIntervalId = null
+let countdownRemainingSeconds = 300
+
+function clearVerificationTimers() {
+  if (verificationIntervalId) {
+    window.clearInterval(verificationIntervalId)
+    verificationIntervalId = null
+  }
+  if (countdownIntervalId) {
+    window.clearInterval(countdownIntervalId)
+    countdownIntervalId = null
+  }
+}
+
+function clearClientSession() {
+  sessionStorage.removeItem("clientEmail")
+  sessionStorage.removeItem("clientName")
+  sessionStorage.removeItem("isClient")
+}
+
+function formatCountdown(seconds) {
+  const safeSeconds = Math.max(0, Number(seconds) || 0)
+  const minutes = Math.floor(safeSeconds / 60)
+  const secs = safeSeconds % 60
+  return `${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`
+}
+
+async function finalizeVerificationFlow() {
+  const user = auth.currentUser
+  if (user?.emailVerified) {
+    clearVerificationTimers()
+    showSuccess("Email confirmado. A entrar no menu principal...")
+    window.location.href = "index.html"
+    return
+  }
+
+  if (countdownRemainingSeconds <= 0) {
+    clearVerificationTimers()
+    try {
+      if (auth.currentUser) {
+        await signOut(auth)
+      }
+    } catch (error) {
+      console.error("Erro ao terminar sessao apos timeout de verificacao:", error)
+    }
+    clearClientSession()
+    window.location.href = "index.html"
+  }
+}
+
+async function checkEmailVerificationStatus() {
+  try {
+    const user = auth.currentUser
+    if (!user) return
+    await reload(user)
+    await finalizeVerificationFlow()
+  } catch (error) {
+    console.error("Erro ao validar verificacao de email:", error)
+  }
+}
+
+function startVerificationWaitFlow() {
+  clearVerificationTimers()
+  countdownRemainingSeconds = 300
+
+  if (registerCountdown) {
+    registerCountdown.textContent = `A aguardar confirmação do email... ${formatCountdown(countdownRemainingSeconds)}`
+  }
+
+  countdownIntervalId = window.setInterval(async () => {
+    countdownRemainingSeconds -= 1
+
+    if (registerCountdown) {
+      registerCountdown.textContent = `A aguardar confirmação do email... ${formatCountdown(countdownRemainingSeconds)}`
+    }
+
+    if (countdownRemainingSeconds <= 0) {
+      await finalizeVerificationFlow()
+    }
+  }, 1000)
+
+  verificationIntervalId = window.setInterval(() => {
+    checkEmailVerificationStatus()
+  }, 30000)
+
+  checkEmailVerificationStatus()
+}
 
 function showRegisterStatus(email) {
   if (registerStatusText) {
@@ -33,6 +125,8 @@ function showRegisterStatus(email) {
   if (googleRegisterBtn) {
     googleRegisterBtn.classList.add("hidden")
   }
+
+  startVerificationWaitFlow()
 }
 
 async function saveClientProfile(uid, { name, email, phone }) {
@@ -115,8 +209,8 @@ registerForm.addEventListener("submit", async (e) => {
     sessionStorage.setItem("clientName", name || "Cliente")
     sessionStorage.setItem("isClient", "true")
 
-    showRegisterStatus(email)
-    showSuccess("Conta criada. Verifique o seu email antes de entrar.")
+      showRegisterStatus(email)
+      showSuccess("Conta criada. Verifique o seu email antes de entrar.")
   } catch (error) {
     if (registerSubmitBtn) {
       registerSubmitBtn.disabled = false
@@ -189,3 +283,7 @@ if (googleRegisterBtn && googleRegisterBtnLabel) {
     }
   })
 }
+
+window.addEventListener("beforeunload", () => {
+  clearVerificationTimers()
+})

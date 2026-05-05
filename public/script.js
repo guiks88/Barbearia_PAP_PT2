@@ -585,6 +585,92 @@ function computeStoreAverageFromStats(stats) {
   return sum / perBarberAverages.length
 }
 
+function applyTeamStatsToUi(members, stats) {
+  const storeAverageEl = document.getElementById('storeAverageRating')
+  if (storeAverageEl) {
+    storeAverageEl.textContent = formatRatingValue(computeStoreAverageFromStats(stats))
+  }
+
+  members.forEach((member) => {
+    const barberName = member.getAttribute('data-barber-name') || ''
+    const statsKey = resolveTeamStatsKey(stats, barberName)
+    const ratingValueEl = member.querySelector('.member-rating-value')
+    const ratingWrap = member.querySelector('.member-rating')
+    const cutsCountEl = member.querySelector('.member-rating-count')
+    const cutsLegacyEl = member.querySelector('.member-cuts-count')
+
+    if (ratingValueEl) {
+      const average = statsKey && stats[statsKey].ratingCount
+        ? stats[statsKey].ratingTotal / stats[statsKey].ratingCount
+        : null
+      const ratingText = formatRatingValue(average)
+      ratingValueEl.textContent = ratingText
+      if (ratingWrap) {
+        ratingWrap.setAttribute('aria-label', `Nota ${ratingText} de 5`)
+      }
+    }
+
+    if (cutsCountEl) {
+      const cutsValue = statsKey ? stats[statsKey].completedCuts : 0
+      cutsCountEl.textContent = `(${String(cutsValue || 0)})`
+    }
+
+    if (cutsLegacyEl) {
+      const cutsValue = statsKey ? stats[statsKey].completedCuts : 0
+      cutsLegacyEl.textContent = String(cutsValue || 0)
+    }
+  })
+}
+
+async function loadTeamStatsFromBarbersFallback(members) {
+  try {
+    const snapshot = await get(ref(database, 'barbers'))
+    if (!snapshot.exists()) return
+
+    const stats = {}
+    const entries = Object.values(snapshot.val() || {})
+    entries.forEach((barber) => {
+      const barberName = barber?.name || barber?.nome || ''
+      const key = normalizePersonName(barberName)
+      if (!key) return
+
+      const ratingCount = Number(
+        barber?.ratingCount ??
+        barber?.ratingsCount ??
+        barber?.totalRatings ??
+        barber?.avaliacoesTotal ??
+        0,
+      ) || 0
+
+      const averageRating = Number(
+        barber?.avgRating ??
+        barber?.averageRating ??
+        barber?.ratingAverage ??
+        barber?.notaMedia ??
+        0,
+      ) || 0
+
+      const completedCuts = Number(
+        barber?.completedCuts ??
+        barber?.totalCuts ??
+        barber?.cortesFeitos ??
+        barber?.cutsCount ??
+        0,
+      ) || 0
+
+      stats[key] = {
+        ratingCount,
+        ratingTotal: ratingCount > 0 ? averageRating * ratingCount : 0,
+        completedCuts,
+      }
+    })
+
+    applyTeamStatsToUi(members, stats)
+  } catch (error) {
+    console.error('Erro ao carregar estatisticas fallback da equipa:', error)
+  }
+}
+
 function initTeamRatings() {
   const members = document.querySelectorAll('.team-member[data-barber-name]')
   if (!members.length) return
@@ -618,41 +704,13 @@ function initTeamRatings() {
       }
     })
 
-    const storeAverageEl = document.getElementById('storeAverageRating')
-    if (storeAverageEl) {
-      storeAverageEl.textContent = formatRatingValue(computeStoreAverageFromStats(stats))
-    }
-
-    members.forEach((member) => {
-      const barberName = member.getAttribute('data-barber-name') || ''
-      const statsKey = resolveTeamStatsKey(stats, barberName)
-      const ratingValueEl = member.querySelector('.member-rating-value')
-      const ratingWrap = member.querySelector('.member-rating')
-      const cutsCountEl = member.querySelector('.member-rating-count')
-      const cutsLegacyEl = member.querySelector('.member-cuts-count')
-
-      if (ratingValueEl) {
-        const average = statsKey && stats[statsKey].ratingCount
-          ? stats[statsKey].ratingTotal / stats[statsKey].ratingCount
-          : null
-        const ratingText = formatRatingValue(average)
-        ratingValueEl.textContent = ratingText
-        if (ratingWrap) {
-          ratingWrap.setAttribute('aria-label', `Nota ${ratingText} de 5`)
-        }
-      }
-
-      if (cutsCountEl) {
-        const cutsValue = statsKey ? stats[statsKey].completedCuts : 0
-        cutsCountEl.textContent = `(${String(cutsValue || 0)})`
-      }
-
-      if (cutsLegacyEl) {
-        const cutsValue = statsKey ? stats[statsKey].completedCuts : 0
-        cutsLegacyEl.textContent = String(cutsValue || 0)
-      }
-    })
+    applyTeamStatsToUi(members, stats)
+  }, (error) => {
+    console.warn('Leitura de bookings indisponivel sem login. A usar fallback de barbeiros.', error)
+    loadTeamStatsFromBarbersFallback(members)
   })
+
+  loadTeamStatsFromBarbersFallback(members)
 }
 
 async function initTeamSchedules() {
