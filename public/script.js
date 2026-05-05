@@ -574,10 +574,20 @@ function resolveTeamStatsKey(stats, barberName) {
   return keys.find((key) => normalizedName.includes(key) || key.includes(normalizedName)) || null
 }
 
+function computeStoreAverageFromStats(stats) {
+  const perBarberAverages = Object.values(stats)
+    .filter((entry) => Number(entry?.ratingCount || 0) > 0)
+    .map((entry) => Number(entry.ratingTotal || 0) / Number(entry.ratingCount || 1))
+
+  if (!perBarberAverages.length) return 0
+
+  const sum = perBarberAverages.reduce((acc, value) => acc + value, 0)
+  return sum / perBarberAverages.length
+}
+
 function initTeamRatings() {
   const members = document.querySelectorAll('.team-member[data-barber-name]')
   if (!members.length) return
-  if (!isUserLoggedIn()) return
   if (teamStatsListenerBound) return
   teamStatsListenerBound = true
 
@@ -608,12 +618,18 @@ function initTeamRatings() {
       }
     })
 
+    const storeAverageEl = document.getElementById('storeAverageRating')
+    if (storeAverageEl) {
+      storeAverageEl.textContent = formatRatingValue(computeStoreAverageFromStats(stats))
+    }
+
     members.forEach((member) => {
       const barberName = member.getAttribute('data-barber-name') || ''
       const statsKey = resolveTeamStatsKey(stats, barberName)
       const ratingValueEl = member.querySelector('.member-rating-value')
       const ratingWrap = member.querySelector('.member-rating')
-      const cutsEl = member.querySelector('.member-cuts-count')
+      const cutsCountEl = member.querySelector('.member-rating-count')
+      const cutsLegacyEl = member.querySelector('.member-cuts-count')
 
       if (ratingValueEl) {
         const average = statsKey && stats[statsKey].ratingCount
@@ -626,9 +642,14 @@ function initTeamRatings() {
         }
       }
 
-      if (cutsEl) {
+      if (cutsCountEl) {
         const cutsValue = statsKey ? stats[statsKey].completedCuts : 0
-        cutsEl.textContent = String(cutsValue || 0)
+        cutsCountEl.textContent = `(${String(cutsValue || 0)})`
+      }
+
+      if (cutsLegacyEl) {
+        const cutsValue = statsKey ? stats[statsKey].completedCuts : 0
+        cutsLegacyEl.textContent = String(cutsValue || 0)
       }
     })
   })

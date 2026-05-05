@@ -588,6 +588,13 @@ main {
   font-size: 0.85rem;
 }
 
+.member-rating-count {
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-left: -0.2rem;
+}
+
 .member-cuts {
   color: var(--color-text-secondary);
   font-size: 0.85rem;
@@ -2796,14 +2803,50 @@ body.barber-page {
   flex-wrap: wrap;
 }
 
-.rating-select {
-  min-width: 150px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: #ffffff;
-  color: #111827;
-  padding: 0.5rem 0.7rem;
-  font-size: 0.9rem;
+.star-rating-input {
+  position: relative;
+  display: inline-block;
+  line-height: 1;
+}
+
+.star-rating-visual {
+  position: relative;
+  display: inline-block;
+  font-size: 1.35rem;
+  letter-spacing: 0.14rem;
+}
+
+.star-rating-base {
+  color: #d1d5db;
+}
+
+.star-rating-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  color: var(--color-gold);
+  pointer-events: none;
+}
+
+.star-rating-segments {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+}
+
+.star-rating-segment {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.star-rating-segment:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .rating-hint {

@@ -23,6 +23,19 @@ const isCancelMode = currentMode === 'cancel'
 const preferredBarberParam = (urlParams.get('barber') || '').trim()
 const REPORTS_ENABLED = false
 
+function buildLoginRedirectUrl() {
+  const barberName = preferredBarberParam || ''
+  if (barberName) {
+    sessionStorage.setItem('pendingBookingBarber', barberName)
+    return `login.html?barber=${encodeURIComponent(barberName)}`
+  }
+  return 'login.html'
+}
+
+function redirectToLogin() {
+  window.location.href = buildLoginRedirectUrl()
+}
+
 let authPersistencePromise = null
 
 function ensureSessionPersistence() {
@@ -536,9 +549,7 @@ function showManageBookingsStep() {
 }
 
 function showAuthStep() {
-  document.getElementById('step-manage-bookings')?.classList.add('hidden')
-  document.getElementById('step-auth').classList.remove('hidden')
-  document.getElementById('step-services').classList.add('hidden')
+  redirectToLogin()
 }
 
 function handlePostAuthSuccess() {
@@ -858,6 +869,65 @@ function setManageBookingsStatus(text, variant = 'muted') {
   statusEl.classList.add(`is-${variant}`)
 }
 
+function normalizeRatingValue(value) {
+  const numericValue = Number(value)
+  if (!Number.isFinite(numericValue)) return 0
+  const steppedValue = Math.round(numericValue * 2) / 2
+  return Math.min(5, Math.max(0, steppedValue))
+}
+
+function renderStarRatingControl(bookingId, ratingValue) {
+  const safeValue = normalizeRatingValue(ratingValue)
+  const fillWidth = `${(safeValue / 5) * 100}%`
+  const segments = Array.from({ length: 10 }, (_, index) => {
+    const segmentValue = ((index + 1) / 2).toFixed(1)
+    return `<button type="button" class="star-rating-segment" data-value="${segmentValue}" aria-label="${segmentValue} estrelas"></button>`
+  }).join('')
+
+  return `
+    <div class="star-rating-input" data-rating-input="${bookingId}" data-rating-value="${safeValue}">
+      <div class="star-rating-visual" aria-hidden="true">
+        <span class="star-rating-base">★★★★★</span>
+        <span class="star-rating-fill" style="width: ${fillWidth};">★★★★★</span>
+      </div>
+      <div class="star-rating-segments" aria-hidden="false">
+        ${segments}
+      </div>
+      <input type="hidden" id="rating-${bookingId}" value="${safeValue > 0 ? safeValue.toFixed(1) : ''}">
+    </div>
+  `
+}
+
+function bindStarRatingControls(rootElement) {
+  const ratings = rootElement.querySelectorAll('.star-rating-input[data-rating-input]')
+  ratings.forEach((ratingWrap) => {
+    if (ratingWrap.dataset.bound === 'true') return
+    ratingWrap.dataset.bound = 'true'
+
+    const inputId = ratingWrap.dataset.ratingInput
+    const hiddenInput = document.getElementById(`rating-${inputId}`)
+    const fillElement = ratingWrap.querySelector('.star-rating-fill')
+
+    const applyValue = (nextValue) => {
+      const normalizedValue = normalizeRatingValue(nextValue)
+      ratingWrap.dataset.ratingValue = normalizedValue.toFixed(1)
+      if (hiddenInput) {
+        hiddenInput.value = normalizedValue > 0 ? normalizedValue.toFixed(1) : ''
+      }
+      if (fillElement) {
+        fillElement.style.width = `${(normalizedValue / 5) * 100}%`
+      }
+    }
+
+    const segmentButtons = ratingWrap.querySelectorAll('.star-rating-segment[data-value]')
+    segmentButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        applyValue(button.dataset.value)
+      })
+    })
+  })
+}
+
 function renderClientBookings() {
   const listEl = document.getElementById('clientBookingsList')
   if (!listEl) return
@@ -917,23 +987,16 @@ function renderClientBookings() {
         `}
         ${canRate ? `
           <div class="client-booking-rating">
-            <label for="rating-${booking.id}">Avaliar barbeiro</label>
+            <label>Avaliar barbeiro</label>
             <div class="client-rating-controls">
-              <select id="rating-${booking.id}" class="rating-select">
-                <option value="">Escolha a nota</option>
-                <option value="5" ${ratingValue === 5 ? 'selected' : ''}>5 - Excelente</option>
-                <option value="4" ${ratingValue === 4 ? 'selected' : ''}>4 - Muito bom</option>
-                <option value="3" ${ratingValue === 3 ? 'selected' : ''}>3 - Bom</option>
-                <option value="2" ${ratingValue === 2 ? 'selected' : ''}>2 - Razoavel</option>
-                <option value="1" ${ratingValue === 1 ? 'selected' : ''}>1 - Fraco</option>
-              </select>
+              ${renderStarRatingControl(booking.id, ratingValue)}
               <button type="button" class="btn btn-primary btn-small save-rating-btn" data-booking-id="${booking.id}">Guardar</button>
             </div>
-            <p class="rating-hint">${ratingValue > 0 ? `Avaliacao atual: ${ratingValue}/5` : 'Deixe a sua avaliacao ao barbeiro.'}</p>
+            <p class="rating-hint">${ratingValue > 0 ? `Avaliação atual: ${normalizeRatingValue(ratingValue).toFixed(1)}/5` : 'Deixe a sua avaliação ao barbeiro (aceita meia estrela).'}</p>
           </div>
         ` : isCancelled ? '' : `
           <div class="client-booking-rating is-disabled">
-            <p class="rating-hint">A avaliacao fica disponivel apos a conclusao do corte.</p>
+            <p class="rating-hint">A avaliação fica disponível após a conclusão do corte.</p>
           </div>
         `}
       </div>
@@ -972,6 +1035,8 @@ function renderClientBookings() {
       await saveBookingRating(bookingId)
     })
   })
+
+  bindStarRatingControls(listEl)
 }
 
 async function loadClientBookings() {
@@ -1100,8 +1165,8 @@ async function saveBookingRating(bookingId) {
     return
   }
 
-  const ratingSelect = document.getElementById(`rating-${bookingId}`)
-  const rating = Number(ratingSelect?.value || 0)
+  const ratingInput = document.getElementById(`rating-${bookingId}`)
+  const rating = normalizeRatingValue(ratingInput?.value || 0)
 
   if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
     showError('Escolha uma nota entre 1 e 5 para avaliar.')
@@ -1202,7 +1267,7 @@ async function loadBarbers() {
   try {
     const currentUser = auth.currentUser
     if (!currentUser) {
-      barbersList.innerHTML = '<p style="text-align: center; color: var(--color-error);">Faça login com email e senha para carregar os barbeiros.</p>'
+      redirectToLogin()
       return
     }
 
@@ -2036,12 +2101,12 @@ document.addEventListener('DOMContentLoaded', () => {
   })
 
   initPageMode()
-  initClientAuth()
   initClientNavigation()
 
   initAutoClientSession().then((didAutoLogin) => {
     if (!didAutoLogin) {
-      showAuthStep()
+      redirectToLogin()
+      return
     }
 
     initServiceSelection()

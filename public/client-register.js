@@ -5,7 +5,6 @@ import {
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
   sendEmailVerification,
-  signOut,
   signInWithPopup,
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
 import { formatPhoneNumber, validatePhoneNumber, setupPhoneValidation, showSuccess, showError } from "./utils.js"
@@ -112,10 +111,9 @@ registerForm.addEventListener("submit", async (e) => {
       phone,
     })
 
-    await signOut(auth)
-    sessionStorage.removeItem("clientEmail")
-    sessionStorage.removeItem("clientName")
-    sessionStorage.removeItem("isClient")
+    sessionStorage.setItem("clientEmail", email)
+    sessionStorage.setItem("clientName", name || "Cliente")
+    sessionStorage.setItem("isClient", "true")
 
     showRegisterStatus(email)
     showSuccess("Conta criada. Verifique o seu email antes de entrar.")

@@ -1,7 +1,6 @@
 import { auth } from "./firebase-config.js"
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
 
-const backBtn = document.getElementById("clientMenuBackBtn")
 const logoutBtn = document.getElementById("clientMenuLogoutBtn")
 const userInfo = document.getElementById("clientMenuUserInfo")
 
@@ -16,16 +15,6 @@ function clearClientSession() {
   sessionStorage.removeItem("adminId")
   sessionStorage.removeItem("adminName")
   sessionStorage.removeItem("isAdmin")
-}
-
-if (backBtn) {
-  backBtn.addEventListener("click", () => {
-    if (window.history.length > 1) {
-      window.history.back()
-      return
-    }
-    window.location.href = "index.html"
-  })
 }
 
 if (logoutBtn) {

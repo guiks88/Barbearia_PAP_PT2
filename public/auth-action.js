@@ -42,6 +42,16 @@ if (!mode || !actionCode) {
     .then(() => {
       setStatus("Email confirmado", "O seu email foi verificado com sucesso.")
       showSuccess("Email confirmado com sucesso.")
+      setTimeout(() => {
+        if (auth.currentUser) {
+          sessionStorage.setItem("clientEmail", auth.currentUser.email || "")
+          sessionStorage.setItem("clientName", sessionStorage.getItem("clientName") || auth.currentUser.displayName || "Cliente")
+          sessionStorage.setItem("isClient", "true")
+          window.location.href = "client-menu.html"
+          return
+        }
+        window.location.href = "index.html"
+      }, 1400)
     })
     .catch((error) => {
       console.error("Erro ao verificar email:", error)
