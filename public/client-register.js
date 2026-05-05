@@ -80,6 +80,7 @@ document.getElementById("clientRegisterForm").addEventListener("submit", async (
 
     sessionStorage.setItem("clientEmail", email)
     sessionStorage.setItem("clientName", name)
+    sessionStorage.setItem("isClient", "true")
 
     setTimeout(() => {
       window.location.href = "index.html"
@@ -131,6 +132,7 @@ if (googleRegisterBtn && googleRegisterBtnLabel) {
 
       sessionStorage.setItem("clientEmail", profile.email)
       sessionStorage.setItem("clientName", profile.name)
+      sessionStorage.setItem("isClient", "true")
 
       showSuccess("Conta criada com Google com sucesso! Redirecionando...")
       setTimeout(() => {

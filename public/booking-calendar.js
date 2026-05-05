@@ -589,6 +589,11 @@ function applyClientProfile(user, clientData, fallbackEmail = '') {
     email: bookingState.clientEmail,
     phone: bookingState.clientPhone
   }
+
+  clearAppSession()
+  sessionStorage.setItem('clientEmail', bookingState.clientEmail)
+  sessionStorage.setItem('clientName', bookingState.clientName || 'Cliente')
+  sessionStorage.setItem('isClient', 'true')
 }
 
 function initAutoClientSession() {

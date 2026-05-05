@@ -1,6 +1,7 @@
 import { auth, database } from "./firebase-config.js"
 import { ref, get, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
+import { showSuccess, showError } from "./utils.js"
 
 const helpTexts = {
   register: {
@@ -306,6 +307,55 @@ function initActionMenu() {
   })
 }
 
+function copyTextToClipboard(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    return navigator.clipboard.writeText(text)
+  }
+
+  const tempInput = document.createElement('textarea')
+  tempInput.value = text
+  tempInput.setAttribute('readonly', '')
+  tempInput.style.position = 'absolute'
+  tempInput.style.left = '-9999px'
+  document.body.appendChild(tempInput)
+  tempInput.select()
+
+  const success = document.execCommand('copy')
+  tempInput.remove()
+
+  if (success) {
+    return Promise.resolve()
+  }
+
+  return Promise.reject(new Error('Copy failed'))
+}
+
+function initContactCopyActions() {
+  const items = document.querySelectorAll('.action-sheet-item[data-copy-text]')
+  if (!items.length) return
+
+  items.forEach((item) => {
+    if (item.dataset.copyBound === 'true') return
+    item.dataset.copyBound = 'true'
+
+    item.addEventListener('click', async (event) => {
+      event.preventDefault()
+      event.stopPropagation()
+
+      const textToCopy = item.dataset.copyText || item.textContent.trim()
+      const label = item.dataset.copyLabel || 'Contacto'
+
+      try {
+        await copyTextToClipboard(textToCopy)
+        showSuccess(`${label} copiado.`)
+      } catch (error) {
+        console.error('Erro ao copiar contacto:', error)
+        showError('Nao foi possivel copiar o contacto.')
+      }
+    })
+  })
+}
+
 function initDownloadSiteButton() {
   const downloadButton = document.getElementById('downloadSiteBtn')
   if (!downloadButton) return
@@ -481,6 +531,15 @@ function normalizePersonName(value) {
     .replace(/[\u0300-\u036f]/g, '')
 }
 
+function isUserLoggedIn() {
+  return (
+    sessionStorage.getItem('isClient') === 'true' ||
+    sessionStorage.getItem('isBarber') === 'true' ||
+    sessionStorage.getItem('isAdmin') === 'true' ||
+    Boolean(auth.currentUser)
+  )
+}
+
 const TEAM_BARBER_SCHEDULES = {
   ana: { start: '09:00', end: '18:00', lunchStart: '13:00', lunchEnd: '14:00' },
   'joao pedro': { start: '09:00', end: '19:00', lunchStart: '12:30', lunchEnd: '13:30' },
@@ -518,6 +577,7 @@ function resolveTeamStatsKey(stats, barberName) {
 function initTeamRatings() {
   const members = document.querySelectorAll('.team-member[data-barber-name]')
   if (!members.length) return
+  if (!isUserLoggedIn()) return
   if (teamStatsListenerBound) return
   teamStatsListenerBound = true
 
@@ -627,7 +687,16 @@ function setupTeamSchedulesListener() {
 async function loadPromotions() {
   const promotionsList = document.getElementById('promotionsList')
   const emptyPromotions = document.getElementById('emptyPromotions')
+  const promotionsLocked = document.getElementById('promotionsLocked')
   if (!promotionsList) return
+  if (!isUserLoggedIn()) {
+    if (promotionsLocked) promotionsLocked.style.display = 'block'
+    if (emptyPromotions) emptyPromotions.style.display = 'none'
+    promotionsList.innerHTML = ''
+    return
+  }
+
+  if (promotionsLocked) promotionsLocked.style.display = 'none'
   if (promotionsListenerBound) return
   promotionsListenerBound = true
 
@@ -764,12 +833,23 @@ function updateMainAuthButton() {
   onAuthStateChanged(auth, (user) => {
     if (user && sessionStorage.getItem('isBarber') === 'true') {
       setBarberLoggedIn()
+      loadPromotions()
+      initTeamRatings()
       return
     }
 
     if (user && sessionStorage.getItem('isClient') === 'true') {
       setLoggedIn()
+      loadPromotions()
+      initTeamRatings()
       return
+    }
+
+    if (user) {
+      loadPromotions()
+      initTeamRatings()
+    } else {
+      loadPromotions()
     }
 
     setLoggedOut()
@@ -859,6 +939,7 @@ async function initStoreStatusBadge() {
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initTabs);
   document.addEventListener('DOMContentLoaded', initActionMenu);
+  document.addEventListener('DOMContentLoaded', initContactCopyActions);
   document.addEventListener('DOMContentLoaded', initDownloadSiteButton);
   document.addEventListener('DOMContentLoaded', initCutsGallery);
   document.addEventListener('DOMContentLoaded', initTeamQuickBooking);
@@ -873,6 +954,7 @@ if (document.readyState === 'loading') {
 } else {
   initTabs();
   initActionMenu();
+  initContactCopyActions();
   initDownloadSiteButton();
   initCutsGallery();
   initTeamQuickBooking();
@@ -889,6 +971,7 @@ if (document.readyState === 'loading') {
 // Also initialize on load
 window.addEventListener('load', initTabs);
 window.addEventListener('load', initActionMenu);
+window.addEventListener('load', initContactCopyActions);
 window.addEventListener('load', initDownloadSiteButton);
 window.addEventListener('load', initCutsGallery);
 window.addEventListener('load', initTeamQuickBooking);

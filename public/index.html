@@ -164,6 +164,9 @@
             <!-- Promotions Tab -->
             <div id="promotions" class="tab-content">
                 <h2 class="section-title">Promoções</h2>
+                <div id="promotionsLocked" style="display: none; text-align: center; padding: 2rem; color: var(--color-text-secondary);">
+                    <p>Faça login para ver as promoções disponíveis.</p>
+                </div>
                 <div id="promotionsList" style="display: grid; gap: 1.5rem;"></div>
                 <div id="emptyPromotions" style="text-align: center; padding: 2rem; color: var(--color-text-secondary);">
                     <p>Sem promoções ativas no momento.</p>
@@ -345,8 +348,8 @@
                 <a href="#" class="action-sheet-close" id="actionSheetClose" aria-label="Fechar">x</a>
             </div>
             <div class="action-sheet-actions">
-                <a href="tel:+351937277447" class="action-sheet-item">Telefonar 937277447</a>
-                <a href="mailto:joaoguilhermesftc88@gmail.com" class="action-sheet-item">Mensagem joaoguilhermesftc88@gmail.com</a>
+                <a href="tel:+351937277447" class="action-sheet-item" data-copy-text="+351937277447" data-copy-label="Telefone">Copiar telefone 937277447</a>
+                <a href="mailto:joaoguilhermesftc88@gmail.com" class="action-sheet-item" data-copy-text="joaoguilhermesftc88@gmail.com" data-copy-label="Email">Copiar email joaoguilhermesftc88@gmail.com</a>
             </div>
         </div>
     </div>

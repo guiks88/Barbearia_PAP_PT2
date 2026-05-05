@@ -35,7 +35,7 @@ Estas regras estao em database.rules.json e controlam leitura/escrita no Realtim
       }
     },
     "promotions": {
-      ".read": true,
+      ".read": "auth != null",
       ".write": "auth != null && root.child('admins').child(auth.uid).exists()"
     },
     "storeSettings": {
@@ -48,6 +48,6 @@ Estas regras estao em database.rules.json e controlam leitura/escrita no Realtim
 
 ## Observacoes
 
-- Promocoes: leitura publica e escrita apenas para administradores.
+- Promocoes: leitura apenas para utilizadores autenticados e escrita apenas para administradores.
 - Bookings: clientes podem criar/editar apenas as suas, barbeiros apenas as deles, admins tudo.
 - StoreSettings: leitura publica para mostrar horario da loja.
