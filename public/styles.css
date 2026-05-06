@@ -2784,6 +2784,10 @@ body.barber-page {
   padding-top: 0.8rem;
   display: grid;
   gap: 0.45rem;
+  background: rgba(212, 175, 55, 0.12);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: 10px;
+  padding: 0.85rem;
 }
 
 .client-booking-rating.is-disabled {
@@ -2850,8 +2854,9 @@ body.barber-page {
 }
 
 .rating-hint {
-  color: var(--color-text-secondary);
-  font-size: 0.85rem;
+  color: #f8e7b5;
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
 .register-verification-wait {

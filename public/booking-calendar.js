@@ -2037,9 +2037,15 @@ function initEmailPopup() {
 function initBookingConfirmation() {
   // Botão para voltar para a área de cliente
   const exitBtn = document.getElementById('exitBtn')
+  const exitToMainBtn = document.getElementById('exitToMainBtn')
   if (exitBtn) {
     exitBtn.addEventListener('click', () => {
       window.location.href = 'client-menu.html'
+    })
+  }
+  if (exitToMainBtn) {
+    exitToMainBtn.addEventListener('click', () => {
+      window.location.href = 'index.html'
     })
   }
 }

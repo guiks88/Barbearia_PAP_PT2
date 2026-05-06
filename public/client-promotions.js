@@ -2,7 +2,6 @@ import { auth, database } from "./firebase-config.js"
 import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
 
-const backBtn = document.getElementById("clientPromotionsBackBtn")
 const logoutBtn = document.getElementById("clientPromotionsLogoutBtn")
 let promotionsListenerBound = false
 
@@ -57,16 +56,6 @@ function loadClientPromotions() {
         </div>
       `)
       .join("")
-  })
-}
-
-if (backBtn) {
-  backBtn.addEventListener("click", () => {
-    if (window.history.length > 1) {
-      window.history.back()
-      return
-    }
-    window.location.href = "client-menu.html"
   })
 }
 

@@ -47,7 +47,7 @@ if (!mode || !actionCode) {
           sessionStorage.setItem("clientEmail", auth.currentUser.email || "")
           sessionStorage.setItem("clientName", sessionStorage.getItem("clientName") || auth.currentUser.displayName || "Cliente")
           sessionStorage.setItem("isClient", "true")
-          window.location.href = "client-menu.html"
+          window.location.href = "index.html"
           return
         }
         window.location.href = "index.html"

@@ -103,7 +103,7 @@ function startVerificationWaitFlow() {
 
   verificationIntervalId = window.setInterval(() => {
     checkEmailVerificationStatus()
-  }, 30000)
+  }, 5000)
 
   checkEmailVerificationStatus()
 }
