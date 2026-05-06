@@ -594,31 +594,27 @@ function applyTeamStatsToUi(members, stats) {
   members.forEach((member) => {
     const barberName = member.getAttribute('data-barber-name') || ''
     const statsKey = resolveTeamStatsKey(stats, barberName)
-    const ratingValueEl = member.querySelector('.member-rating-value')
-    const ratingWrap = member.querySelector('.member-rating')
-    const cutsCountEl = member.querySelector('.member-rating-count')
-    const cutsLegacyEl = member.querySelector('.member-cuts-count')
+    const average = statsKey && stats[statsKey].ratingCount
+      ? stats[statsKey].ratingTotal / stats[statsKey].ratingCount
+      : null
+    const ratingText = formatRatingValue(average)
+    const cutsValue = statsKey ? stats[statsKey].completedCuts : 0
 
-    if (ratingValueEl) {
-      const average = statsKey && stats[statsKey].ratingCount
-        ? stats[statsKey].ratingTotal / stats[statsKey].ratingCount
-        : null
-      const ratingText = formatRatingValue(average)
-      ratingValueEl.textContent = ratingText
-      if (ratingWrap) {
-        ratingWrap.setAttribute('aria-label', `Nota ${ratingText} de 5`)
-      }
-    }
+    member.querySelectorAll('.member-rating-value').forEach((el) => {
+      el.textContent = ratingText
+    })
 
-    if (cutsCountEl) {
-      const cutsValue = statsKey ? stats[statsKey].completedCuts : 0
-      cutsCountEl.textContent = `(${String(cutsValue || 0)})`
-    }
+    member.querySelectorAll('.member-rating').forEach((el) => {
+      el.setAttribute('aria-label', `Nota ${ratingText} de 5`)
+    })
 
-    if (cutsLegacyEl) {
-      const cutsValue = statsKey ? stats[statsKey].completedCuts : 0
-      cutsLegacyEl.textContent = String(cutsValue || 0)
-    }
+    member.querySelectorAll('.member-rating-count').forEach((el) => {
+      el.textContent = `(${String(cutsValue || 0)})`
+    })
+
+    member.querySelectorAll('.member-cuts-count').forEach((el) => {
+      el.textContent = String(cutsValue || 0)
+    })
   })
 }
 

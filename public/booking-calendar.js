@@ -923,6 +923,7 @@ function bindStarRatingControls(rootElement) {
     segmentButtons.forEach((button) => {
       button.addEventListener('click', () => {
         applyValue(button.dataset.value)
+        saveBookingRating(inputId, { silentSuccess: true })
       })
     })
   })
@@ -990,7 +991,6 @@ function renderClientBookings() {
             <label>Avaliar barbeiro</label>
             <div class="client-rating-controls">
               ${renderStarRatingControl(booking.id, ratingValue)}
-              <button type="button" class="btn btn-primary btn-small save-rating-btn" data-booking-id="${booking.id}">Guardar</button>
             </div>
             <p class="rating-hint">${ratingValue > 0 ? `Avaliação atual: ${normalizeRatingValue(ratingValue).toFixed(1)}/5` : 'Deixe a sua avaliação ao barbeiro (aceita meia estrela).'}</p>
           </div>
@@ -1026,13 +1026,6 @@ function renderClientBookings() {
     btn.addEventListener('click', async () => {
       const bookingId = btn.dataset.bookingId
       await cancelBookingByClient(bookingId)
-    })
-  })
-
-  listEl.querySelectorAll('.save-rating-btn').forEach((btn) => {
-    btn.addEventListener('click', async () => {
-      const bookingId = btn.dataset.bookingId
-      await saveBookingRating(bookingId)
     })
   })
 
@@ -1153,7 +1146,7 @@ async function cancelBookingByClient(bookingId) {
   }
 }
 
-async function saveBookingRating(bookingId) {
+async function saveBookingRating(bookingId, options = {}) {
   const booking = getBookingById(bookingId)
   if (!booking) {
     showError('Marcação não encontrada.')
