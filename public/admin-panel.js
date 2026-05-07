@@ -471,6 +471,15 @@ function renderBarbers() {
   container.innerHTML = entries
     .map(([id, barber]) => {
       const days = (barber.workingDays || [1, 2, 3, 4, 5]).map((day) => DAY_NAMES[day]).join(", ")
+      const completedCuts = Number(barber.completedCuts || 0)
+      const ratingCount = Number(barber.ratingCount || 0)
+      const averageRating = Number(
+        barber.avgRating ??
+        barber.averageRating ??
+        barber.ratingAverage ??
+        barber.notaMedia ??
+        0,
+      )
       return `
         <div class="barber-item">
           <div>
@@ -481,6 +490,8 @@ function renderBarbers() {
             <p><strong>Horário:</strong> ${barber.workingHours?.start || "09:00"} - ${barber.workingHours?.end || "19:00"}</p>
             <p><strong>Almoço:</strong> ${barber.lunchBreak?.start || "13:00"} - ${barber.lunchBreak?.end || "14:00"}</p>
             <p><strong>Dias:</strong> ${days}</p>
+            <p><strong>Cortes concluídos:</strong> ${completedCuts}</p>
+            <p><strong>Nota média:</strong> ${averageRating > 0 ? averageRating.toFixed(1) : "0.0"} / 5 (${ratingCount})</p>
           </div>
           <div class="booking-actions">
             <button class="btn btn-secondary" data-action="edit-barber" data-barber-id="${id}">Editar</button>

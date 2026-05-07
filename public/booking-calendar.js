@@ -1171,7 +1171,11 @@ async function saveBookingRating(bookingId, options = {}) {
       rating,
       ratingAt: new Date().toISOString(),
     })
-    await recalculateBarberStats(booking.barberId)
+    try {
+      await recalculateBarberStats(booking.barberId)
+    } catch (statsError) {
+      console.warn('Sem permissão para atualizar agregados do barbeiro após avaliação:', statsError)
+    }
 
     showSuccess('Avaliação guardada com sucesso. Obrigado!')
     await loadClientBookings()

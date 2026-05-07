@@ -601,6 +601,12 @@ main {
   margin-bottom: 0.75rem;
 }
 
+/* Na página pública, mostrar apenas nota global do site. */
+.team-member .member-rating,
+.team-member .member-cuts {
+  display: none !important;
+}
+
 .team-book-btn {
   min-width: 140px;
 }

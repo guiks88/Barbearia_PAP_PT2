@@ -329,6 +329,7 @@ async function loginAndRoute(email, password) {
     const code = error?.code || ""
     const canTryLegacy =
       code === "auth/invalid-credential" ||
+      code === "auth/invalid-login-credentials" ||
       code === "auth/wrong-password" ||
       code === "auth/user-not-found"
 
@@ -418,7 +419,7 @@ form.addEventListener("submit", async (event) => {
       showError("Senha incorreta.")
     } else if (code === "auth/user-not-found") {
       showError("Esse email não está registrado. Cria uma conta.")
-    } else if (code === "auth/invalid-credential") {
+    } else if (code === "auth/invalid-credential" || code === "auth/invalid-login-credentials") {
       const registered = await isEmailRegistered(email)
       if (registered) {
         showError("Senha incorreta.")
