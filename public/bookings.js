@@ -31,18 +31,23 @@ document.getElementById("clientLoginForm").addEventListener("submit", async (e) 
 
     const clients = snapshot.val()
 
-    const client = Object.values(clients).find(
-      (c) => (c.email === emailOrName || c.name === emailOrName) && c.password === password,
+    const clientByIdentity = Object.values(clients).find(
+      (c) => c.email === emailOrName || c.name === emailOrName,
     )
 
-    if (!client) {
-      showError("Senha ou usuario incorretos.")
+    if (!clientByIdentity) {
+      showError("Esse email não está registrado. Cria uma conta.")
       return
     }
 
-    authenticatedClient = client
-    sessionStorage.setItem("clientEmail", client.email)
-    sessionStorage.setItem("clientName", client.name)
+    if (clientByIdentity.password !== password) {
+      showError("Senha incorreta.")
+      return
+    }
+
+    authenticatedClient = clientByIdentity
+    sessionStorage.setItem("clientEmail", clientByIdentity.email)
+    sessionStorage.setItem("clientName", clientByIdentity.name)
 
     showSuccess("Autenticado com sucesso!")
     showBookingForm()

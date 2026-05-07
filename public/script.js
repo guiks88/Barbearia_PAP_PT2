@@ -590,12 +590,6 @@ function applyTeamStatsToUi(members, stats) {
   if (storeAverageEl) {
     storeAverageEl.textContent = formatRatingValue(computeStoreAverageFromStats(stats))
   }
-
-  members.forEach((member) => {
-    member.querySelectorAll('.member-rating, .member-cuts').forEach((el) => {
-      el.style.display = 'none'
-    })
-  })
 }
 
 async function loadTeamStatsFromBarbersFallback(members) {

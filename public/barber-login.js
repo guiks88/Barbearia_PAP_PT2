@@ -35,8 +35,12 @@ document.getElementById("barberLoginForm").addEventListener("submit", async (e) 
       window.location.href = "barber-panel.html"
     }, 1500)
   } catch (error) {
-    if (error.code === "auth/invalid-credential" || error.code === "auth/wrong-password") {
-      showError("Senha ou usuario incorretos.")
+    if (error.code === "auth/wrong-password") {
+      showError("Senha incorreta.")
+    } else if (error.code === "auth/user-not-found") {
+      showError("Esse email não está registrado. Cria uma conta.")
+    } else if (error.code === "auth/invalid-credential" || error.code === "auth/invalid-login-credentials") {
+      showError("Senha incorreta.")
     } else {
       showError("Erro ao fazer login: " + error.message)
     }

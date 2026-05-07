@@ -459,10 +459,26 @@ function getExecutionStatus(booking) {
 }
 
 function computeBarberStatsFromBookings(barberId) {
+  const barber = state.barbers?.[barberId] || {}
+  const normalizedBarberName = normalize(barber.name || "")
   const bookings = Object.values(state.bookings || {})
   const completed = bookings.filter((booking) => {
-    if (!booking || booking.barberId !== barberId) return false
-    if ((booking.executionStatus || "pending") !== "completed") return false
+    if (!booking) return false
+
+    const bookingBarberId = String(booking.barberId || "").trim()
+    const bookingBarberName = normalize(booking.barberName || "")
+    const matchesBarber =
+      bookingBarberId === barberId ||
+      (normalizedBarberName && (
+        bookingBarberName === normalizedBarberName ||
+        bookingBarberName.includes(normalizedBarberName) ||
+        normalizedBarberName.includes(bookingBarberName)
+      ))
+
+    if (!matchesBarber) return false
+
+    const executionStatus = booking.executionStatus || booking.status || "pending"
+    if (executionStatus !== "completed") return false
     const status = booking.status || "active"
     return status !== "cancelled" && status !== "expired"
   })

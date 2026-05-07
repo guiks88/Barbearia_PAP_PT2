@@ -70,6 +70,18 @@ function normalizeBarberKey(value) {
     .replace(/[\u0300-\u036f]/g, '')
 }
 
+async function isClientEmailRegistered(email) {
+  const normalizedEmail = String(email || '').trim().toLowerCase()
+  if (!normalizedEmail) return false
+
+  const snapshot = await get(ref(database, 'clients'))
+  if (!snapshot.exists()) return false
+
+  return Object.values(snapshot.val() || {}).some((client) => {
+    return String(client?.email || '').trim().toLowerCase() === normalizedEmail
+  })
+}
+
 // Estado da marcação
 const bookingState = {
   service: null,
@@ -715,7 +727,17 @@ function initClientAuth() {
       showSuccess('Login confirmado com sucesso.')
       handlePostAuthSuccess()
     } catch (error) {
-      showError('Senha ou usuario incorretos.')
+      const code = error?.code || ''
+      if (code === 'auth/wrong-password') {
+        showError('Senha incorreta.')
+      } else if (code === 'auth/user-not-found') {
+        showError('Esse email não está registrado. Cria uma conta.')
+      } else if (code === 'auth/invalid-credential' || code === 'auth/invalid-login-credentials') {
+        const registered = await isClientEmailRegistered(email)
+        showError(registered ? 'Senha incorreta.' : 'Esse email não está registrado. Cria uma conta.')
+      } else {
+        showError('Não foi possível fazer login.')
+      }
     }
   })
 
