@@ -566,6 +566,18 @@ function formatRatingValue(value) {
   return '0.0'
 }
 
+function formatRatingCountLabel(count) {
+  const safeCount = Math.max(0, Number(count) || 0)
+  const label = safeCount === 1 ? 'avaliacao' : 'avaliacoes'
+  return `(${safeCount} ${label})`
+}
+
+function formatCompletedCutsLabel(count) {
+  const safeCount = Math.max(0, Number(count) || 0)
+  const label = safeCount === 1 ? 'corte concluido' : 'cortes concluidos'
+  return `${safeCount} ${label}`
+}
+
 function resolveTeamStatsKey(stats, barberName) {
   const normalizedName = normalizePersonName(barberName)
   if (stats[normalizedName]) return normalizedName
@@ -590,6 +602,34 @@ function applyTeamStatsToUi(members, stats) {
   if (storeAverageEl) {
     storeAverageEl.textContent = formatRatingValue(computeStoreAverageFromStats(stats))
   }
+
+  members.forEach((member) => {
+    const barberName = member.getAttribute('data-barber-name') || ''
+    const statsKey = resolveTeamStatsKey(stats, barberName)
+    const barberStats = statsKey ? stats[statsKey] : null
+
+    const ratingCount = Math.max(0, Number(barberStats?.ratingCount || 0))
+    const ratingAverage = ratingCount > 0
+      ? Number(barberStats?.ratingTotal || 0) / ratingCount
+      : 0
+    const completedCuts = Math.max(0, Number(barberStats?.completedCuts || 0))
+
+    const ratingValueEl = member.querySelector('[data-barber-rating]')
+    const ratingCountEl = member.querySelector('[data-barber-rating-count]')
+    const cutsEl = member.querySelector('[data-barber-cuts]')
+
+    if (ratingValueEl) {
+      ratingValueEl.textContent = formatRatingValue(ratingAverage)
+    }
+
+    if (ratingCountEl) {
+      ratingCountEl.textContent = formatRatingCountLabel(ratingCount)
+    }
+
+    if (cutsEl) {
+      cutsEl.textContent = formatCompletedCutsLabel(completedCuts)
+    }
+  })
 }
 
 async function loadTeamStatsFromBarbersFallback(members) {

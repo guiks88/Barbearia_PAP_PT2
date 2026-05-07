@@ -387,6 +387,19 @@ async function loginWithGoogleAndRoute() {
   return roleData.role
 }
 
+const LOGIN_MESSAGES = {
+  wrongPassword: "A senha esta incorreta.",
+  missingAccount: "Essa conta nao existe. Cria uma conta.",
+}
+
+async function checkIfAccountExists(email) {
+  try {
+    return await isEmailRegistered(email)
+  } catch (error) {
+    console.warn("Nao foi possivel verificar se o email existe no registo:", error)
+    return null
+  }
+}
 form.addEventListener("submit", async (event) => {
   event.preventDefault()
 
@@ -396,12 +409,18 @@ form.addEventListener("submit", async (event) => {
   const password = passwordInput?.value || ""
 
   if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
-    showError("Indique um email válido.")
+    showError("Indique um email valido.")
     return
   }
 
   if (!password || password.length < 6) {
-    showError("Indique uma senha válida (mínimo 6 caracteres).")
+    showError("Indique uma senha valida (minimo 6 caracteres).")
+    return
+  }
+
+  const accountExists = await checkIfAccountExists(email)
+  if (accountExists === false) {
+    showError(LOGIN_MESSAGES.missingAccount)
     return
   }
 
@@ -416,18 +435,18 @@ form.addEventListener("submit", async (event) => {
     const code = error?.code || ""
 
     if (code === "auth/wrong-password") {
-      showError("Senha incorreta.")
+      showError(LOGIN_MESSAGES.wrongPassword)
     } else if (code === "auth/user-not-found") {
-      showError("Esse email não está registrado. Cria uma conta.")
+      showError(LOGIN_MESSAGES.missingAccount)
     } else if (code === "auth/invalid-credential" || code === "auth/invalid-login-credentials") {
-      const registered = await isEmailRegistered(email)
-      if (registered) {
-        showError("Senha incorreta.")
+      const registered = await checkIfAccountExists(email)
+      if (registered === false) {
+        showError(LOGIN_MESSAGES.missingAccount)
       } else {
-        showError("Esse email não está registrado. Cria uma conta.")
+        showError(LOGIN_MESSAGES.wrongPassword)
       }
     } else {
-      showError(error?.message || "Não foi possível fazer login.")
+      showError(error?.message || "Nao foi possivel fazer login.")
     }
 
     submitBtn.disabled = false
@@ -496,3 +515,5 @@ googleLoginBtn.addEventListener("click", async () => {
     googleLoginBtnLabel.textContent = "Continuar com Google"
   }
 })
+
+

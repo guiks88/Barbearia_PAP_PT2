@@ -527,6 +527,9 @@ main {
 
 .team-card-back {
   transform: rotateY(180deg);
+  justify-content: flex-start;
+  gap: 0.5rem;
+  padding-top: 1.25rem;
 }
 
 .team-member:hover .team-card-inner,
@@ -567,7 +570,16 @@ main {
 
 .member-description {
   margin-top: 0.35rem;
-  margin-bottom: 0.6rem;
+  margin-bottom: 0.25rem;
+  min-height: 2.6em;
+}
+
+.member-public-stats {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  margin-bottom: 0.5rem;
 }
 
 .member-rating {
@@ -601,12 +613,7 @@ main {
   margin-bottom: 0.75rem;
 }
 
-/* Na página pública, mostrar apenas nota global do site. */
-.team-member .member-rating,
-.team-member .member-cuts {
-  display: none !important;
-}
-
+/* Estatisticas no verso da carta do barbeiro. */
 .team-book-btn {
   min-width: 140px;
 }
@@ -2993,4 +3000,5 @@ body.barber-page {
     width: 100%;
   }
 }
+
 
