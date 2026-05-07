@@ -458,6 +458,27 @@ function getExecutionStatus(booking) {
   return { label: "Não concluída", className: "is-pending" }
 }
 
+function computeBarberStatsFromBookings(barberId) {
+  const bookings = Object.values(state.bookings || {})
+  const completed = bookings.filter((booking) => {
+    if (!booking || booking.barberId !== barberId) return false
+    if ((booking.executionStatus || "pending") !== "completed") return false
+    const status = booking.status || "active"
+    return status !== "cancelled" && status !== "expired"
+  })
+
+  const completedCuts = completed.length
+  const ratings = completed
+    .map((booking) => Number(booking.rating))
+    .filter((value) => Number.isFinite(value) && value > 0)
+
+  const ratingCount = ratings.length
+  const ratingTotal = ratings.reduce((sum, value) => sum + value, 0)
+  const averageRating = ratingCount > 0 ? ratingTotal / ratingCount : 0
+
+  return { completedCuts, ratingCount, averageRating }
+}
+
 function renderBarbers() {
   const container = document.getElementById("barbersList")
   if (!container) return
@@ -471,15 +492,10 @@ function renderBarbers() {
   container.innerHTML = entries
     .map(([id, barber]) => {
       const days = (barber.workingDays || [1, 2, 3, 4, 5]).map((day) => DAY_NAMES[day]).join(", ")
-      const completedCuts = Number(barber.completedCuts || 0)
-      const ratingCount = Number(barber.ratingCount || 0)
-      const averageRating = Number(
-        barber.avgRating ??
-        barber.averageRating ??
-        barber.ratingAverage ??
-        barber.notaMedia ??
-        0,
-      )
+      const liveStats = computeBarberStatsFromBookings(id)
+      const completedCuts = liveStats.completedCuts
+      const ratingCount = liveStats.ratingCount
+      const averageRating = liveStats.averageRating
       return `
         <div class="barber-item">
           <div>

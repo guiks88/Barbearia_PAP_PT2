@@ -575,7 +575,11 @@ window.completeCut = async (bookingId) => {
       executionStatus: "completed",
       completedAt: new Date().toISOString(),
     })
-    await recalculateBarberStats(booking.barberId || barberId)
+    try {
+      await recalculateBarberStats(booking.barberId || barberId)
+    } catch (statsError) {
+      console.warn("Sem permissão para atualizar agregados do barbeiro:", statsError)
+    }
     syncLocalBooking(bookingId, {
       executionStatus: "completed",
       completedAt: new Date().toISOString(),
