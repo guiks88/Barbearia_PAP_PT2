@@ -1,5 +1,5 @@
 import { auth, database } from "./firebase-config.js"
-import { ref, get, onValue, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
+import { ref, get, onValue, set, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
 import { showSuccess, showError } from "./utils.js"
 
@@ -435,6 +435,40 @@ async function patchBooking(bookingId, partialData) {
   })
 }
 
+async function recalculateBarberStats(barberUid) {
+  if (!barberUid) return
+
+  const bookingsSnapshot = await get(ref(database, "bookings"))
+  const bookings = bookingsSnapshot.exists() ? Object.values(bookingsSnapshot.val() || {}) : []
+
+  const completedBookings = bookings.filter((booking) => {
+    if (!booking || booking.barberId !== barberUid) return false
+    if ((booking.executionStatus || "pending") !== "completed") return false
+    const status = booking.status || "active"
+    return status !== "cancelled" && status !== "expired"
+  })
+
+  const completedCuts = completedBookings.length
+  const ratings = completedBookings
+    .map((booking) => Number(booking.rating))
+    .filter((rating) => Number.isFinite(rating) && rating > 0)
+
+  const ratingCount = ratings.length
+  const ratingTotal = ratings.reduce((sum, value) => sum + value, 0)
+  const averageRating = ratingCount > 0 ? Number((ratingTotal / ratingCount).toFixed(2)) : 0
+
+  await update(ref(database, `barbers/${barberUid}`), {
+    completedCuts,
+    ratingCount,
+    ratingTotal: Number(ratingTotal.toFixed(2)),
+    avgRating: averageRating,
+    averageRating,
+    ratingAverage: averageRating,
+    notaMedia: averageRating,
+    updatedAt: new Date().toISOString(),
+  })
+}
+
 function getBookingDateTime(booking) {
   if (!booking?.date || !booking?.time) return null
   const dateTime = new Date(`${booking.date}T${booking.time}:00`)
@@ -531,10 +565,17 @@ window.startCut = async (bookingId) => {
 
 window.completeCut = async (bookingId) => {
   try {
+    const booking = allBookings.find((item) => item.id === bookingId)
+    if (!booking) {
+      showError("Marcação não encontrada.")
+      return
+    }
+
     await patchBooking(bookingId, {
       executionStatus: "completed",
       completedAt: new Date().toISOString(),
     })
+    await recalculateBarberStats(booking.barberId || barberId)
     syncLocalBooking(bookingId, {
       executionStatus: "completed",
       completedAt: new Date().toISOString(),

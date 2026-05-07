@@ -592,28 +592,8 @@ function applyTeamStatsToUi(members, stats) {
   }
 
   members.forEach((member) => {
-    const barberName = member.getAttribute('data-barber-name') || ''
-    const statsKey = resolveTeamStatsKey(stats, barberName)
-    const average = statsKey && stats[statsKey].ratingCount
-      ? stats[statsKey].ratingTotal / stats[statsKey].ratingCount
-      : null
-    const ratingText = formatRatingValue(average)
-    const cutsValue = statsKey ? stats[statsKey].completedCuts : 0
-
-    member.querySelectorAll('.member-rating-value').forEach((el) => {
-      el.textContent = ratingText
-    })
-
-    member.querySelectorAll('.member-rating').forEach((el) => {
-      el.setAttribute('aria-label', `Nota ${ratingText} de 5`)
-    })
-
-    member.querySelectorAll('.member-rating-count').forEach((el) => {
-      el.textContent = `(${String(cutsValue || 0)})`
-    })
-
-    member.querySelectorAll('.member-cuts-count').forEach((el) => {
-      el.textContent = String(cutsValue || 0)
+    member.querySelectorAll('.member-rating, .member-cuts').forEach((el) => {
+      el.style.display = 'none'
     })
   })
 }

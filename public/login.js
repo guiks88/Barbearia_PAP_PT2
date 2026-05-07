@@ -81,6 +81,23 @@ function findByEmail(snapshot, targetEmail) {
   return null
 }
 
+async function isEmailRegistered(email) {
+  const normalized = normalizeEmail(email)
+  if (!normalized) return false
+
+  const [adminsSnapshot, barbersSnapshot, clientsSnapshot] = await Promise.all([
+    get(ref(database, "admins")),
+    get(ref(database, "barbers")),
+    get(ref(database, "clients")),
+  ])
+
+  return Boolean(
+    findByEmail(adminsSnapshot, normalized) ||
+    findByEmail(barbersSnapshot, normalized) ||
+    findByEmail(clientsSnapshot, normalized),
+  )
+}
+
 async function migrateProfileToUidIfNeeded(role, uid, foundProfile) {
   if (!foundProfile) return null
 
@@ -397,8 +414,17 @@ form.addEventListener("submit", async (event) => {
   } catch (error) {
     const code = error?.code || ""
 
-    if (code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found") {
-      showError("Senha ou usuario incorretos.")
+    if (code === "auth/wrong-password") {
+      showError("Senha incorreta.")
+    } else if (code === "auth/user-not-found") {
+      showError("Esse email não está registrado. Cria uma conta.")
+    } else if (code === "auth/invalid-credential") {
+      const registered = await isEmailRegistered(email)
+      if (registered) {
+        showError("Senha incorreta.")
+      } else {
+        showError("Esse email não está registrado. Cria uma conta.")
+      }
     } else {
       showError(error?.message || "Não foi possível fazer login.")
     }
