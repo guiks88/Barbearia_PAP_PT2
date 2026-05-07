@@ -1181,6 +1181,7 @@ function loadBarbers() {
 function loadBookings() {
   onValue(ref(database, "bookings"), (snapshot) => {
     state.bookings = snapshot.exists() ? snapshot.val() : {}
+    renderBarbers()
     renderBookings()
     updateRevenue()
   })
