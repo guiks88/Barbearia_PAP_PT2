@@ -676,6 +676,35 @@ async function loadTeamStatsFromBarbersFallback(members) {
     })
 
     applyTeamStatsToUi(members, stats)
+
+    // Also apply public barber info (note/description) to the team cards when available
+    try {
+      const barbersByKey = {}
+      entries.forEach((b) => {
+        const nameKey = normalizePersonName(b?.name || b?.nome || '')
+        if (nameKey) barbersByKey[nameKey] = b
+      })
+
+      members.forEach((member) => {
+        const barberName = member.getAttribute('data-barber-name') || member.querySelector('h3')?.textContent || ''
+        const key = normalizePersonName(barberName)
+        let barber = barbersByKey[key]
+        if (!barber) {
+          barber = Object.values(barbersByKey).find((b) => {
+            const candidate = normalizePersonName(b?.name || b?.nome || '')
+            return candidate && (candidate.includes(key) || key.includes(candidate))
+          })
+        }
+
+        const descEl = member.querySelector('.member-description')
+        if (descEl) {
+          const note = barber?.note || barber?.nota || barber?.description || barber?.descricao || barber?.bio || ''
+          if (note) descEl.textContent = String(note)
+        }
+      })
+    } catch (err) {
+      console.warn('Erro ao aplicar notas/descricoes da lista de barbeiros:', err)
+    }
   } catch (error) {
     console.error('Erro ao carregar estatisticas fallback da equipa:', error)
   }
