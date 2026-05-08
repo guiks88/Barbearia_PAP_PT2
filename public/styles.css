@@ -2438,18 +2438,11 @@ body.barber-page {
 }
 
 .time-slot.booked {
-  opacity: 0.4;
-  cursor: not-allowed;
-  background: var(--color-bg-secondary);
-  text-decoration: line-through;
+  display: none;
 }
 
 .time-slot.disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-  background: var(--color-bg-secondary);
-  color: var(--color-text-muted);
-  text-decoration: line-through;
+  display: none;
 }
 
 .no-slots-message {
@@ -2741,6 +2734,17 @@ body.barber-page {
   background: var(--color-bg-secondary);
 }
 
+.booking-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.booking-filters .form-group {
+  margin-bottom: 0;
+}
+
 .manage-bookings-status.is-muted {
   color: var(--color-text-secondary);
 }
@@ -2768,7 +2772,7 @@ body.barber-page {
 }
 
 .client-booking-card.is-cancelled {
-  opacity: 0.7;
+  opacity: 0.85;
 }
 
 .client-booking-main h3 {

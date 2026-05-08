@@ -90,6 +90,8 @@ const bookingState = {
   serviceDuration: 0,
   barber: null,
   barberName: '',
+  barberEmail: '',
+  barberPhone: '',
   barberSpecialty: '',
   barberWorkingHours: [],
   barberLunchBreak: { start: null, end: null },
@@ -109,6 +111,13 @@ const bookingState = {
   preferredBarberRaw: preferredBarberParam,
   preferredBarberKey: normalizeBarberKey(preferredBarberParam),
   preferredBarberApplied: false,
+  manageFilters: {
+    service: '',
+    barber: '',
+    status: '',
+    from: '',
+    to: '',
+  },
 }
 
 bookingState.storeSettings = {
@@ -119,6 +128,7 @@ bookingState.storeSettings = {
 }
 
 const SLOT_STEP_MINUTES = 10
+const MIN_ADVANCE_BOOKING_MINUTES = 60
 
 const SERVICE_CATALOG = {
   corte: { name: 'Corte de Cabelo', price: 15, duration: 30 },
@@ -166,6 +176,10 @@ function normalizeName(value) {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
+}
+
+function normalizeSearchText(value) {
+  return normalizeName(value).replace(/\s+/g, ' ')
 }
 
 function resolveProfileBySpecialty(barberSpecialty) {
@@ -537,9 +551,9 @@ function isPastTimeSlot(dateStr, timeStr) {
 
   const [hour, minute] = timeStr.split(':').map(Number)
   const slotMinutes = hour * 60 + minute
-  const nowMinutes = now.getHours() * 60 + now.getMinutes()
+  const nowMinutes = now.getHours() * 60 + now.getMinutes() + MIN_ADVANCE_BOOKING_MINUTES
 
-  return slotMinutes <= nowMinutes
+  return slotMinutes < nowMinutes
 }
 
 function showBookingSteps() {
@@ -817,6 +831,42 @@ function getBookingById(bookingId) {
   return bookingState.clientBookings.find((booking) => booking.id === bookingId) || null
 }
 
+async function refreshRescheduleTimeOptions(bookingId) {
+  const booking = getBookingById(bookingId)
+  if (!booking) return
+
+  const dateInput = document.getElementById(`reschedule-date-${bookingId}`)
+  const timeSelect = document.getElementById(`reschedule-time-${bookingId}`)
+  if (!dateInput || !timeSelect) return
+
+  const selectedDate = dateInput.value || booking.date
+  if (!selectedDate) {
+    timeSelect.innerHTML = '<option value="">Sem horarios disponiveis</option>'
+    return
+  }
+
+  await loadExistingBookings(booking.barberId)
+  const durationMinutes = getBookingDurationMinutes(booking)
+  const options = []
+  for (const slot of defaultWorkingHours) {
+    if (isPastTimeSlot(selectedDate, slot)) continue
+    const conflict = await hasBookingConflict(booking.barberId, selectedDate, slot, bookingId, durationMinutes)
+    if (conflict) continue
+    options.push(slot)
+  }
+
+  if (!options.length) {
+    timeSelect.innerHTML = '<option value="">Sem horarios disponiveis</option>'
+    timeSelect.value = ''
+    return
+  }
+
+  const currentSelected = options.includes(booking.time) ? booking.time : options[0]
+  timeSelect.innerHTML = options
+    .map((slot) => `<option value="${slot}" ${slot === currentSelected ? 'selected' : ''}>${slot}</option>`)
+    .join('')
+}
+
 function isBookingExpiredForClient(booking) {
   if (!booking?.date || !booking?.time) return false
 
@@ -951,6 +1001,45 @@ function bindStarRatingControls(rootElement) {
   })
 }
 
+function getClientBookingStatusKey(booking) {
+  if (booking.status === 'expired') return 'expired'
+  if (booking.status === 'cancelled') return 'cancelled'
+  if (booking.executionStatus === 'completed') return 'completed'
+  return 'confirmed'
+}
+
+function isDateWithinRange(dateStr, fromDate, toDate) {
+  if (!dateStr) return false
+  if (fromDate && dateStr < fromDate) return false
+  if (toDate && dateStr > toDate) return false
+  return true
+}
+
+function getFilteredClientBookings() {
+  const filters = bookingState.manageFilters || {}
+  const serviceFilter = normalizeSearchText(filters.service)
+  const barberFilter = normalizeSearchText(filters.barber)
+  const statusFilter = String(filters.status || '').trim()
+  const fromDate = String(filters.from || '').trim()
+  const toDate = String(filters.to || '').trim()
+
+  return bookingState.clientBookings.filter((booking) => {
+    if (serviceFilter && !normalizeSearchText(booking.serviceName || booking.service || '').includes(serviceFilter)) {
+      return false
+    }
+    if (barberFilter && !normalizeSearchText(booking.barberName || '').includes(barberFilter)) {
+      return false
+    }
+    if (statusFilter && getClientBookingStatusKey(booking) !== statusFilter) {
+      return false
+    }
+    if ((fromDate || toDate) && !isDateWithinRange(booking.date || '', fromDate, toDate)) {
+      return false
+    }
+    return true
+  })
+}
+
 function renderClientBookings() {
   const listEl = document.getElementById('clientBookingsList')
   if (!listEl) return
@@ -981,7 +1070,7 @@ function renderClientBookings() {
     const safeDate = booking.date || ''
     const safeTime = booking.time || ''
     return `
-      <div class="client-booking-card ${isLocked ? 'is-cancelled' : ''}" data-booking-id="${booking.id}">
+      <div class="client-booking-card ${isCancelled ? 'is-cancelled' : ''}" data-booking-id="${booking.id}">
         <div class="client-booking-main">
           <h3>${booking.serviceName || 'Serviço'}</h3>
           <p><strong>Barbeiro:</strong> ${booking.barberName || '-'}</p>
@@ -1001,9 +1090,7 @@ function renderClientBookings() {
             </div>
             <div class="form-group" style="margin-bottom: 0.8rem;">
               <label for="reschedule-time-${booking.id}">Nova Hora</label>
-              <select id="reschedule-time-${booking.id}">
-                ${defaultWorkingHours.map((slot) => `<option value="${slot}" ${slot === safeTime ? 'selected' : ''}>${slot}</option>`).join('')}
-              </select>
+              <select id="reschedule-time-${booking.id}"></select>
             </div>
             <button type="button" class="btn btn-primary save-reschedule-btn" data-booking-id="${booking.id}">Guardar Nova Data</button>
           </div>
@@ -1027,10 +1114,14 @@ function renderClientBookings() {
 
   if (!isCancelMode) {
     listEl.querySelectorAll('.manage-reschedule-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const bookingId = btn.dataset.bookingId
         const panel = document.getElementById(`reschedule-panel-${bookingId}`)
-        if (panel) panel.classList.toggle('hidden')
+        if (!panel) return
+        panel.classList.toggle('hidden')
+        if (!panel.classList.contains('hidden')) {
+          await refreshRescheduleTimeOptions(bookingId)
+        }
       })
     })
   }
@@ -1040,6 +1131,15 @@ function renderClientBookings() {
       btn.addEventListener('click', async () => {
         const bookingId = btn.dataset.bookingId
         await rescheduleBooking(bookingId)
+      })
+    })
+  }
+
+  if (!isCancelMode) {
+    listEl.querySelectorAll('input[id^=\"reschedule-date-\"]').forEach((inputEl) => {
+      inputEl.addEventListener('change', async () => {
+        const bookingId = inputEl.id.replace('reschedule-date-', '')
+        await refreshRescheduleTimeOptions(bookingId)
       })
     })
   }
@@ -1078,7 +1178,7 @@ async function loadClientBookings() {
       .sort((a, b) => {
         const left = `${a.date || ''} ${a.time || ''}`
         const right = `${b.date || ''} ${b.time || ''}`
-        return left.localeCompare(right)
+        return right.localeCompare(left)
       })
     bookingState.clientBookings = await expirePastClientBookings(bookingState.clientBookings)
     renderClientBookings()
@@ -1427,6 +1527,8 @@ async function selectBarber(barberId, barberName, barberSpecialty = '') {
     if (snapshot.exists()) {
       const barberData = snapshot.val()
       bookingState.barberSpecialty = barberData.specialty || barberData.especialidade || bookingState.barberSpecialty
+      bookingState.barberEmail = barberData.email || ''
+      bookingState.barberPhone = barberData.phone || ''
       bookingState.barberSpecialSchedules = barberData.specialSchedules || { day: {}, week: {}, month: {} }
       const fallbackLunchStart = bookingState.storeSettings?.lunchBreak?.start || '13:00'
       const fallbackLunchEnd = bookingState.storeSettings?.lunchBreak?.end || '14:00'
@@ -1439,6 +1541,12 @@ async function selectBarber(barberId, barberName, barberSpecialty = '') {
       } else {
         bookingState.barberWorkingHours = defaultWorkingHours
       }
+      const barberHoursEl = document.getElementById('selected-barber-hours')
+      if (barberHoursEl) {
+        const hoursStart = barberData.workingHours?.start || '09:00'
+        const hoursEnd = barberData.workingHours?.end || '19:00'
+        barberHoursEl.textContent = `${hoursStart} - ${hoursEnd}`
+      }
       // Carregar dias de trabalho
       if (barberData.workingDays && Array.isArray(barberData.workingDays)) {
         bookingState.barberWorkingDays = barberData.workingDays
@@ -1446,12 +1554,18 @@ async function selectBarber(barberId, barberName, barberSpecialty = '') {
         bookingState.barberWorkingDays = [1, 2, 3, 4, 5] // Seg-Sex por defeito
       }
     } else {
+      bookingState.barberEmail = ''
+      bookingState.barberPhone = ''
       const fallbackLunchStart = bookingState.storeSettings?.lunchBreak?.start || '13:00'
       const fallbackLunchEnd = bookingState.storeSettings?.lunchBreak?.end || '14:00'
       bookingState.barberWorkingHours = defaultWorkingHours
       bookingState.barberLunchBreak = { start: fallbackLunchStart, end: fallbackLunchEnd }
       bookingState.barberWorkingDays = [1, 2, 3, 4, 5]
       bookingState.barberSpecialSchedules = { day: {}, week: {}, month: {} }
+      const barberHoursEl = document.getElementById('selected-barber-hours')
+      if (barberHoursEl) {
+        barberHoursEl.textContent = '09:00 - 19:00'
+      }
     }
   } catch (error) {
     console.error('Erro ao carregar horários do barbeiro:', error)
@@ -1460,6 +1574,12 @@ async function selectBarber(barberId, barberName, barberSpecialty = '') {
     bookingState.barberWorkingHours = defaultWorkingHours
     bookingState.barberLunchBreak = { start: fallbackLunchStart, end: fallbackLunchEnd }
     bookingState.barberSpecialSchedules = { day: {}, week: {}, month: {} }
+    bookingState.barberEmail = ''
+    bookingState.barberPhone = ''
+    const barberHoursEl = document.getElementById('selected-barber-hours')
+    if (barberHoursEl) {
+      barberHoursEl.textContent = '09:00 - 19:00'
+    }
   }
 
   updateServiceCardsForBarber(barberName)
@@ -1724,28 +1844,31 @@ function renderTimeSlots(dateStr) {
   timeSlotsList.innerHTML = ''
   const selectedDuration = Number(bookingState.serviceDuration || 30)
   const workingHours = getWorkingHoursForDate(dateStr)
-  
-  workingHours.forEach(hour => {
-    const isBooked = isSlotConflictWithBookings(dateStr, hour, selectedDuration)
-    const isPastSlot = isPastTimeSlot(dateStr, hour)
-    const isOutOfWindow = !canFitSlotInSchedule(dateStr, hour, selectedDuration)
-    
+
+  const visibleSlots = workingHours.filter((hour) => {
+    if (isPastTimeSlot(dateStr, hour)) return false
+    if (!canFitSlotInSchedule(dateStr, hour, selectedDuration)) return false
+    if (isSlotConflictWithBookings(dateStr, hour, selectedDuration)) return false
+    return true
+  })
+
+  visibleSlots.forEach((hour) => {
     const timeSlot = document.createElement('div')
     timeSlot.className = 'time-slot'
-    if (isBooked || isOutOfWindow) {
-      timeSlot.classList.add('booked')
-    }
-    if (isPastSlot) {
-      timeSlot.classList.add('disabled')
-    }
     timeSlot.textContent = hour
-    
-    if (!isBooked && !isPastSlot && !isOutOfWindow) {
-      timeSlot.addEventListener('click', () => selectTime(hour, timeSlot))
-    }
-    
+    timeSlot.addEventListener('click', () => selectTime(hour, timeSlot))
     timeSlotsList.appendChild(timeSlot)
   })
+
+  const timeSlotsContainer = document.getElementById('timeSlotsContainer')
+  const noSlotsMessage = document.getElementById('noSlotsMessage')
+  if (visibleSlots.length === 0) {
+    if (timeSlotsContainer) timeSlotsContainer.classList.add('hidden')
+    if (noSlotsMessage) noSlotsMessage.classList.remove('hidden')
+  } else {
+    if (timeSlotsContainer) timeSlotsContainer.classList.remove('hidden')
+    if (noSlotsMessage) noSlotsMessage.classList.add('hidden')
+  }
 }
 
 function selectTime(time, selectedTimeSlot) {
@@ -1794,9 +1917,8 @@ function showClientDataForm() {
         <p><strong>Barbeiro:</strong> ${bookingState.barberName}</p>
         <p><strong>Data:</strong> ${formatDateForDisplay(bookingState.date)}</p>
         <p><strong>Hora:</strong> ${bookingState.time}</p>
-        <p><strong>Cliente:</strong> ${bookingState.clientName || ''}</p>
-        <p><strong>Email:</strong> ${bookingState.clientEmail || ''}</p>
-        <p><strong>Telefone:</strong> ${bookingState.clientPhoneComplete || ''}</p>
+        <p><strong>Email do Barbeiro:</strong> ${bookingState.barberEmail || 'N/A'}</p>
+        <p><strong>Telefone do Barbeiro:</strong> ${bookingState.barberPhone || 'N/A'}</p>
       </div>
       <form id="clientDataForm" class="auth-form">
         <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Confirmar Marcação</button>
@@ -1936,6 +2058,10 @@ function showSuccessScreen() {
   document.getElementById('success-barber').textContent = bookingState.barberName
   document.getElementById('success-date').textContent = formattedDate
   document.getElementById('success-time').textContent = bookingState.time
+  const successBarberEmail = document.getElementById('success-barber-email')
+  const successBarberPhone = document.getElementById('success-barber-phone')
+  if (successBarberEmail) successBarberEmail.textContent = bookingState.barberEmail || 'N/A'
+  if (successBarberPhone) successBarberPhone.textContent = bookingState.barberPhone || 'N/A'
   document.getElementById('success-price').textContent = `${bookingState.servicePrice}€`
 
   if (REPORTS_ENABLED) {
@@ -2155,6 +2281,216 @@ function resetBooking() {
 }
 
 // Inicializar quando o DOM estiver pronto
+function getClientBookingStatusKey(booking) {
+  if (booking.status === 'expired') return 'expired'
+  if (booking.status === 'cancelled') return 'cancelled'
+  if (booking.executionStatus === 'completed') return 'completed'
+  return 'confirmed'
+}
+
+function isDateWithinRange(dateStr, fromDate, toDate) {
+  if (!dateStr) return false
+  if (fromDate && dateStr < fromDate) return false
+  if (toDate && dateStr > toDate) return false
+  return true
+}
+
+function getFilteredClientBookings() {
+  const filters = bookingState.manageFilters || {}
+  const serviceFilter = normalizeSearchText(filters.service)
+  const barberFilter = normalizeSearchText(filters.barber)
+  const statusFilter = String(filters.status || '').trim()
+  const fromDate = String(filters.from || '').trim()
+  const toDate = String(filters.to || '').trim()
+
+  return bookingState.clientBookings.filter((booking) => {
+    if (serviceFilter && !normalizeSearchText(booking.serviceName || booking.service || '').includes(serviceFilter)) return false
+    if (barberFilter && !normalizeSearchText(booking.barberName || '').includes(barberFilter)) return false
+    if (statusFilter && getClientBookingStatusKey(booking) !== statusFilter) return false
+    if ((fromDate || toDate) && !isDateWithinRange(booking.date || '', fromDate, toDate)) return false
+    return true
+  })
+}
+
+function renderClientBookings() {
+  const listEl = document.getElementById('clientBookingsList')
+  if (!listEl) return
+
+  if (bookingState.clientBookings.length === 0) {
+    listEl.innerHTML = ''
+    setManageBookingsStatus('Nao existem marcacoes associadas a esta conta.', 'muted')
+    return
+  }
+
+  const filteredBookings = getFilteredClientBookings()
+  if (filteredBookings.length === 0) {
+    listEl.innerHTML = ''
+    setManageBookingsStatus('Nenhuma marcacao encontrada para os filtros escolhidos.', 'muted')
+    return
+  }
+
+  setManageBookingsStatus(isCancelMode ? 'Selecione uma marcacao para anular.' : 'Selecione uma marcacao para adiar ou anular.', 'success')
+  listEl.innerHTML = filteredBookings.map((booking) => {
+    const isCompleted = booking.executionStatus === 'completed'
+    const isCancelled = booking.status === 'cancelled' || booking.status === 'expired'
+    const isLocked = isCancelled || isCompleted
+    const statusLabel = booking.status === 'expired'
+      ? 'Expirada'
+      : booking.status === 'cancelled'
+        ? 'Anulada'
+        : isCompleted
+          ? 'Concluida'
+          : 'Confirmada'
+    const ratingValue = Number(booking.rating || 0)
+    const canRate = isCompleted && !isCancelled
+    const safeDate = booking.date || ''
+    const safeTime = booking.time || ''
+    return `
+      <div class="client-booking-card ${isCancelled ? 'is-cancelled' : ''}" data-booking-id="${booking.id}">
+        <div class="client-booking-main">
+          <h3>${booking.serviceName || 'Servico'}</h3>
+          <p><strong>Barbeiro:</strong> ${booking.barberName || '-'}</p>
+          <p><strong>Data:</strong> ${formatDateForDisplay(safeDate)}</p>
+          <p><strong>Hora:</strong> ${safeTime || '-'}</p>
+          <p><strong>Estado:</strong> ${statusLabel}</p>
+        </div>
+        ${isLocked ? '' : `
+          <div class="client-booking-actions">
+            ${isCancelMode ? '' : `<button type="button" class="btn btn-secondary manage-reschedule-btn" data-booking-id="${booking.id}">Adiar</button>`}
+            <button type="button" class="btn btn-primary manage-cancel-btn" data-booking-id="${booking.id}">Anular</button>
+          </div>
+          <div class="manage-reschedule-panel hidden" id="reschedule-panel-${booking.id}">
+            <div class="form-group" style="margin-bottom: 0.8rem;">
+              <label for="reschedule-date-${booking.id}">Nova Data</label>
+              <input type="date" id="reschedule-date-${booking.id}" value="${safeDate}" min="${getTodayDateForInput()}">
+            </div>
+            <div class="form-group" style="margin-bottom: 0.8rem;">
+              <label for="reschedule-time-${booking.id}">Nova Hora</label>
+              <select id="reschedule-time-${booking.id}"></select>
+            </div>
+            <button type="button" class="btn btn-primary save-reschedule-btn" data-booking-id="${booking.id}">Guardar Nova Data</button>
+          </div>
+        `}
+        ${canRate ? `
+          <div class="client-booking-rating">
+            <label>Avaliar barbeiro</label>
+            <div class="client-rating-controls">
+              ${renderStarRatingControl(booking.id, ratingValue)}
+            </div>
+            <p class="rating-hint">${ratingValue > 0 ? `Avaliacao atual: ${normalizeRatingValue(ratingValue).toFixed(1)}/5` : 'Deixe a sua avaliacao ao barbeiro (aceita meia estrela).'}</p>
+          </div>
+        ` : isCancelled ? '' : `
+          <div class="client-booking-rating is-disabled">
+            <p class="rating-hint">A avaliacao fica disponivel apos a conclusao do corte.</p>
+          </div>
+        `}
+      </div>
+    `
+  }).join('')
+
+  if (!isCancelMode) {
+    listEl.querySelectorAll('.manage-reschedule-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const bookingId = btn.dataset.bookingId
+        const panel = document.getElementById(`reschedule-panel-${bookingId}`)
+        if (!panel) return
+        panel.classList.toggle('hidden')
+        if (!panel.classList.contains('hidden')) {
+          await refreshRescheduleTimeOptions(bookingId)
+        }
+      })
+    })
+
+    listEl.querySelectorAll('.save-reschedule-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const bookingId = btn.dataset.bookingId
+        await rescheduleBooking(bookingId)
+      })
+    })
+
+    listEl.querySelectorAll('input[id^="reschedule-date-"]').forEach((inputEl) => {
+      inputEl.addEventListener('change', async () => {
+        const bookingId = inputEl.id.replace('reschedule-date-', '')
+        await refreshRescheduleTimeOptions(bookingId)
+      })
+    })
+  }
+
+  listEl.querySelectorAll('.manage-cancel-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const bookingId = btn.dataset.bookingId
+      await cancelBookingByClient(bookingId)
+    })
+  })
+
+  bindStarRatingControls(listEl)
+}
+
+async function loadClientBookings() {
+  if (!auth.currentUser) {
+    showError('Faca login para gerir as suas marcacoes.')
+    showAuthStep()
+    return
+  }
+
+  setManageBookingsStatus('A carregar marcacoes...', 'muted')
+  bookingState.clientBookings = []
+
+  try {
+    const snapshot = await get(ref(database, 'bookings'))
+    if (!snapshot.exists()) {
+      renderClientBookings()
+      return
+    }
+
+    const allBookings = snapshot.val()
+    bookingState.clientBookings = Object.entries(allBookings)
+      .map(([id, booking]) => ({ id, ...booking }))
+      .filter((booking) => booking.clientUid === auth.currentUser.uid)
+      .sort((a, b) => {
+        const left = `${a.date || ''} ${a.time || ''}`
+        const right = `${b.date || ''} ${b.time || ''}`
+        return right.localeCompare(left)
+      })
+
+    bookingState.clientBookings = await expirePastClientBookings(bookingState.clientBookings)
+    renderClientBookings()
+  } catch (error) {
+    setManageBookingsStatus('Erro ao carregar as suas marcacoes.', 'error')
+    showError('Nao foi possivel carregar as marcacoes da sua conta.')
+  }
+}
+
+function initClientBookingFilters() {
+  const serviceInput = document.getElementById('clientBookingFilterService')
+  const barberInput = document.getElementById('clientBookingFilterBarber')
+  const statusInput = document.getElementById('clientBookingFilterStatus')
+  const fromInput = document.getElementById('clientBookingFilterFrom')
+  const toInput = document.getElementById('clientBookingFilterTo')
+
+  if (!serviceInput || !barberInput || !statusInput || !fromInput || !toInput) return
+  if (serviceInput.dataset.bound === 'true') return
+  serviceInput.dataset.bound = 'true'
+
+  const applyFilters = () => {
+    bookingState.manageFilters = {
+      service: serviceInput.value || '',
+      barber: barberInput.value || '',
+      status: statusInput.value || '',
+      from: fromInput.value || '',
+      to: toInput.value || '',
+    }
+    renderClientBookings()
+  }
+
+  ;[serviceInput, barberInput].forEach((input) => {
+    input.addEventListener('input', applyFilters)
+  })
+  ;[statusInput, fromInput, toInput].forEach((input) => {
+    input.addEventListener('change', applyFilters)
+  })
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   ensureSessionPersistence().catch((error) => {
     console.error('Erro ao definir persistência de sessão:', error)
@@ -2162,6 +2498,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   initPageMode()
   initClientNavigation()
+  initClientBookingFilters()
 
   initAutoClientSession().then((didAutoLogin) => {
     if (!didAutoLogin) {

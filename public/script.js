@@ -702,13 +702,14 @@ function initTeamRatings() {
 
       const lifecycle = booking.status || ''
       const isCancelled = lifecycle === 'cancelled' || lifecycle === 'expired'
+      const isCompleted = booking.executionStatus === 'completed'
 
-      if (booking.executionStatus === 'completed' && !isCancelled) {
+      if (isCompleted && !isCancelled) {
         stats[key].completedCuts += 1
       }
 
       const ratingValue = Number(booking.rating)
-      if (!isCancelled && Number.isFinite(ratingValue) && ratingValue > 0) {
+      if (isCompleted && !isCancelled && Number.isFinite(ratingValue) && ratingValue > 0) {
         stats[key].ratingTotal += ratingValue
         stats[key].ratingCount += 1
       }
