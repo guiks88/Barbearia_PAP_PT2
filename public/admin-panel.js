@@ -40,10 +40,12 @@ const state = {
   bookings: {},
   clients: {},
   promotions: {},
+  products: {},
   storeSettings: {},
 }
 
 let editingPromotionId = null
+let editingProductId = null
 let editingBarberId = null
 let barberModalEscBound = false
 let revenueViewMode = 'barber' // 'barber' or 'service'
@@ -86,6 +88,20 @@ function parseTimeValue(timeValue, fallbackHour = "09", fallbackMinute = "00") {
 function timeToMinutes(timeValue) {
   const [hour, minute] = String(timeValue || "00:00").split(":").map(Number)
   return (hour || 0) * 60 + (minute || 0)
+}
+
+function getBookingDateTime(booking) {
+  if (!booking?.date) return null
+  const timeValue = booking?.time || "00:00"
+  const dateTime = new Date(`${booking.date}T${timeValue}:00`)
+  if (Number.isNaN(dateTime.getTime())) return null
+  return dateTime
+}
+
+function isBookingInPast(booking) {
+  const dateTime = getBookingDateTime(booking)
+  if (!dateTime) return false
+  return dateTime < new Date()
 }
 
 function buildHourOptions(selected) {
@@ -196,6 +212,7 @@ function setupTopTabs() {
 
       document.querySelectorAll(".tab-content").forEach((content) => content.classList.remove("active"))
       document.getElementById(`${tab}-tab`).classList.add("active")
+      handleAdminTabActivation(tab)
     })
   })
 }
@@ -207,6 +224,110 @@ function activateAdminTab(tab) {
 
   document.querySelectorAll(".tab-content").forEach((content) => content.classList.remove("active"))
   document.getElementById(`${tab}-tab`)?.classList.add("active")
+  handleAdminTabActivation(tab)
+}
+
+function handleAdminTabActivation(tab) {
+  if (tab === "bookings") {
+    ensureBookingDefaults()
+    renderBookings()
+  }
+
+  if (tab === "revenue") {
+    ensureRevenueDefaults()
+    updateRevenue()
+  }
+}
+
+function ensureBookingDefaults() {
+  const dateFrom = document.getElementById("bookingDateFrom")
+  const dateTo = document.getElementById("bookingDateTo")
+  const priorityCancel = document.getElementById("bookingPriorityCancel")
+  const today = new Date()
+  const todayValue = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
+
+  if (dateFrom && !dateFrom.value) dateFrom.value = todayValue
+  if (dateTo && !dateTo.value) dateTo.value = todayValue
+  if (priorityCancel && priorityCancel.checked === false && priorityCancel.dataset.userChanged !== "true") {
+    priorityCancel.checked = true
+  }
+}
+
+function ensureRevenueDefaults() {
+  const dayInput = document.getElementById("revenueDay")
+  const monthInput = document.getElementById("revenueMonth")
+  const today = new Date()
+  const todayValue = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
+  const monthValue = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`
+
+  if (dayInput && !dayInput.value) dayInput.value = todayValue
+  if (monthInput && !monthInput.value) monthInput.value = monthValue
+}
+
+function setupScheduleTabs() {
+  const storeBtn = document.getElementById("scheduleStoreTabBtn")
+  const exceptionsBtn = document.getElementById("scheduleExceptionsTabBtn")
+  const storePanel = document.getElementById("scheduleStorePanel")
+  const exceptionsPanel = document.getElementById("scheduleExceptionsPanel")
+  if (!storeBtn || !exceptionsBtn || !storePanel || !exceptionsPanel) return
+
+  const activate = (target) => {
+    const isStore = target === "store"
+    storePanel.style.display = isStore ? "" : "none"
+    exceptionsPanel.style.display = isStore ? "none" : ""
+    storeBtn.classList.toggle("btn-primary", isStore)
+    storeBtn.classList.toggle("btn-secondary", !isStore)
+    exceptionsBtn.classList.toggle("btn-primary", !isStore)
+    exceptionsBtn.classList.toggle("btn-secondary", isStore)
+  }
+
+  storeBtn.addEventListener("click", () => activate("store"))
+  exceptionsBtn.addEventListener("click", () => activate("exceptions"))
+  activate("store")
+}
+
+function setupPromotionTabs() {
+  const formBtn = document.getElementById("promotionFormTabBtn")
+  const listBtn = document.getElementById("promotionListTabBtn")
+  const formPanel = document.getElementById("promotionFormPanel")
+  const listPanel = document.getElementById("promotionListPanel")
+  if (!formBtn || !listBtn || !formPanel || !listPanel) return
+
+  const activate = (target) => {
+    const isForm = target === "form"
+    formPanel.style.display = isForm ? "" : "none"
+    listPanel.style.display = isForm ? "none" : ""
+    formBtn.classList.toggle("btn-primary", isForm)
+    formBtn.classList.toggle("btn-secondary", !isForm)
+    listBtn.classList.toggle("btn-primary", !isForm)
+    listBtn.classList.toggle("btn-secondary", isForm)
+  }
+
+  formBtn.addEventListener("click", () => activate("form"))
+  listBtn.addEventListener("click", () => activate("list"))
+  activate("form")
+}
+
+function setupProductTabs() {
+  const formBtn = document.getElementById("productFormTabBtn")
+  const listBtn = document.getElementById("productListTabBtn")
+  const formPanel = document.getElementById("productFormPanel")
+  const listPanel = document.getElementById("productListPanel")
+  if (!formBtn || !listBtn || !formPanel || !listPanel) return
+
+  const activate = (target) => {
+    const isForm = target === "form"
+    formPanel.style.display = isForm ? "" : "none"
+    listPanel.style.display = isForm ? "none" : ""
+    formBtn.classList.toggle("btn-primary", isForm)
+    formBtn.classList.toggle("btn-secondary", !isForm)
+    listBtn.classList.toggle("btn-primary", !isForm)
+    listBtn.classList.toggle("btn-secondary", isForm)
+  }
+
+  formBtn.addEventListener("click", () => activate("form"))
+  listBtn.addEventListener("click", () => activate("list"))
+  activate("form")
 }
 
 function setupBarberFormMode() {
@@ -559,12 +680,13 @@ function renderBookings() {
   const entries = filterBookingEntries().sort((a, b) => {
     const leftBooking = a[1]
     const rightBooking = b[1]
+    const leftInactive = leftBooking.status === "cancelled" || leftBooking.status === "expired"
+    const rightInactive = rightBooking.status === "cancelled" || rightBooking.status === "expired"
 
-    if (prioritizeCancel) {
-      const leftPriority = leftBooking.status === "cancel_requested" ? 1 : 0
-      const rightPriority = rightBooking.status === "cancel_requested" ? 1 : 0
-      if (leftPriority !== rightPriority) return rightPriority - leftPriority
-    }
+    const leftBucket = leftInactive ? 2 : prioritizeCancel && leftBooking.status === "cancel_requested" ? 0 : 1
+    const rightBucket = rightInactive ? 2 : prioritizeCancel && rightBooking.status === "cancel_requested" ? 0 : 1
+
+    if (leftBucket !== rightBucket) return leftBucket - rightBucket
 
     const left = `${leftBooking.date || ""} ${leftBooking.time || ""}`
     const right = `${rightBooking.date || ""} ${rightBooking.time || ""}`
@@ -583,9 +705,13 @@ function renderBookings() {
       const serviceDuration = SERVICE_DURATION[booking.service] || booking.serviceDuration || "-"
       const lifecycle = getLifecycleStatus(booking)
       const execution = getExecutionStatus(booking)
+      const isInactive = booking.status === "cancelled" || booking.status === "expired"
+      const showLifecycle = booking.executionStatus !== "completed"
+      const canCancel = !isInactive && booking.status !== "cancel_requested" && booking.executionStatus !== "completed"
+      const canReactivate = booking.status === "cancelled"
 
       return `
-        <div class="booking-item booking-item-extended">
+        <div class="booking-item booking-item-extended ${isInactive ? "is-inactive" : ""}">
           <div>
             <h3>${booking.clientName || "Cliente"}</h3>
             <div class="booking-meta-grid">
@@ -597,19 +723,23 @@ function renderBookings() {
               <p><strong>Horário:</strong> ${booking.time || "-"}</p>
             </div>
             <div class="status-row">
-              <span class="status-pill ${lifecycle.className}">${lifecycle.label}</span>
+              ${showLifecycle ? `<span class="status-pill ${lifecycle.className}">${lifecycle.label}</span>` : ""}
               <span class="status-pill ${execution.className}">${execution.label}</span>
             </div>
           </div>
           <div class="booking-actions">
             <button class="btn btn-secondary btn-small" onclick="editBooking('${id}')">Editar</button>
-            <select class="inline-select" onchange="setExecutionStatus('${id}', this.value)">
+            <select class="inline-select" onchange="setExecutionStatus('${id}', this.value)" ${isInactive ? "disabled" : ""}>
               <option value="pending" ${execution.className === "is-pending" ? "selected" : ""}>Não concluída</option>
               <option value="in_progress" ${execution.className === "is-progress" ? "selected" : ""}>A ser concluída</option>
               <option value="completed" ${execution.className === "is-completed" ? "selected" : ""}>Concluída</option>
             </select>
             ${booking.status === "cancel_requested" ? `<button class="btn btn-primary btn-small" onclick="approveCancellation('${id}')">Aprovar cancelamento</button>` : ""}
-            ${booking.executionStatus === "completed" ? `<button class="btn btn-secondary btn-small" disabled>Concluída</button>` : `<button class="btn btn-danger btn-small" onclick="deleteBooking('${id}')">Cancelar</button>`}
+            ${booking.status === "cancel_requested" ? `<button class="btn btn-secondary btn-small" onclick="rejectCancellation('${id}')">Recusar cancelamento</button>` : ""}
+            ${canReactivate ? `<button class="btn btn-primary btn-small" onclick="reactivateBooking('${id}')">Reativar</button>` : ""}
+            ${booking.executionStatus === "completed" ? `<button class="btn btn-secondary btn-small" disabled>Concluída</button>` : ""}
+            ${booking.status === "expired" ? `<button class="btn btn-secondary btn-small" disabled>Expirada</button>` : ""}
+            ${canCancel ? `<button class="btn btn-danger btn-small" onclick="deleteBooking('${id}')">Cancelar</button>` : ""}
           </div>
         </div>
       `
@@ -698,6 +828,84 @@ function renderPromotions() {
     .join("")
 }
 
+function resetProductForm() {
+  const form = document.getElementById("productForm")
+  if (!form) return
+
+  form.reset()
+  editingProductId = null
+
+  const stock = document.getElementById("productStock")
+  const promo = document.getElementById("productPromo")
+  const sales = document.getElementById("productSales")
+  const active = document.getElementById("productActive")
+  const saveBtn = document.getElementById("productSaveBtn")
+
+  if (stock) stock.value = "0"
+  if (promo) promo.value = "0"
+  if (sales) sales.value = "0"
+  if (active) active.checked = true
+  if (saveBtn) saveBtn.textContent = "Guardar produto"
+}
+
+function renderProducts() {
+  const container = document.getElementById("productsListAdmin")
+  if (!container) return
+
+  const entries = Object.entries(state.products || {}).sort((a, b) => {
+    const left = a[1]?.createdAt || ""
+    const right = b[1]?.createdAt || ""
+    return right.localeCompare(left)
+  })
+
+  if (!entries.length) {
+    container.innerHTML = '<div class="empty-state">Sem produtos registados</div>'
+    return
+  }
+
+  container.innerHTML = entries
+    .map(([id, product]) => {
+      const price = Number(product.price || 0).toFixed(2)
+      const promo = Number(product.promoPercent || 0)
+      const stock = Number(product.stock || 0)
+      const sales = Number(product.salesCount || 0)
+      const isActive = product.isActive !== false
+      return `
+        <div class="barber-item">
+          <div>
+            <h3>${product.name || "Produto"}</h3>
+            <p><strong>Preço:</strong> ${price}€</p>
+            <p><strong>Promoção:</strong> ${promo}%</p>
+            <p><strong>Stock:</strong> ${stock}</p>
+            <p><strong>Vendas:</strong> ${sales}</p>
+            <p><strong>Estado:</strong> <span class="status-pill ${isActive ? "is-active" : "is-cancelled"}">${isActive ? "Ativo" : "Inativo"}</span></p>
+          </div>
+          <div class="booking-actions">
+            <button class="btn btn-secondary btn-small" data-action="edit-product" data-product-id="${id}">Editar</button>
+            <button class="btn btn-danger btn-small" data-action="delete-product" data-product-id="${id}">Eliminar</button>
+          </div>
+        </div>
+      `
+    })
+    .join("")
+
+  container.querySelectorAll('[data-action="edit-product"]').forEach((button) => {
+    button.addEventListener("click", () => {
+      const id = button.getAttribute("data-product-id")
+      if (!id) return
+      window.editProduct(id)
+    })
+  })
+
+  container.querySelectorAll('[data-action="delete-product"]').forEach((button) => {
+    button.addEventListener("click", () => {
+      const id = button.getAttribute("data-product-id")
+      if (!id) return
+      window.deleteProduct(id)
+    })
+  })
+}
+
 function setupPromotionForm() {
   const form = document.getElementById("promotionForm")
   const cancelBtn = document.getElementById("promotionCancelEditBtn")
@@ -752,6 +960,148 @@ function setupPromotionForm() {
   resetPromotionForm()
 }
 
+function setupProductForm() {
+  const form = document.getElementById("productForm")
+  const cancelBtn = document.getElementById("productCancelEditBtn")
+  const seedBtn = document.getElementById("seedProductsBtn")
+  if (!form || !cancelBtn) return
+
+  if (!form.dataset.bound) {
+    form.dataset.bound = "true"
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault()
+
+      const name = document.getElementById("productName")?.value?.trim() || ""
+      const price = Number(document.getElementById("productPrice")?.value || 0)
+      const imageUrl = document.getElementById("productImage")?.value?.trim() || ""
+      const stock = Number(document.getElementById("productStock")?.value || 0)
+      const promoPercent = Number(document.getElementById("productPromo")?.value || 0)
+      const salesCount = Number(document.getElementById("productSales")?.value || 0)
+      const description = document.getElementById("productDescription")?.value?.trim() || ""
+      const isActive = document.getElementById("productActive")?.checked !== false
+
+      if (!name || !Number.isFinite(price) || price <= 0) {
+        showError("Preencha nome e preço do produto.")
+        return
+      }
+
+      const id = editingProductId || `product_${Date.now()}`
+      const previous = state.products[id] || {}
+
+      const payload = {
+        name,
+        price,
+        imageUrl,
+        stock: Number.isFinite(stock) ? stock : 0,
+        promoPercent: Number.isFinite(promoPercent) ? promoPercent : 0,
+        salesCount: Number.isFinite(salesCount) ? salesCount : 0,
+        description,
+        isActive,
+        createdAt: previous.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+
+      try {
+        await set(ref(database, `products/${id}`), payload)
+        showSuccess(editingProductId ? "Produto atualizado com sucesso!" : "Produto criado com sucesso!")
+        resetProductForm()
+      } catch (error) {
+        showError("Erro ao guardar produto: " + error.message)
+      }
+    })
+  }
+
+  if (!cancelBtn.dataset.bound) {
+    cancelBtn.dataset.bound = "true"
+    cancelBtn.addEventListener("click", () => {
+      resetProductForm()
+    })
+  }
+
+  if (seedBtn && !seedBtn.dataset.bound) {
+    seedBtn.dataset.bound = "true"
+    seedBtn.addEventListener("click", async () => {
+      const shouldSeed = confirm("Pretende criar 6 produtos exemplo?")
+      if (!shouldSeed) return
+
+      const samples = [
+        {
+          name: "Pomada Matte Pro",
+          price: 12.9,
+          imageUrl: "https://images.pexels.com/photos/8451516/pexels-photo-8451516.jpeg?auto=compress&cs=tinysrgb&w=800",
+          description: "Fixação forte com acabamento natural.",
+          promoPercent: 10,
+          stock: 14,
+          salesCount: 42,
+        },
+        {
+          name: "Shampoo Premium",
+          price: 9.5,
+          imageUrl: "https://images.pexels.com/photos/4465124/pexels-photo-4465124.jpeg?auto=compress&cs=tinysrgb&w=800",
+          description: "Limpeza suave para uso diário.",
+          promoPercent: 0,
+          stock: 20,
+          salesCount: 37,
+        },
+        {
+          name: "Óleo para Barba",
+          price: 11.2,
+          imageUrl: "https://images.pexels.com/photos/3993465/pexels-photo-3993465.jpeg?auto=compress&cs=tinysrgb&w=800",
+          description: "Hidrata e perfuma sem pesar.",
+          promoPercent: 15,
+          stock: 18,
+          salesCount: 55,
+        },
+        {
+          name: "Cera Modeladora",
+          price: 10.3,
+          imageUrl: "https://images.pexels.com/photos/3993291/pexels-photo-3993291.jpeg?auto=compress&cs=tinysrgb&w=800",
+          description: "Textura flexível e brilho leve.",
+          promoPercent: 5,
+          stock: 16,
+          salesCount: 29,
+        },
+        {
+          name: "Spray Finalizador",
+          price: 8.9,
+          imageUrl: "https://images.pexels.com/photos/8451512/pexels-photo-8451512.jpeg?auto=compress&cs=tinysrgb&w=800",
+          description: "Fixação instantânea sem resíduos.",
+          promoPercent: 0,
+          stock: 22,
+          salesCount: 18,
+        },
+        {
+          name: "Bálsamo Pós-Barba",
+          price: 13.4,
+          imageUrl: "https://images.pexels.com/photos/8451513/pexels-photo-8451513.jpeg?auto=compress&cs=tinysrgb&w=800",
+          description: "Acalma e reduz irritações.",
+          promoPercent: 20,
+          stock: 12,
+          salesCount: 61,
+        },
+      ]
+
+      try {
+        await Promise.all(
+          samples.map((product, index) =>
+            set(ref(database, `products/product_${Date.now()}_${index}`), {
+              ...product,
+              isActive: true,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            }),
+          ),
+        )
+        showSuccess("Produtos exemplo criados com sucesso!")
+      } catch (error) {
+        showError("Erro ao criar produtos exemplo: " + error.message)
+      }
+    })
+  }
+
+  resetProductForm()
+}
+
 function setupStoreScheduleTimes(settings = {}) {
   const open = parseTimeValue(settings.openingHours?.start || "09:00", "09", "00")
   const close = parseTimeValue(settings.openingHours?.end || "19:00", "19", "00")
@@ -802,16 +1152,26 @@ function formatSpecialPeriodLabel(period, key) {
 function getSpecialScheduleDefaults(targetValue, barberIdValue) {
   const storeStart = state.storeSettings.openingHours?.start || "09:00"
   const storeEnd = state.storeSettings.openingHours?.end || "19:00"
+  const storeLunchStart = state.storeSettings.lunchBreak?.start || "13:00"
+  const storeLunchEnd = state.storeSettings.lunchBreak?.end || "14:00"
 
   if (targetValue === "barber") {
     const barber = state.barbers?.[barberIdValue]
     return {
       start: barber?.workingHours?.start || storeStart,
       end: barber?.workingHours?.end || storeEnd,
+      lunchBreak: {
+        start: barber?.lunchBreak?.start || storeLunchStart,
+        end: barber?.lunchBreak?.end || storeLunchEnd,
+      },
     }
   }
 
-  return { start: storeStart, end: storeEnd }
+  return {
+    start: storeStart,
+    end: storeEnd,
+    lunchBreak: { start: storeLunchStart, end: storeLunchEnd },
+  }
 }
 
 function setupSpecialScheduleTimes(defaults = {}) {
@@ -819,15 +1179,30 @@ function setupSpecialScheduleTimes(defaults = {}) {
   const startMinute = document.getElementById("specialScheduleStartMinute")
   const endHour = document.getElementById("specialScheduleEndHour")
   const endMinute = document.getElementById("specialScheduleEndMinute")
+  const lunchStartHour = document.getElementById("specialScheduleLunchStartHour")
+  const lunchStartMinute = document.getElementById("specialScheduleLunchStartMinute")
+  const lunchEndHour = document.getElementById("specialScheduleLunchEndHour")
+  const lunchEndMinute = document.getElementById("specialScheduleLunchEndMinute")
   if (!startHour || !startMinute || !endHour || !endMinute) return
 
   const start = parseTimeValue(defaults.start || "09:00", "09", "00")
   const end = parseTimeValue(defaults.end || "19:00", "19", "00")
+  const lunchStart = parseTimeValue(defaults.lunchBreak?.start || "13:00", "13", "00")
+  const lunchEnd = parseTimeValue(defaults.lunchBreak?.end || "14:00", "14", "00")
 
   startHour.innerHTML = buildHourOptions(start.hour)
   startMinute.innerHTML = buildMinuteOptions(start.minute)
   endHour.innerHTML = buildHourOptions(end.hour)
   endMinute.innerHTML = buildMinuteOptions(end.minute)
+
+  if (lunchStartHour && lunchStartMinute) {
+    lunchStartHour.innerHTML = buildHourOptions(lunchStart.hour)
+    lunchStartMinute.innerHTML = buildMinuteOptions(lunchStart.minute)
+  }
+  if (lunchEndHour && lunchEndMinute) {
+    lunchEndHour.innerHTML = buildHourOptions(lunchEnd.hour)
+    lunchEndMinute.innerHTML = buildMinuteOptions(lunchEnd.minute)
+  }
 }
 
 function populateSpecialScheduleBarberSelect() {
@@ -887,6 +1262,8 @@ function renderSpecialSchedulesList() {
         key,
         start: schedule.start,
         end: schedule.end,
+        lunchStart: schedule?.lunchBreak?.start || "",
+        lunchEnd: schedule?.lunchBreak?.end || "",
       })
     })
   })
@@ -906,6 +1283,7 @@ function renderSpecialSchedulesList() {
           <h3>${source.title}</h3>
           <p><strong>Período:</strong> ${formatSpecialPeriodLabel(row.period, row.key)}</p>
           <p><strong>Horário:</strong> ${row.start} - ${row.end}</p>
+          ${row.lunchStart && row.lunchEnd ? `<p><strong>Almoço:</strong> ${row.lunchStart} - ${row.lunchEnd}</p>` : ""}
         </div>
         <div class="booking-actions">
           <button class="btn btn-danger btn-small" data-action="delete-special-schedule" data-target="${source.target}" data-barber-id="${source.barberId || ""}" data-period="${row.period}" data-key="${row.key}">Remover</button>
@@ -977,6 +1355,8 @@ function setupSpecialScheduleManager() {
       const selectedBarberId = barberSelect.value
       const start = getSelectTime("specialScheduleStartHour", "specialScheduleStartMinute")
       const end = getSelectTime("specialScheduleEndHour", "specialScheduleEndMinute")
+      const lunchStart = getSelectTime("specialScheduleLunchStartHour", "specialScheduleLunchStartMinute")
+      const lunchEnd = getSelectTime("specialScheduleLunchEndHour", "specialScheduleLunchEndMinute")
 
       if (!selectedReference) {
         showError("Indique a referência da exceção (dia/semana/mês).")
@@ -997,6 +1377,10 @@ function setupSpecialScheduleManager() {
         start,
         end,
         updatedAt: new Date().toISOString(),
+      }
+
+      if (timeToMinutes(lunchStart) < timeToMinutes(lunchEnd)) {
+        payload.lunchBreak = { start: lunchStart, end: lunchEnd }
       }
 
       const path =
@@ -1217,6 +1601,13 @@ function loadPromotions() {
   })
 }
 
+function loadProducts() {
+  onValue(ref(database, "products"), (snapshot) => {
+    state.products = snapshot.exists() ? snapshot.val() : {}
+    renderProducts()
+  })
+}
+
 function loadStoreSettings() {
   onValue(ref(database, "storeSettings"), (snapshot) => {
     state.storeSettings = snapshot.exists() ? snapshot.val() : {}
@@ -1368,6 +1759,37 @@ window.editPromotion = (id) => {
   document.getElementById("promotions-tab")?.scrollIntoView({ behavior: "smooth", block: "start" })
 }
 
+window.editProduct = (id) => {
+  const product = state.products[id]
+  if (!product) {
+    showError("Produto não encontrado.")
+    return
+  }
+
+  editingProductId = id
+  const name = document.getElementById("productName")
+  const price = document.getElementById("productPrice")
+  const image = document.getElementById("productImage")
+  const stock = document.getElementById("productStock")
+  const promo = document.getElementById("productPromo")
+  const sales = document.getElementById("productSales")
+  const description = document.getElementById("productDescription")
+  const active = document.getElementById("productActive")
+  const saveBtn = document.getElementById("productSaveBtn")
+
+  if (name) name.value = product.name || ""
+  if (price) price.value = product.price ?? ""
+  if (image) image.value = product.imageUrl || ""
+  if (stock) stock.value = product.stock ?? 0
+  if (promo) promo.value = product.promoPercent ?? 0
+  if (sales) sales.value = product.salesCount ?? 0
+  if (description) description.value = product.description || ""
+  if (active) active.checked = product.isActive !== false
+  if (saveBtn) saveBtn.textContent = "Atualizar produto"
+
+  document.getElementById("products-tab")?.scrollIntoView({ behavior: "smooth", block: "start" })
+}
+
 window.deletePromotion = async (id) => {
   if (!confirm("Tem certeza que deseja eliminar esta promoção?")) return
 
@@ -1379,6 +1801,20 @@ window.deletePromotion = async (id) => {
     showSuccess("Promoção eliminada com sucesso!")
   } catch (error) {
     showError("Erro ao eliminar promoção: " + error.message)
+  }
+}
+
+window.deleteProduct = async (id) => {
+  if (!confirm("Tem certeza que deseja eliminar este produto?")) return
+
+  try {
+    await remove(ref(database, `products/${id}`))
+    if (editingProductId === id) {
+      resetProductForm()
+    }
+    showSuccess("Produto eliminado com sucesso!")
+  } catch (error) {
+    showError("Erro ao eliminar produto: " + error.message)
   }
 }
 
@@ -1416,8 +1852,8 @@ window.deleteBooking = async (id) => {
     }
 
     const booking = snapshot.val()
-    if (booking.executionStatus === "completed") {
-      showError("Não é possível cancelar uma marcação concluída.")
+    if (booking.executionStatus === "completed" || booking.status === "expired") {
+      showError("Não é possível cancelar uma marcação concluída ou expirada.")
       return
     }
     await set(bookingRef, {
@@ -1447,6 +1883,7 @@ window.approveCancellation = async (id) => {
     await set(bookingRef, {
       ...booking,
       status: "cancelled",
+      cancellationRequest: null,
       cancellationApproved: true,
       cancellationApprovedAt: new Date().toISOString(),
       cancelledBy: "admin",
@@ -1457,6 +1894,78 @@ window.approveCancellation = async (id) => {
     showSuccess("Cancelamento aprovado com sucesso!")
   } catch (error) {
     showError("Erro ao aprovar cancelamento: " + error.message)
+  }
+}
+
+window.rejectCancellation = async (id) => {
+  try {
+    const bookingRef = ref(database, `bookings/${id}`)
+    const snapshot = await get(bookingRef)
+    if (!snapshot.exists()) {
+      showError("Marcação não encontrada.")
+      return
+    }
+
+    const booking = snapshot.val()
+    await set(bookingRef, {
+      ...booking,
+      status: "active",
+      cancellationRequest: null,
+      cancellationApproved: null,
+      cancellationApprovedAt: null,
+      cancelledBy: null,
+      cancelledAt: null,
+      cancellationReason: null,
+      updatedAt: new Date().toISOString(),
+      updatedBy: "admin",
+    })
+
+    showSuccess("Cancelamento recusado com sucesso!")
+  } catch (error) {
+    showError("Erro ao recusar cancelamento: " + error.message)
+  }
+}
+
+window.reactivateBooking = async (id) => {
+  try {
+    const bookingRef = ref(database, `bookings/${id}`)
+    const snapshot = await get(bookingRef)
+    if (!snapshot.exists()) {
+      showError("Marcação não encontrada.")
+      return
+    }
+
+    const booking = snapshot.val()
+    if (isBookingInPast(booking)) {
+      await set(bookingRef, {
+        ...booking,
+        status: "expired",
+        cancelledBy: "system",
+        cancellationReason: "Data da marcação já passou",
+        cancelledAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        updatedBy: "admin",
+      })
+      showError("A marcação já passou e foi marcada como expirada.")
+      return
+    }
+
+    await set(bookingRef, {
+      ...booking,
+      status: "active",
+      cancellationRequest: null,
+      cancellationApproved: null,
+      cancellationApprovedAt: null,
+      cancelledBy: null,
+      cancelledAt: null,
+      cancellationReason: null,
+      updatedAt: new Date().toISOString(),
+      updatedBy: "admin",
+    })
+
+    showSuccess("Marcação reativada com sucesso!")
+  } catch (error) {
+    showError("Erro ao reativar marcação: " + error.message)
   }
 }
 
@@ -1787,18 +2296,25 @@ document.getElementById("storeScheduleForm").addEventListener("submit", async (e
   }
 })
 
-document.getElementById("bookingPriorityCancel")?.addEventListener("change", () => {
+document.getElementById("bookingPriorityCancel")?.addEventListener("change", (event) => {
+  if (event?.target instanceof HTMLElement) {
+    event.target.dataset.userChanged = "true"
+  }
   renderBookings()
 })
 
 // Inicializa controles visuais imediatamente para evitar UI sem ação
 setupTopTabs()
+setupScheduleTabs()
+setupPromotionTabs()
+setupProductTabs()
 setupBarberFormMode()
 setupBarberFormTimes()
 setupStoreScheduleTimes()
 setupFilters()
 setupRevenueControls()
 setupPromotionForm()
+setupProductForm()
 setupSpecialScheduleManager()
 
 onAuthStateChanged(auth, async (user) => {
@@ -1815,6 +2331,7 @@ onAuthStateChanged(auth, async (user) => {
   loadBookings()
   loadClients()
   loadPromotions()
+  loadProducts()
   loadStoreSettings()
 })
 

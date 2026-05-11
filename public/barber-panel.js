@@ -571,9 +571,19 @@ window.completeCut = async (bookingId) => {
       return
     }
 
+    const plannedDuration = Number(booking.serviceDuration || 0) || 30
+    const startedAt = booking.startedAt ? new Date(booking.startedAt) : null
+    const completedAt = new Date()
+    let actualDurationMinutes = plannedDuration
+    if (startedAt && !Number.isNaN(startedAt.getTime())) {
+      const diffMinutes = Math.max(1, Math.round((completedAt.getTime() - startedAt.getTime()) / 60000))
+      actualDurationMinutes = Math.min(plannedDuration, Math.max(5, diffMinutes))
+    }
+
     await patchBooking(bookingId, {
       executionStatus: "completed",
-      completedAt: new Date().toISOString(),
+      completedAt: completedAt.toISOString(),
+      actualDurationMinutes,
     })
     try {
       await recalculateBarberStats(booking.barberId || barberId)
@@ -582,7 +592,8 @@ window.completeCut = async (bookingId) => {
     }
     syncLocalBooking(bookingId, {
       executionStatus: "completed",
-      completedAt: new Date().toISOString(),
+      completedAt: completedAt.toISOString(),
+      actualDurationMinutes,
     })
     displayBookings()
     showSuccess("Corte concluído.")
@@ -597,8 +608,8 @@ window.completeCut = async (bookingId) => {
 
 window.requestCancel = async (bookingId) => {
   const booking = allBookings.find((item) => item.id === bookingId)
-  if (booking?.executionStatus === "completed") {
-    showError("Não é possível cancelar uma marcação concluída.")
+  if (booking?.executionStatus === "completed" || booking?.status === "expired" || booking?.status === "cancelled") {
+    showError("Não é possível cancelar uma marcação concluída ou expirada.")
     return
   }
   const shouldRequest = window.confirm("Pretende pedir cancelamento desta marcação? O administrador precisa aprovar.")

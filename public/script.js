@@ -124,6 +124,7 @@ let teamSchedulesListenerBound = false
 let promotionsListenerBound = false
 let storeHoursListenerBound = false
 let teamStatsListenerBound = false
+let productsListenerBound = false
 
 // Only add event listeners if elements exist
 const helpButton = document.getElementById("helpButton")
@@ -975,6 +976,63 @@ function updateMainAuthButton() {
   })
 }
 
+function renderProductCards(container, products) {
+  if (!container) return
+
+  if (!products.length) {
+    container.innerHTML = '<div class="product-empty">Sem produtos disponíveis.</div>'
+    return
+  }
+
+  container.innerHTML = products
+    .map((product) => {
+      const price = Number(product.price || 0).toFixed(2)
+      const promo = Number(product.promoPercent || 0)
+      const badge = promo > 0 ? `<span class="product-badge">-${promo}%</span>` : ''
+      const image = product.imageUrl
+        ? `<img src="${product.imageUrl}" alt="${product.name || 'Produto'}" class="product-image">`
+        : `<div class="product-image" style="background: var(--color-bg-secondary);"></div>`
+      return `
+        <div class="product-card">
+          ${image}
+          <div class="product-info">
+            <div class="product-name">${product.name || 'Produto'}</div>
+            <div class="product-description">${product.description || 'Produto disponível na barbearia.'}</div>
+            <div class="product-meta">
+              <span class="product-price">${price}€</span>
+              ${badge}
+            </div>
+          </div>
+        </div>
+      `
+    })
+    .join('')
+}
+
+function loadProducts() {
+  const featuredContainer = document.getElementById('featuredProductsGrid')
+  const allContainer = document.getElementById('allProductsGrid')
+  if (!featuredContainer && !allContainer) return
+  if (productsListenerBound) return
+  productsListenerBound = true
+
+  onValue(ref(database, 'products'), (snapshot) => {
+    const products = snapshot.exists() ? snapshot.val() : {}
+    const entries = Object.values(products)
+      .filter((product) => product && product.isActive !== false)
+      .map((product) => ({
+        ...product,
+        salesCount: Number(product.salesCount || 0),
+      }))
+
+    const featured = [...entries].sort((a, b) => b.salesCount - a.salesCount).slice(0, 5)
+    const all = [...entries].sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')))
+
+    renderProductCards(featuredContainer, featured)
+    renderProductCards(allContainer, all)
+  })
+}
+
 function timeToMinutes(timeStr) {
   const [hour, minute] = String(timeStr || '00:00').split(':').map(Number)
   return (hour || 0) * 60 + (minute || 0)
@@ -1067,6 +1125,7 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initTeamRatings);
   document.addEventListener('DOMContentLoaded', setupTeamSchedulesListener);
   document.addEventListener('DOMContentLoaded', loadPromotions);
+  document.addEventListener('DOMContentLoaded', loadProducts);
   document.addEventListener('DOMContentLoaded', loadStoreHours);
   document.addEventListener('DOMContentLoaded', updateMainAuthButton);
   document.addEventListener('DOMContentLoaded', initStoreStatusBadge);
@@ -1082,6 +1141,7 @@ if (document.readyState === 'loading') {
   initTeamRatings();
   setupTeamSchedulesListener();
   loadPromotions();
+  loadProducts();
   loadStoreHours();
   updateMainAuthButton();
   initStoreStatusBadge();
@@ -1099,6 +1159,7 @@ window.addEventListener('load', initTeamSchedules);
 window.addEventListener('load', initTeamRatings);
 window.addEventListener('load', setupTeamSchedulesListener);
 window.addEventListener('load', loadPromotions);
+window.addEventListener('load', loadProducts);
 window.addEventListener('load', loadStoreHours);
 window.addEventListener('load', updateMainAuthButton);
 window.addEventListener('load', initStoreStatusBadge);

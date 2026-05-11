@@ -20,7 +20,8 @@ const urlParams = new URLSearchParams(window.location.search)
 const currentMode = urlParams.get('mode')
 const isManageMode = currentMode === 'manage' || currentMode === 'cancel'
 const isCancelMode = currentMode === 'cancel'
-const preferredBarberParam = (urlParams.get('barber') || '').trim()
+const pendingBarberSession = (sessionStorage.getItem('pendingBookingBarber') || '').trim()
+const preferredBarberParam = (urlParams.get('barber') || pendingBarberSession || '').trim()
 const REPORTS_ENABLED = false
 
 function buildLoginRedirectUrl() {
@@ -68,6 +69,9 @@ function normalizeBarberKey(value) {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 async function isClientEmailRegistered(email) {
@@ -361,8 +365,8 @@ function getStoreRuleValues(dateStr = null) {
   const openDays = Array.isArray(settings.openDays) && settings.openDays.length ? settings.openDays : [1, 2, 3, 4, 5]
   const openingStart = special?.start || settings.openingHours?.start || '09:00'
   const openingEnd = special?.end || settings.openingHours?.end || '19:00'
-  const lunchStart = settings.lunchBreak?.start || '13:00'
-  const lunchEnd = settings.lunchBreak?.end || '14:00'
+  const lunchStart = special?.lunchBreak?.start || settings.lunchBreak?.start || '13:00'
+  const lunchEnd = special?.lunchBreak?.end || settings.lunchBreak?.end || '14:00'
 
   return {
     openDays,
@@ -395,9 +399,16 @@ function applyStoreRulesToSlots(dateStr, slots) {
   })
 }
 
-function applyBarberLunchBreakToSlots(slots) {
-  const lunchStart = bookingState.barberLunchBreak?.start
-  const lunchEnd = bookingState.barberLunchBreak?.end
+function getBarberLunchBreakForDate(dateStr) {
+  const special = dateStr ? getSpecialScheduleForDate(dateStr) : null
+  const fallback = bookingState.barberLunchBreak || {}
+  const start = special?.lunchBreak?.start || fallback.start || null
+  const end = special?.lunchBreak?.end || fallback.end || null
+  return { start, end }
+}
+
+function applyBarberLunchBreakToSlots(dateStr, slots) {
+  const { start: lunchStart, end: lunchEnd } = getBarberLunchBreakForDate(dateStr)
   if (!lunchStart || !lunchEnd) return slots
 
   const lunchStartMinutes = timeToMinutes(lunchStart)
@@ -434,6 +445,9 @@ function intervalOverlaps(startA, durationA, startB, durationB) {
 }
 
 function getBookingDurationMinutes(booking) {
+  const actualDuration = Number(booking?.actualDurationMinutes || 0)
+  if (actualDuration > 0) return actualDuration
+
   const directDuration = Number(booking?.serviceDuration || 0)
   if (directDuration > 0) return directDuration
 
@@ -460,6 +474,7 @@ function isSlotConflictWithBookings(dateStr, slotTime, durationMinutes, excluded
 function canFitSlotInSchedule(dateStr, slotTime, durationMinutes) {
   const { openingStart, openingEnd, lunchStart, lunchEnd } = getStoreRuleValues(dateStr)
   const barberWindow = getDayWorkingWindow(dateStr)
+  const barberLunch = getBarberLunchBreakForDate(dateStr)
 
   const windowStart = Math.max(timeToMinutes(openingStart), timeToMinutes(barberWindow.start))
   const windowEnd = Math.min(timeToMinutes(openingEnd), timeToMinutes(barberWindow.end))
@@ -474,8 +489,8 @@ function canFitSlotInSchedule(dateStr, slotTime, durationMinutes) {
     return false
   }
 
-  const barberLunchStart = timeToMinutes(bookingState.barberLunchBreak?.start)
-  const barberLunchEnd = timeToMinutes(bookingState.barberLunchBreak?.end)
+  const barberLunchStart = timeToMinutes(barberLunch.start)
+  const barberLunchEnd = timeToMinutes(barberLunch.end)
   if (barberLunchEnd > barberLunchStart) {
     if (intervalOverlaps(slotStart, durationMinutes, barberLunchStart, barberLunchEnd - barberLunchStart)) {
       return false
@@ -522,7 +537,7 @@ function getWorkingHoursForDate(dateStr) {
   }
 
   const storeFiltered = applyStoreRulesToSlots(dateStr, workingHours)
-  return applyBarberLunchBreakToSlots(storeFiltered)
+  return applyBarberLunchBreakToSlots(dateStr, storeFiltered)
 }
 
 function getDateString(dateObj) {
@@ -1055,11 +1070,18 @@ function renderClientBookings() {
     return
   }
 
+  const filteredBookings = getFilteredClientBookings()
+  if (filteredBookings.length === 0) {
+    listEl.innerHTML = ''
+    setManageBookingsStatus('Nenhuma marcação encontrada para os filtros escolhidos.', 'muted')
+    return
+  }
+
   setManageBookingsStatus('Selecione uma marcação para adiar ou anular.', 'success')
   if (isCancelMode) {
     setManageBookingsStatus('Selecione uma marcação para anular.', 'success')
   }
-  listEl.innerHTML = bookingState.clientBookings.map((booking) => {
+  listEl.innerHTML = filteredBookings.map((booking) => {
     const isCompleted = booking.executionStatus === 'completed'
     const statusLabel = booking.status === 'expired'
       ? 'Expirada'
@@ -1467,20 +1489,32 @@ async function loadBarbers() {
       })
 
       if (!bookingState.preferredBarberApplied && bookingState.preferredBarberKey) {
+        const preferredKey = bookingState.preferredBarberKey
         const preferredMatch = barberEntries.find(([barberId, barber]) => {
-          const barberName = barber?.name || barber?.nome || barber?.fullName || ''
-          return (
-            normalizeBarberKey(barberId) === bookingState.preferredBarberKey ||
-            normalizeBarberKey(barberName) === bookingState.preferredBarberKey
-          )
+          const candidates = [
+            barberId,
+            barber?.name,
+            barber?.nome,
+            barber?.fullName,
+            barber?.displayName,
+          ]
+
+          return candidates.some((value) => {
+            const normalized = normalizeBarberKey(value)
+            if (!normalized) return false
+            return normalized === preferredKey || normalized.includes(preferredKey) || preferredKey.includes(normalized)
+          })
         })
 
         if (preferredMatch) {
           bookingState.preferredBarberApplied = true
           const [matchedBarberId, matchedBarber] = preferredMatch
           const matchedBarberName = matchedBarber?.name || matchedBarber?.nome || matchedBarber?.fullName || 'Barbeiro'
+          sessionStorage.removeItem('pendingBookingBarber')
           showSuccess(`Barbeiro pré-selecionado: ${matchedBarberName}`)
           await selectBarber(matchedBarberId, matchedBarberName, matchedBarber?.specialty || matchedBarber?.especialidade || '')
+        } else if (pendingBarberSession) {
+          sessionStorage.removeItem('pendingBookingBarber')
         }
       }
     } else {
@@ -1629,6 +1663,7 @@ async function loadExistingBookings(barberId) {
             status: booking.status,
             service: booking.service,
             serviceDuration: booking.serviceDuration,
+            actualDurationMinutes: booking.actualDurationMinutes,
           })
         }
       })
