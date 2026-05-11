@@ -575,7 +575,12 @@ function showManageBookingsStep() {
 }
 
 function showAuthStep() {
-  redirectToLogin()
+  document.getElementById('step-manage-bookings')?.classList.add('hidden')
+  document.getElementById('step-services').classList.add('hidden')
+  document.getElementById('step-barber').classList.add('hidden')
+  document.getElementById('step-datetime').classList.add('hidden')
+  document.getElementById('step-success').classList.add('hidden')
+  document.getElementById('step-auth').classList.remove('hidden')
 }
 
 function handlePostAuthSuccess() {
@@ -2280,187 +2285,6 @@ function resetBooking() {
   document.getElementById('step-barber').scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
-// Inicializar quando o DOM estiver pronto
-function getClientBookingStatusKey(booking) {
-  if (booking.status === 'expired') return 'expired'
-  if (booking.status === 'cancelled') return 'cancelled'
-  if (booking.executionStatus === 'completed') return 'completed'
-  return 'confirmed'
-}
-
-function isDateWithinRange(dateStr, fromDate, toDate) {
-  if (!dateStr) return false
-  if (fromDate && dateStr < fromDate) return false
-  if (toDate && dateStr > toDate) return false
-  return true
-}
-
-function getFilteredClientBookings() {
-  const filters = bookingState.manageFilters || {}
-  const serviceFilter = normalizeSearchText(filters.service)
-  const barberFilter = normalizeSearchText(filters.barber)
-  const statusFilter = String(filters.status || '').trim()
-  const fromDate = String(filters.from || '').trim()
-  const toDate = String(filters.to || '').trim()
-
-  return bookingState.clientBookings.filter((booking) => {
-    if (serviceFilter && !normalizeSearchText(booking.serviceName || booking.service || '').includes(serviceFilter)) return false
-    if (barberFilter && !normalizeSearchText(booking.barberName || '').includes(barberFilter)) return false
-    if (statusFilter && getClientBookingStatusKey(booking) !== statusFilter) return false
-    if ((fromDate || toDate) && !isDateWithinRange(booking.date || '', fromDate, toDate)) return false
-    return true
-  })
-}
-
-function renderClientBookings() {
-  const listEl = document.getElementById('clientBookingsList')
-  if (!listEl) return
-
-  if (bookingState.clientBookings.length === 0) {
-    listEl.innerHTML = ''
-    setManageBookingsStatus('Nao existem marcacoes associadas a esta conta.', 'muted')
-    return
-  }
-
-  const filteredBookings = getFilteredClientBookings()
-  if (filteredBookings.length === 0) {
-    listEl.innerHTML = ''
-    setManageBookingsStatus('Nenhuma marcacao encontrada para os filtros escolhidos.', 'muted')
-    return
-  }
-
-  setManageBookingsStatus(isCancelMode ? 'Selecione uma marcacao para anular.' : 'Selecione uma marcacao para adiar ou anular.', 'success')
-  listEl.innerHTML = filteredBookings.map((booking) => {
-    const isCompleted = booking.executionStatus === 'completed'
-    const isCancelled = booking.status === 'cancelled' || booking.status === 'expired'
-    const isLocked = isCancelled || isCompleted
-    const statusLabel = booking.status === 'expired'
-      ? 'Expirada'
-      : booking.status === 'cancelled'
-        ? 'Anulada'
-        : isCompleted
-          ? 'Concluida'
-          : 'Confirmada'
-    const ratingValue = Number(booking.rating || 0)
-    const canRate = isCompleted && !isCancelled
-    const safeDate = booking.date || ''
-    const safeTime = booking.time || ''
-    return `
-      <div class="client-booking-card ${isCancelled ? 'is-cancelled' : ''}" data-booking-id="${booking.id}">
-        <div class="client-booking-main">
-          <h3>${booking.serviceName || 'Servico'}</h3>
-          <p><strong>Barbeiro:</strong> ${booking.barberName || '-'}</p>
-          <p><strong>Data:</strong> ${formatDateForDisplay(safeDate)}</p>
-          <p><strong>Hora:</strong> ${safeTime || '-'}</p>
-          <p><strong>Estado:</strong> ${statusLabel}</p>
-        </div>
-        ${isLocked ? '' : `
-          <div class="client-booking-actions">
-            ${isCancelMode ? '' : `<button type="button" class="btn btn-secondary manage-reschedule-btn" data-booking-id="${booking.id}">Adiar</button>`}
-            <button type="button" class="btn btn-primary manage-cancel-btn" data-booking-id="${booking.id}">Anular</button>
-          </div>
-          <div class="manage-reschedule-panel hidden" id="reschedule-panel-${booking.id}">
-            <div class="form-group" style="margin-bottom: 0.8rem;">
-              <label for="reschedule-date-${booking.id}">Nova Data</label>
-              <input type="date" id="reschedule-date-${booking.id}" value="${safeDate}" min="${getTodayDateForInput()}">
-            </div>
-            <div class="form-group" style="margin-bottom: 0.8rem;">
-              <label for="reschedule-time-${booking.id}">Nova Hora</label>
-              <select id="reschedule-time-${booking.id}"></select>
-            </div>
-            <button type="button" class="btn btn-primary save-reschedule-btn" data-booking-id="${booking.id}">Guardar Nova Data</button>
-          </div>
-        `}
-        ${canRate ? `
-          <div class="client-booking-rating">
-            <label>Avaliar barbeiro</label>
-            <div class="client-rating-controls">
-              ${renderStarRatingControl(booking.id, ratingValue)}
-            </div>
-            <p class="rating-hint">${ratingValue > 0 ? `Avaliacao atual: ${normalizeRatingValue(ratingValue).toFixed(1)}/5` : 'Deixe a sua avaliacao ao barbeiro (aceita meia estrela).'}</p>
-          </div>
-        ` : isCancelled ? '' : `
-          <div class="client-booking-rating is-disabled">
-            <p class="rating-hint">A avaliacao fica disponivel apos a conclusao do corte.</p>
-          </div>
-        `}
-      </div>
-    `
-  }).join('')
-
-  if (!isCancelMode) {
-    listEl.querySelectorAll('.manage-reschedule-btn').forEach((btn) => {
-      btn.addEventListener('click', async () => {
-        const bookingId = btn.dataset.bookingId
-        const panel = document.getElementById(`reschedule-panel-${bookingId}`)
-        if (!panel) return
-        panel.classList.toggle('hidden')
-        if (!panel.classList.contains('hidden')) {
-          await refreshRescheduleTimeOptions(bookingId)
-        }
-      })
-    })
-
-    listEl.querySelectorAll('.save-reschedule-btn').forEach((btn) => {
-      btn.addEventListener('click', async () => {
-        const bookingId = btn.dataset.bookingId
-        await rescheduleBooking(bookingId)
-      })
-    })
-
-    listEl.querySelectorAll('input[id^="reschedule-date-"]').forEach((inputEl) => {
-      inputEl.addEventListener('change', async () => {
-        const bookingId = inputEl.id.replace('reschedule-date-', '')
-        await refreshRescheduleTimeOptions(bookingId)
-      })
-    })
-  }
-
-  listEl.querySelectorAll('.manage-cancel-btn').forEach((btn) => {
-    btn.addEventListener('click', async () => {
-      const bookingId = btn.dataset.bookingId
-      await cancelBookingByClient(bookingId)
-    })
-  })
-
-  bindStarRatingControls(listEl)
-}
-
-async function loadClientBookings() {
-  if (!auth.currentUser) {
-    showError('Faca login para gerir as suas marcacoes.')
-    showAuthStep()
-    return
-  }
-
-  setManageBookingsStatus('A carregar marcacoes...', 'muted')
-  bookingState.clientBookings = []
-
-  try {
-    const snapshot = await get(ref(database, 'bookings'))
-    if (!snapshot.exists()) {
-      renderClientBookings()
-      return
-    }
-
-    const allBookings = snapshot.val()
-    bookingState.clientBookings = Object.entries(allBookings)
-      .map(([id, booking]) => ({ id, ...booking }))
-      .filter((booking) => booking.clientUid === auth.currentUser.uid)
-      .sort((a, b) => {
-        const left = `${a.date || ''} ${a.time || ''}`
-        const right = `${b.date || ''} ${b.time || ''}`
-        return right.localeCompare(left)
-      })
-
-    bookingState.clientBookings = await expirePastClientBookings(bookingState.clientBookings)
-    renderClientBookings()
-  } catch (error) {
-    setManageBookingsStatus('Erro ao carregar as suas marcacoes.', 'error')
-    showError('Nao foi possivel carregar as marcacoes da sua conta.')
-  }
-}
-
 function initClientBookingFilters() {
   const serviceInput = document.getElementById('clientBookingFilterService')
   const barberInput = document.getElementById('clientBookingFilterBarber')
@@ -2499,10 +2323,11 @@ document.addEventListener('DOMContentLoaded', () => {
   initPageMode()
   initClientNavigation()
   initClientBookingFilters()
+  initClientAuth()
 
   initAutoClientSession().then((didAutoLogin) => {
     if (!didAutoLogin) {
-      redirectToLogin()
+      showAuthStep()
       return
     }
 
