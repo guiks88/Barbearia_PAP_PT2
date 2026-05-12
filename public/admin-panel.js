@@ -1766,6 +1766,10 @@ window.editProduct = (id) => {
     return
   }
 
+  activateAdminTab("products")
+  const formBtn = document.getElementById("productFormTabBtn")
+  if (formBtn) formBtn.click()
+
   editingProductId = id
   const name = document.getElementById("productName")
   const price = document.getElementById("productPrice")
