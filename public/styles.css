@@ -672,6 +672,10 @@ main {
   transition: var(--transition);
 }
 
+.product-card.is-out-of-stock {
+  opacity: 0.75;
+}
+
 .product-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
@@ -733,9 +737,28 @@ main {
   min-height: 1.2em;
 }
 
+.product-old-price.is-hidden {
+  visibility: hidden;
+}
+
+.product-stock {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+.product-stock.is-out {
+  color: #c62828;
+  font-weight: 700;
+}
+
 .product-add {
   margin-top: auto;
   width: 100%;
+}
+
+.product-add:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 
 .product-empty {

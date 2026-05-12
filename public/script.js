@@ -129,6 +129,27 @@ let shopProductsCache = []
 let cartState = {}
 let productsListenerBound = false
 
+function getSafeStock(product) {
+  return Math.max(0, Number(product?.stock || 0))
+}
+
+function formatEuro(value) {
+  return `${Number(value || 0).toFixed(2)}€`
+}
+
+function getPendingShopProductId() {
+  const fromSession = (sessionStorage.getItem('pendingShopProductId') || '').trim()
+  if (fromSession) return fromSession
+  const fromQuery = (new URLSearchParams(window.location.search).get('product') || '').trim()
+  return fromQuery
+}
+
+function redirectToLoginForProduct(productId) {
+  if (!productId) return
+  sessionStorage.setItem('pendingShopProductId', productId)
+  window.location.href = `login.html?product=${encodeURIComponent(productId)}`
+}
+
 // Only add event listeners if elements exist
 const helpButton = document.getElementById("helpButton")
 const helpModal = document.getElementById("helpModal")
@@ -914,7 +935,7 @@ function updateMainAuthButton() {
 
   const setLoggedIn = () => {
     mainAuthCta.href = 'client-menu.html'
-    mainAuthCta.innerHTML = '<i class="bi bi-calendar-check" aria-hidden="true"></i> Marcar'
+    mainAuthCta.innerHTML = '<i class="bi bi-person-check" aria-hidden="true"></i> Area do Cliente'
     if (mainLogoutBtn) {
       mainLogoutBtn.style.display = 'inline-flex'
     }
@@ -998,25 +1019,44 @@ function renderProductCards(container, products) {
     .map((product) => {
       const { basePrice, finalPrice, promo } = getProductPrice(product)
       const badge = promo > 0 ? `<span class="product-badge">-${promo}%</span>` : ''
+      const stock = getSafeStock(product)
+      const outOfStock = stock <= 0
+      const stockLabel = outOfStock ? 'Esgotado' : `Stock: ${stock}`
       const image = product.imageUrl
         ? `<img src="${product.imageUrl}" alt="${product.name || 'Produto'}" class="product-image">`
         : `<div class="product-image" style="background: var(--color-bg-secondary);"></div>`
       return `
-        <div class="product-card">
+        <div class="product-card ${outOfStock ? 'is-out-of-stock' : ''}">
           ${image}
           <div class="product-info">
             <div class="product-name">${product.name || 'Produto'}</div>
             <div class="product-description">${product.description || 'Produto disponível na barbearia.'}</div>
             <div class="product-meta">
-              <span class="product-price">${finalPrice.toFixed(2)}€</span>
+              <span class="product-price">${formatEuro(finalPrice)}</span>
               ${badge}
             </div>
-            ${promo > 0 ? `<div class="product-old-price">${basePrice.toFixed(2)}€</div>` : ''}
+            <div class="product-old-price ${promo > 0 ? '' : 'is-hidden'}">${formatEuro(basePrice)}</div>
+            <div class="product-stock ${outOfStock ? 'is-out' : ''}">${stockLabel}</div>
+            <button type="button" class="btn btn-primary btn-small product-add" data-product-id="${product.id}" ${outOfStock ? 'disabled' : ''}>${outOfStock ? 'Esgotado' : 'Ver na loja'}</button>
           </div>
         </div>
       `
     })
     .join('')
+
+  container.querySelectorAll('.product-add').forEach((button) => {
+    button.addEventListener('click', () => {
+      if (button.disabled) return
+      const productId = button.getAttribute('data-product-id')
+      if (!productId) return
+      const isLoggedInClient = sessionStorage.getItem('isClient') === 'true' && !!auth.currentUser
+      if (!isLoggedInClient) {
+        redirectToLoginForProduct(productId)
+        return
+      }
+      window.location.href = `shop.html?product=${encodeURIComponent(productId)}`
+    })
+  })
 }
 
 function getProductPrice(product) {
@@ -1043,6 +1083,7 @@ function initShopCart() {
   const searchInput = document.getElementById('shopSearchInput')
   const sortSelect = document.getElementById('shopSortSelect')
   const checkoutBtn = document.getElementById('cartCheckoutBtn')
+  const cancelBtn = document.getElementById('cartCancelBtn')
 
   if (searchInput && searchInput.dataset.bound !== 'true') {
     searchInput.dataset.bound = 'true'
@@ -1134,6 +1175,15 @@ function initShopCart() {
       }
     })
   }
+
+  if (cancelBtn && cancelBtn.dataset.bound !== 'true') {
+    cancelBtn.dataset.bound = 'true'
+    cancelBtn.addEventListener('click', () => {
+      if (!Object.keys(cartState).length) return
+      setCartState({})
+      showSuccess('Pedido cancelado e carrinho limpo.')
+    })
+  }
 }
 
 function saveCartState() {
@@ -1152,8 +1202,9 @@ function setCartState(nextState) {
 
 function addToCart(product) {
   if (!product?.id) return
+  if (getSafeStock(product) <= 0) return
   const current = cartState[product.id]
-  const nextQty = Math.min((current?.qty || 0) + 1, Number(product.stock || 9999))
+  const nextQty = Math.min((current?.qty || 0) + 1, getSafeStock(product))
   setCartState({
     ...cartState,
     [product.id]: {
@@ -1163,7 +1214,7 @@ function addToCart(product) {
       price: getProductPrice(product).finalPrice,
       promoPercent: Number(product.promoPercent || 0),
       qty: nextQty,
-      stock: Number(product.stock || 9999),
+      stock: getSafeStock(product),
     },
   })
 }
@@ -1171,7 +1222,7 @@ function addToCart(product) {
 function updateCartQty(productId, delta) {
   const current = cartState[productId]
   if (!current) return
-  const nextQty = Math.max(0, Math.min(current.qty + delta, current.stock || 9999))
+  const nextQty = Math.max(0, Math.min(current.qty + delta, current.stock || 0))
   if (nextQty === 0) {
     const nextState = { ...cartState }
     delete nextState[productId]
@@ -1201,8 +1252,8 @@ function renderCart() {
   if (!items.length) {
     itemsEl.innerHTML = ''
     emptyEl.style.display = 'block'
-    subtotalEl.textContent = '0.00€'
-    totalEl.textContent = '0.00€'
+    subtotalEl.textContent = formatEuro(0)
+    totalEl.textContent = formatEuro(0)
     return
   }
 
@@ -1221,7 +1272,7 @@ function renderCart() {
           ${image}
           <div class="cart-item-info">
             <div class="cart-item-name">${item.name}</div>
-            <div class="cart-item-price">${item.price.toFixed(2)}€</div>
+            <div class="cart-item-price">${formatEuro(item.price)}</div>
             <div class="cart-item-controls">
               <button type="button" class="cart-qty-btn" data-action="decrease">-</button>
               <span class="cart-qty">${item.qty}</span>
@@ -1229,14 +1280,14 @@ function renderCart() {
               <button type="button" class="cart-remove" data-action="remove">Remover</button>
             </div>
           </div>
-          <div class="cart-item-total">${lineTotal.toFixed(2)}€</div>
+          <div class="cart-item-total">${formatEuro(lineTotal)}</div>
         </div>
       `
     })
     .join('')
 
-  subtotalEl.textContent = `${subtotal.toFixed(2)}€`
-  totalEl.textContent = `${subtotal.toFixed(2)}€`
+  subtotalEl.textContent = formatEuro(subtotal)
+  totalEl.textContent = formatEuro(subtotal)
 
   itemsEl.querySelectorAll('.cart-item').forEach((row) => {
     const id = row.getAttribute('data-cart-id')
@@ -1287,21 +1338,25 @@ function renderShopProducts() {
     .map((product) => {
       const { basePrice, finalPrice, promo } = getProductPrice(product)
       const badge = promo > 0 ? `<span class="product-badge">-${promo}%</span>` : ''
+      const stock = getSafeStock(product)
+      const outOfStock = stock <= 0
+      const stockLabel = outOfStock ? 'Esgotado' : `Stock: ${stock}`
       const image = product.imageUrl
         ? `<img src="${product.imageUrl}" alt="${product.name || 'Produto'}" class="product-image">`
         : `<div class="product-image" style="background: var(--color-bg-secondary);"></div>`
       return `
-        <div class="product-card">
+        <div class="product-card ${outOfStock ? 'is-out-of-stock' : ''}">
           ${image}
           <div class="product-info">
             <div class="product-name">${product.name || 'Produto'}</div>
             <div class="product-description">${product.description || 'Produto disponível na barbearia.'}</div>
             <div class="product-meta">
-              <span class="product-price">${finalPrice.toFixed(2)}€</span>
+              <span class="product-price">${formatEuro(finalPrice)}</span>
               ${badge}
             </div>
-            ${promo > 0 ? `<div class="product-old-price">${basePrice.toFixed(2)}€</div>` : ''}
-            <button type="button" class="btn btn-primary btn-small product-add" data-product-id="${product.id}">Adicionar ao carrinho</button>
+            <div class="product-old-price ${promo > 0 ? '' : 'is-hidden'}">${formatEuro(basePrice)}</div>
+            <div class="product-stock ${outOfStock ? 'is-out' : ''}">${stockLabel}</div>
+            <button type="button" class="btn btn-primary btn-small product-add" data-product-id="${product.id}" ${outOfStock ? 'disabled' : ''}>${outOfStock ? 'Esgotado' : 'Adicionar ao carrinho'}</button>
           </div>
         </div>
       `
@@ -1310,6 +1365,7 @@ function renderShopProducts() {
 
   container.querySelectorAll('.product-add').forEach((button) => {
     button.addEventListener('click', () => {
+      if (button.disabled) return
       const id = button.getAttribute('data-product-id')
       const product = shopProductsCache.find((item) => item.id === id)
       if (!product) return
@@ -1341,6 +1397,19 @@ function loadProducts() {
 
     renderProductCards(featuredContainer, featured)
     renderShopProducts()
+
+    const pendingProductId = getPendingShopProductId()
+    if (shopContainer && pendingProductId) {
+      const pendingProduct = shopProductsCache.find((item) => item.id === pendingProductId)
+      if (pendingProduct && getSafeStock(pendingProduct) > 0) {
+        addToCart(pendingProduct)
+        showSuccess('Produto pre-selecionado e adicionado ao carrinho.')
+      }
+      sessionStorage.removeItem('pendingShopProductId')
+      const url = new URL(window.location.href)
+      url.searchParams.delete('product')
+      history.replaceState({}, '', url.pathname + (url.search ? url.search : ''))
+    }
   })
 }
 

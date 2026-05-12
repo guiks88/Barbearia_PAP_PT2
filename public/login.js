@@ -262,8 +262,17 @@ function redirectByRole(role) {
   const pendingFromSession = (sessionStorage.getItem("pendingBookingBarber") || "").trim()
   const pendingFromQuery = (new URLSearchParams(window.location.search).get("barber") || "").trim()
   const pendingBarber = pendingFromSession || pendingFromQuery
+  const pendingProductFromSession = (sessionStorage.getItem("pendingShopProductId") || "").trim()
+  const pendingProductFromQuery = (new URLSearchParams(window.location.search).get("product") || "").trim()
+  const pendingProduct = pendingProductFromSession || pendingProductFromQuery
 
   hasRoleRedirected = true
+
+  if (pendingProduct) {
+    sessionStorage.setItem("pendingShopProductId", pendingProduct)
+    window.location.href = `shop.html?product=${encodeURIComponent(pendingProduct)}`
+    return
+  }
 
   if (pendingBarber) {
     sessionStorage.removeItem("pendingBookingBarber")

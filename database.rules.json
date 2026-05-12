@@ -44,7 +44,9 @@
     ,
     "products": {
       ".read": true,
-      ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (data.exists() && newData.child('stock').val() <= data.child('stock').val() && newData.child('name').val() == data.child('name').val() && newData.child('price').val() == data.child('price').val() && newData.child('imageUrl').val() == data.child('imageUrl').val() && newData.child('promoPercent').val() == data.child('promoPercent').val() && newData.child('description').val() == data.child('description').val() && newData.child('salesCount').val() == data.child('salesCount').val() && newData.child('isActive').val() == data.child('isActive').val()))"
+      "$productId": {
+        ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (data.exists() && newData.child('stock').val() <= data.child('stock').val() && newData.child('name').val() == data.child('name').val() && newData.child('price').val() == data.child('price').val() && newData.child('imageUrl').val() == data.child('imageUrl').val() && newData.child('promoPercent').val() == data.child('promoPercent').val() && newData.child('description').val() == data.child('description').val() && newData.child('salesCount').val() == data.child('salesCount').val() && newData.child('isActive').val() == data.child('isActive').val()))"
+      }
     },
 
     "orders": {
