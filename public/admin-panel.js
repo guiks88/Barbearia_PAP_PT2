@@ -131,8 +131,14 @@ function buildMinuteOptions(selected) {
 
 function getSelectTime(hourId, minuteId) {
   const hour = document.getElementById(hourId)?.value || "00"
-  const minute = document.getElementById(minuteId)?.value || "00"
-  return toTimeValue(hour, minute)
+            <p class="barber-front-info"><strong>Nota média:</strong> ${averageRating > 0 ? averageRating.toFixed(1) : "0.0"} / 5 (${ratingCount})</p>
+          </div>
+          <div class="barber-back" style="display:none; margin-top:8px;">
+            <p><strong>Cortes concluídos:</strong> ${completedCuts}</p>
+            <p><strong>Nota média:</strong> ${averageRating > 0 ? averageRating.toFixed(1) : "0.0"} / 5 (${ratingCount})</p>
+          </div>
+          <script>/* attach toggle after render */</script>
+          <div class="booking-actions">
 }
 
 function setBarberListVisibility(isVisible) {
@@ -670,6 +676,18 @@ function renderBarbers() {
       window.deleteBarber(id)
     })
   })
+
+  // attach toggle to show/hide barber-back on name click
+  container.querySelectorAll('.barber-item > div > h3').forEach((h3) => {
+    h3.style.cursor = 'pointer'
+    h3.addEventListener('click', () => {
+      const parent = h3.closest('.barber-item')
+      if (!parent) return
+      const back = parent.querySelector('.barber-back')
+      if (!back) return
+      back.style.display = back.style.display === 'none' ? '' : 'none'
+    })
+  })
 }
 
 function renderBookings() {
@@ -1018,86 +1036,7 @@ function setupProductForm() {
     })
   }
 
-  if (seedBtn && !seedBtn.dataset.bound) {
-    seedBtn.dataset.bound = "true"
-    seedBtn.addEventListener("click", async () => {
-      const shouldSeed = confirm("Pretende criar 6 produtos exemplo?")
-      if (!shouldSeed) return
-
-      const samples = [
-        {
-          name: "Pomada Matte Pro",
-          price: 12.9,
-          imageUrl: "https://images.pexels.com/photos/8451516/pexels-photo-8451516.jpeg?auto=compress&cs=tinysrgb&w=800",
-          description: "Fixação forte com acabamento natural.",
-          promoPercent: 10,
-          stock: 14,
-          salesCount: 42,
-        },
-        {
-          name: "Shampoo Premium",
-          price: 9.5,
-          imageUrl: "https://images.pexels.com/photos/4465124/pexels-photo-4465124.jpeg?auto=compress&cs=tinysrgb&w=800",
-          description: "Limpeza suave para uso diário.",
-          promoPercent: 0,
-          stock: 20,
-          salesCount: 37,
-        },
-        {
-          name: "Óleo para Barba",
-          price: 11.2,
-          imageUrl: "https://images.pexels.com/photos/3993465/pexels-photo-3993465.jpeg?auto=compress&cs=tinysrgb&w=800",
-          description: "Hidrata e perfuma sem pesar.",
-          promoPercent: 15,
-          stock: 18,
-          salesCount: 55,
-        },
-        {
-          name: "Cera Modeladora",
-          price: 10.3,
-          imageUrl: "https://images.pexels.com/photos/3993291/pexels-photo-3993291.jpeg?auto=compress&cs=tinysrgb&w=800",
-          description: "Textura flexível e brilho leve.",
-          promoPercent: 5,
-          stock: 16,
-          salesCount: 29,
-        },
-        {
-          name: "Spray Finalizador",
-          price: 8.9,
-          imageUrl: "https://images.pexels.com/photos/8451512/pexels-photo-8451512.jpeg?auto=compress&cs=tinysrgb&w=800",
-          description: "Fixação instantânea sem resíduos.",
-          promoPercent: 0,
-          stock: 22,
-          salesCount: 18,
-        },
-        {
-          name: "Bálsamo Pós-Barba",
-          price: 13.4,
-          imageUrl: "https://images.pexels.com/photos/8451513/pexels-photo-8451513.jpeg?auto=compress&cs=tinysrgb&w=800",
-          description: "Acalma e reduz irritações.",
-          promoPercent: 20,
-          stock: 12,
-          salesCount: 61,
-        },
-      ]
-
-      try {
-        await Promise.all(
-          samples.map((product, index) =>
-            set(ref(database, `products/product_${Date.now()}_${index}`), {
-              ...product,
-              isActive: true,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            }),
-          ),
-        )
-        showSuccess("Produtos exemplo criados com sucesso!")
-      } catch (error) {
-        showError("Erro ao criar produtos exemplo: " + error.message)
-      }
-    })
-  }
+  // Seed products button removed per request
 
   resetProductForm()
 }
