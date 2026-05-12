@@ -1349,7 +1349,7 @@ async function recalculateBarberStats(barberUid) {
   const completedCuts = completedBookings.length
   const ratings = completedBookings
     .map((booking) => Number(booking.rating))
-    .filter((value) => Number.isFinite(value) && value > 0)
+    .filter((value) => Number.isFinite(value) && value > 0.5)
 
   const ratingCount = ratings.length
   const ratingTotal = ratings.reduce((sum, value) => sum + value, 0)

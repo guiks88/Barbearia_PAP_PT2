@@ -1,5 +1,5 @@
 import { auth, database } from "./firebase-config.js"
-import { ref, get, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
+import { ref, get, onValue, set, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
 import { showSuccess, showError } from "./utils.js"
 
@@ -124,6 +124,9 @@ let teamSchedulesListenerBound = false
 let promotionsListenerBound = false
 let storeHoursListenerBound = false
 let teamStatsListenerBound = false
+let teamStatsPollIntervalId = null
+let shopProductsCache = []
+let cartState = {}
 let productsListenerBound = false
 
 // Only add event listeners if elements exist
@@ -717,39 +720,46 @@ function initTeamRatings() {
   if (teamStatsListenerBound) return
   teamStatsListenerBound = true
 
-  onValue(ref(database, 'bookings'), (snapshot) => {
-    const stats = {}
-    const bookings = snapshot.exists() ? Object.values(snapshot.val() || {}) : []
+  const fetchAndApplyStats = async () => {
+    try {
+      const snapshot = await get(ref(database, 'bookings'))
+      const stats = {}
+      const bookings = snapshot.exists() ? Object.values(snapshot.val() || {}) : []
 
-    bookings.forEach((booking) => {
-      const barberName = booking?.barberName || booking?.barber || booking?.barberId
-      if (!barberName) return
+      bookings.forEach((booking) => {
+        const barberName = booking?.barberName || booking?.barber || booking?.barberId
+        if (!barberName) return
 
-      const key = normalizePersonName(barberName)
-      if (!stats[key]) {
-        stats[key] = { ratingTotal: 0, ratingCount: 0, completedCuts: 0 }
-      }
+        const key = normalizePersonName(barberName)
+        if (!stats[key]) {
+          stats[key] = { ratingTotal: 0, ratingCount: 0, completedCuts: 0 }
+        }
 
-      const lifecycle = booking.status || ''
-      const isCancelled = lifecycle === 'cancelled' || lifecycle === 'expired'
-      const isCompleted = booking.executionStatus === 'completed'
+        const lifecycle = booking.status || ''
+        const isCancelled = lifecycle === 'cancelled' || lifecycle === 'expired'
+        const isCompleted = booking.executionStatus === 'completed'
 
-      if (isCompleted && !isCancelled) {
-        stats[key].completedCuts += 1
-      }
+        if (isCompleted && !isCancelled) {
+          stats[key].completedCuts += 1
+        }
 
-      const ratingValue = Number(booking.rating)
-      if (isCompleted && !isCancelled && Number.isFinite(ratingValue) && ratingValue > 0) {
-        stats[key].ratingTotal += ratingValue
-        stats[key].ratingCount += 1
-      }
-    })
+        const ratingValue = Number(booking.rating)
+          if (isCompleted && !isCancelled && Number.isFinite(ratingValue) && ratingValue > 0.5) {
+          stats[key].ratingTotal += ratingValue
+          stats[key].ratingCount += 1
+        }
+      })
 
-    applyTeamStatsToUi(members, stats)
-  }, (error) => {
-    console.warn('Leitura de bookings indisponivel sem login. A usar fallback de barbeiros.', error)
-    loadTeamStatsFromBarbersFallback(members)
-  })
+      applyTeamStatsToUi(members, stats)
+    } catch (error) {
+      console.warn('Leitura de bookings indisponivel sem login. A usar fallback de barbeiros.', error)
+      loadTeamStatsFromBarbersFallback(members)
+    }
+  }
+
+  fetchAndApplyStats()
+  if (teamStatsPollIntervalId) clearInterval(teamStatsPollIntervalId)
+  teamStatsPollIntervalId = setInterval(fetchAndApplyStats, 15000)
 
   loadTeamStatsFromBarbersFallback(members)
 }
@@ -986,8 +996,7 @@ function renderProductCards(container, products) {
 
   container.innerHTML = products
     .map((product) => {
-      const price = Number(product.price || 0).toFixed(2)
-      const promo = Number(product.promoPercent || 0)
+      const { basePrice, finalPrice, promo } = getProductPrice(product)
       const badge = promo > 0 ? `<span class="product-badge">-${promo}%</span>` : ''
       const image = product.imageUrl
         ? `<img src="${product.imageUrl}" alt="${product.name || 'Produto'}" class="product-image">`
@@ -999,9 +1008,10 @@ function renderProductCards(container, products) {
             <div class="product-name">${product.name || 'Produto'}</div>
             <div class="product-description">${product.description || 'Produto disponível na barbearia.'}</div>
             <div class="product-meta">
-              <span class="product-price">${price}€</span>
+              <span class="product-price">${finalPrice.toFixed(2)}€</span>
               ${badge}
             </div>
+            ${promo > 0 ? `<div class="product-old-price">${basePrice.toFixed(2)}€</div>` : ''}
           </div>
         </div>
       `
@@ -1009,27 +1019,328 @@ function renderProductCards(container, products) {
     .join('')
 }
 
+function getProductPrice(product) {
+  const basePrice = Number(product.price || 0)
+  const promo = Math.max(0, Number(product.promoPercent || 0))
+  const finalPrice = promo > 0 ? basePrice * (1 - promo / 100) : basePrice
+  return { basePrice, finalPrice, promo }
+}
+
+function loadCartState() {
+  try {
+    const raw = localStorage.getItem('cartItems')
+    return raw ? JSON.parse(raw) : {}
+  } catch (error) {
+    console.warn('Erro ao carregar carrinho:', error)
+    return {}
+  }
+}
+
+function initShopCart() {
+  cartState = loadCartState()
+  renderCart()
+
+  const searchInput = document.getElementById('shopSearchInput')
+  const sortSelect = document.getElementById('shopSortSelect')
+  const checkoutBtn = document.getElementById('cartCheckoutBtn')
+
+  if (searchInput && searchInput.dataset.bound !== 'true') {
+    searchInput.dataset.bound = 'true'
+    searchInput.addEventListener('input', () => renderShopProducts())
+  }
+
+  if (sortSelect && sortSelect.dataset.bound !== 'true') {
+    sortSelect.dataset.bound = 'true'
+    sortSelect.addEventListener('change', () => renderShopProducts())
+  }
+
+  if (checkoutBtn && checkoutBtn.dataset.bound !== 'true') {
+    checkoutBtn.dataset.bound = 'true'
+    checkoutBtn.addEventListener('click', async () => {
+      const items = Object.values(cartState)
+      if (!items.length) {
+        showError('O carrinho está vazio.')
+        return
+      }
+
+      const user = auth.currentUser
+      if (!user) {
+        showError('Faça login para finalizar o pedido.')
+        return
+      }
+
+      const clientName = sessionStorage.getItem('clientName') || user.displayName || 'Cliente'
+      const clientEmail = sessionStorage.getItem('clientEmail') || user.email || ''
+      const clientUid = user.uid
+
+      try {
+        // validate stock from live data
+        const updates = []
+        const orderItems = []
+        let subtotal = 0
+
+        for (const item of items) {
+          const productSnap = await get(ref(database, `products/${item.id}`))
+          if (!productSnap.exists()) {
+            showError(`Produto indisponivel: ${item.name}`)
+            return
+          }
+          const productData = productSnap.val() || {}
+          const currentStock = Number(productData.stock || 0)
+          if (currentStock < item.qty) {
+            showError(`Stock insuficiente para ${item.name}`)
+            return
+          }
+
+          const lineTotal = Number(item.price || 0) * item.qty
+          subtotal += lineTotal
+          orderItems.push({
+            productId: item.id,
+            name: item.name,
+            qty: item.qty,
+            price: Number(item.price || 0),
+            promoPercent: Number(item.promoPercent || 0),
+            lineTotal: Number(lineTotal.toFixed(2)),
+          })
+
+          updates.push(update(ref(database, `products/${item.id}`), {
+            stock: currentStock - item.qty,
+            updatedAt: new Date().toISOString(),
+          }))
+        }
+
+        const orderId = `order_${Date.now()}`
+        const orderPayload = {
+          clientUid,
+          clientName,
+          clientEmail,
+          items: orderItems,
+          subtotal: Number(subtotal.toFixed(2)),
+          total: Number(subtotal.toFixed(2)),
+          paymentMethod: 'pay_at_store',
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+        }
+
+        await Promise.all([
+          set(ref(database, `orders/${orderId}`), orderPayload),
+          ...updates,
+        ])
+
+        setCartState({})
+        showSuccess('Pedido registado. O pagamento é feito na loja.')
+      } catch (error) {
+        showError('Nao foi possivel finalizar o pedido: ' + error.message)
+      }
+    })
+  }
+}
+
+function saveCartState() {
+  try {
+    localStorage.setItem('cartItems', JSON.stringify(cartState))
+  } catch (error) {
+    console.warn('Erro ao guardar carrinho:', error)
+  }
+}
+
+function setCartState(nextState) {
+  cartState = nextState
+  saveCartState()
+  renderCart()
+}
+
+function addToCart(product) {
+  if (!product?.id) return
+  const current = cartState[product.id]
+  const nextQty = Math.min((current?.qty || 0) + 1, Number(product.stock || 9999))
+  setCartState({
+    ...cartState,
+    [product.id]: {
+      id: product.id,
+      name: product.name || 'Produto',
+      imageUrl: product.imageUrl || '',
+      price: getProductPrice(product).finalPrice,
+      promoPercent: Number(product.promoPercent || 0),
+      qty: nextQty,
+      stock: Number(product.stock || 9999),
+    },
+  })
+}
+
+function updateCartQty(productId, delta) {
+  const current = cartState[productId]
+  if (!current) return
+  const nextQty = Math.max(0, Math.min(current.qty + delta, current.stock || 9999))
+  if (nextQty === 0) {
+    const nextState = { ...cartState }
+    delete nextState[productId]
+    setCartState(nextState)
+    return
+  }
+  setCartState({
+    ...cartState,
+    [productId]: { ...current, qty: nextQty },
+  })
+}
+
+function removeFromCart(productId) {
+  const nextState = { ...cartState }
+  delete nextState[productId]
+  setCartState(nextState)
+}
+
+function renderCart() {
+  const itemsEl = document.getElementById('cartItems')
+  const emptyEl = document.getElementById('cartEmpty')
+  const subtotalEl = document.getElementById('cartSubtotal')
+  const totalEl = document.getElementById('cartTotal')
+  if (!itemsEl || !subtotalEl || !totalEl || !emptyEl) return
+
+  const items = Object.values(cartState)
+  if (!items.length) {
+    itemsEl.innerHTML = ''
+    emptyEl.style.display = 'block'
+    subtotalEl.textContent = '0.00€'
+    totalEl.textContent = '0.00€'
+    return
+  }
+
+  emptyEl.style.display = 'none'
+  let subtotal = 0
+
+  itemsEl.innerHTML = items
+    .map((item) => {
+      const lineTotal = item.price * item.qty
+      subtotal += lineTotal
+      const image = item.imageUrl
+        ? `<img src="${item.imageUrl}" alt="${item.name}" class="cart-item-image">`
+        : `<div class="cart-item-image" style="background: var(--color-bg-secondary);"></div>`
+      return `
+        <div class="cart-item" data-cart-id="${item.id}">
+          ${image}
+          <div class="cart-item-info">
+            <div class="cart-item-name">${item.name}</div>
+            <div class="cart-item-price">${item.price.toFixed(2)}€</div>
+            <div class="cart-item-controls">
+              <button type="button" class="cart-qty-btn" data-action="decrease">-</button>
+              <span class="cart-qty">${item.qty}</span>
+              <button type="button" class="cart-qty-btn" data-action="increase">+</button>
+              <button type="button" class="cart-remove" data-action="remove">Remover</button>
+            </div>
+          </div>
+          <div class="cart-item-total">${lineTotal.toFixed(2)}€</div>
+        </div>
+      `
+    })
+    .join('')
+
+  subtotalEl.textContent = `${subtotal.toFixed(2)}€`
+  totalEl.textContent = `${subtotal.toFixed(2)}€`
+
+  itemsEl.querySelectorAll('.cart-item').forEach((row) => {
+    const id = row.getAttribute('data-cart-id')
+    if (!id) return
+    row.querySelectorAll('[data-action="decrease"]').forEach((btn) => {
+      btn.addEventListener('click', () => updateCartQty(id, -1))
+    })
+    row.querySelectorAll('[data-action="increase"]').forEach((btn) => {
+      btn.addEventListener('click', () => updateCartQty(id, 1))
+    })
+    row.querySelectorAll('[data-action="remove"]').forEach((btn) => {
+      btn.addEventListener('click', () => removeFromCart(id))
+    })
+  })
+}
+
+function renderShopProducts() {
+  const container = document.getElementById('shopProductsGrid')
+  if (!container) return
+
+  const searchValue = String(document.getElementById('shopSearchInput')?.value || '').trim().toLowerCase()
+  const sortValue = String(document.getElementById('shopSortSelect')?.value || 'featured')
+
+  let list = [...shopProductsCache]
+  if (searchValue) {
+    list = list.filter((product) => {
+      const haystack = `${product.name || ''} ${product.description || ''}`.toLowerCase()
+      return haystack.includes(searchValue)
+    })
+  }
+
+  if (sortValue === 'price-asc') {
+    list.sort((a, b) => getProductPrice(a).finalPrice - getProductPrice(b).finalPrice)
+  } else if (sortValue === 'price-desc') {
+    list.sort((a, b) => getProductPrice(b).finalPrice - getProductPrice(a).finalPrice)
+  } else if (sortValue === 'name') {
+    list.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')))
+  } else {
+    list.sort((a, b) => (b.salesCount || 0) - (a.salesCount || 0))
+  }
+
+  if (!list.length) {
+    container.innerHTML = '<div class="product-empty">Sem produtos disponíveis.</div>'
+    return
+  }
+
+  container.innerHTML = list
+    .map((product) => {
+      const { basePrice, finalPrice, promo } = getProductPrice(product)
+      const badge = promo > 0 ? `<span class="product-badge">-${promo}%</span>` : ''
+      const image = product.imageUrl
+        ? `<img src="${product.imageUrl}" alt="${product.name || 'Produto'}" class="product-image">`
+        : `<div class="product-image" style="background: var(--color-bg-secondary);"></div>`
+      return `
+        <div class="product-card">
+          ${image}
+          <div class="product-info">
+            <div class="product-name">${product.name || 'Produto'}</div>
+            <div class="product-description">${product.description || 'Produto disponível na barbearia.'}</div>
+            <div class="product-meta">
+              <span class="product-price">${finalPrice.toFixed(2)}€</span>
+              ${badge}
+            </div>
+            ${promo > 0 ? `<div class="product-old-price">${basePrice.toFixed(2)}€</div>` : ''}
+            <button type="button" class="btn btn-primary btn-small product-add" data-product-id="${product.id}">Adicionar ao carrinho</button>
+          </div>
+        </div>
+      `
+    })
+    .join('')
+
+  container.querySelectorAll('.product-add').forEach((button) => {
+    button.addEventListener('click', () => {
+      const id = button.getAttribute('data-product-id')
+      const product = shopProductsCache.find((item) => item.id === id)
+      if (!product) return
+      addToCart(product)
+      showSuccess('Produto adicionado ao carrinho.')
+    })
+  })
+}
+
 function loadProducts() {
   const featuredContainer = document.getElementById('featuredProductsGrid')
-  const allContainer = document.getElementById('allProductsGrid')
-  if (!featuredContainer && !allContainer) return
+  const shopContainer = document.getElementById('shopProductsGrid')
+  if (!featuredContainer && !shopContainer) return
   if (productsListenerBound) return
   productsListenerBound = true
 
   onValue(ref(database, 'products'), (snapshot) => {
     const products = snapshot.exists() ? snapshot.val() : {}
-    const entries = Object.values(products)
-      .filter((product) => product && product.isActive !== false)
-      .map((product) => ({
+    const entries = Object.entries(products)
+      .filter(([, product]) => product && product.isActive !== false)
+      .map(([id, product]) => ({
+        id,
         ...product,
         salesCount: Number(product.salesCount || 0),
       }))
 
     const featured = [...entries].sort((a, b) => b.salesCount - a.salesCount).slice(0, 5)
-    const all = [...entries].sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')))
+    shopProductsCache = [...entries]
 
     renderProductCards(featuredContainer, featured)
-    renderProductCards(allContainer, all)
+    renderShopProducts()
   })
 }
 
@@ -1126,6 +1437,7 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', setupTeamSchedulesListener);
   document.addEventListener('DOMContentLoaded', loadPromotions);
   document.addEventListener('DOMContentLoaded', loadProducts);
+  document.addEventListener('DOMContentLoaded', initShopCart);
   document.addEventListener('DOMContentLoaded', loadStoreHours);
   document.addEventListener('DOMContentLoaded', updateMainAuthButton);
   document.addEventListener('DOMContentLoaded', initStoreStatusBadge);
@@ -1142,6 +1454,7 @@ if (document.readyState === 'loading') {
   setupTeamSchedulesListener();
   loadPromotions();
   loadProducts();
+  initShopCart();
   loadStoreHours();
   updateMainAuthButton();
   initStoreStatusBadge();
@@ -1160,6 +1473,7 @@ window.addEventListener('load', initTeamRatings);
 window.addEventListener('load', setupTeamSchedulesListener);
 window.addEventListener('load', loadPromotions);
 window.addEventListener('load', loadProducts);
+window.addEventListener('load', initShopCart);
 window.addEventListener('load', loadStoreHours);
 window.addEventListener('load', updateMainAuthButton);
 window.addEventListener('load', initStoreStatusBadge);

@@ -451,7 +451,7 @@ async function recalculateBarberStats(barberUid) {
   const completedCuts = completedBookings.length
   const ratings = completedBookings
     .map((booking) => Number(booking.rating))
-    .filter((rating) => Number.isFinite(rating) && rating > 0)
+    .filter((rating) => Number.isFinite(rating) && rating > 0.5)
 
   const ratingCount = ratings.length
   const ratingTotal = ratings.reduce((sum, value) => sum + value, 0)
@@ -589,6 +589,21 @@ window.completeCut = async (bookingId) => {
       await recalculateBarberStats(booking.barberId || barberId)
     } catch (statsError) {
       console.warn("Sem permissão para atualizar agregados do barbeiro:", statsError)
+      // Fallback: increment completed cuts locally on barber record
+      try {
+        const targetId = booking.barberId || barberId
+        if (targetId) {
+          const barberSnap = await get(ref(database, `barbers/${targetId}`))
+          const current = barberSnap.exists() ? barberSnap.val() : {}
+          const completedCuts = Number(current.completedCuts || 0) + 1
+          await update(ref(database, `barbers/${targetId}`), {
+            completedCuts,
+            updatedAt: new Date().toISOString(),
+          })
+        }
+      } catch (fallbackError) {
+        console.warn("Sem permissão para incrementar cortes concluidos:", fallbackError)
+      }
     }
     syncLocalBooking(bookingId, {
       executionStatus: "completed",

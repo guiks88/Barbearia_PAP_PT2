@@ -41,6 +41,7 @@ const state = {
   clients: {},
   promotions: {},
   products: {},
+  orders: {},
   storeSettings: {},
 }
 
@@ -131,14 +132,8 @@ function buildMinuteOptions(selected) {
 
 function getSelectTime(hourId, minuteId) {
   const hour = document.getElementById(hourId)?.value || "00"
-            <p class="barber-front-info"><strong>Nota média:</strong> ${averageRating > 0 ? averageRating.toFixed(1) : "0.0"} / 5 (${ratingCount})</p>
-          </div>
-          <div class="barber-back" style="display:none; margin-top:8px;">
-            <p><strong>Cortes concluídos:</strong> ${completedCuts}</p>
-            <p><strong>Nota média:</strong> ${averageRating > 0 ? averageRating.toFixed(1) : "0.0"} / 5 (${ratingCount})</p>
-          </div>
-          <script>/* attach toggle after render */</script>
-          <div class="booking-actions">
+  const minute = document.getElementById(minuteId)?.value || "00"
+  return toTimeValue(hour, minute)
 }
 
 function setBarberListVisibility(isVisible) {
@@ -383,6 +378,10 @@ function setupFilters() {
     "clientSearchPhone",
     "clientDateFrom",
     "clientDateTo",
+    "orderSearch",
+    "orderStatus",
+    "orderDateFrom",
+    "orderDateTo",
   ]
 
   ids.forEach((id) => {
@@ -393,6 +392,7 @@ function setupFilters() {
       renderBarbers()
       renderBookings()
       renderClients()
+      renderOrders()
       renderStoreSchedule()
       updateRevenue()
     }
@@ -400,6 +400,92 @@ function setupFilters() {
     input.addEventListener("input", rerender)
     input.addEventListener("change", rerender)
   })
+}
+
+function getOrderFilterValues() {
+  return {
+    search: normalize(document.getElementById("orderSearch")?.value),
+    status: normalize(document.getElementById("orderStatus")?.value),
+    dateFrom: document.getElementById("orderDateFrom")?.value || "",
+    dateTo: document.getElementById("orderDateTo")?.value || "",
+  }
+}
+
+function filterOrderEntries() {
+  const filters = getOrderFilterValues()
+
+  return Object.entries(state.orders || {}).filter(([id, order]) => {
+    if (!order) return false
+
+    const status = normalize(order.status)
+    const haystack = normalize(`${id} ${order.clientName || ""} ${order.clientEmail || ""}`)
+
+    if (filters.status && status !== filters.status) return false
+    if (filters.search && !haystack.includes(filters.search)) return false
+
+    const createdDate = String(order.createdAt || "").split("T")[0]
+    if ((filters.dateFrom || filters.dateTo) && !isDateInRange(createdDate, filters.dateFrom, filters.dateTo)) {
+      return false
+    }
+
+    return true
+  })
+}
+
+function renderOrders() {
+  const container = document.getElementById("ordersList")
+  if (!container) return
+
+  const entries = filterOrderEntries().sort((a, b) => {
+    const left = a[1]?.createdAt || ""
+    const right = b[1]?.createdAt || ""
+    return right.localeCompare(left)
+  })
+
+  if (!entries.length) {
+    container.innerHTML = '<div class="empty-state">Sem pedidos registados</div>'
+    return
+  }
+
+  container.innerHTML = entries
+    .map(([id, order]) => {
+      const createdAt = order.createdAt ? formatDate(String(order.createdAt).split("T")[0]) : "-"
+      const total = Number(order.total || 0).toFixed(2)
+      const status = order.status || "pending"
+      const items = Array.isArray(order.items) ? order.items : []
+
+      const statusLabel = status === "completed"
+        ? "Concluido"
+        : status === "ready"
+          ? "Pronto"
+          : status === "cancelled"
+            ? "Cancelado"
+            : "Pendente"
+
+      const statusClass = status === "completed"
+        ? "is-completed"
+        : status === "ready"
+          ? "is-progress"
+          : status === "cancelled"
+            ? "is-cancelled"
+            : "is-warning"
+
+      return `
+        <div class="barber-item">
+          <div>
+            <h3>Pedido ${id}</h3>
+            <p><strong>Cliente:</strong> ${order.clientName || "-"} (${order.clientEmail || "-"})</p>
+            <p><strong>Data:</strong> ${createdAt}</p>
+            <p><strong>Total:</strong> ${total}€</p>
+            <p><strong>Estado:</strong> <span class="status-pill ${statusClass}">${statusLabel}</span></p>
+            <div style="margin-top: 0.5rem;">
+              ${items.map((item) => `<p style="margin: 0.2rem 0;">${item.qty || 0}x ${item.name || "Produto"} (${Number(item.lineTotal || 0).toFixed(2)}€)</p>`).join("")}
+            </div>
+          </div>
+        </div>
+      `
+    })
+    .join("")
 }
 
 function setupRevenueControls() {
@@ -512,7 +598,7 @@ function getClientFilterValues() {
 }
 
 function filterBarberEntries() {
-  const filters = getBarberFilterValues()
+  const filters = getBarberFilterValues() 
 
   return Object.entries(state.barbers).filter(([, barber]) => {
     if (filters.name && !normalize(barber.name).includes(filters.name)) return false
@@ -613,7 +699,7 @@ function computeBarberStatsFromBookings(barberId) {
   const completedCuts = completed.length
   const ratings = completed
     .map((booking) => Number(booking.rating))
-    .filter((value) => Number.isFinite(value) && value > 0)
+    .filter((value) => Number.isFinite(value) && value > 0.5)
 
   const ratingCount = ratings.length
   const ratingTotal = ratings.reduce((sum, value) => sum + value, 0)
@@ -641,7 +727,7 @@ function renderBarbers() {
       const averageRating = liveStats.averageRating
       return `
         <div class="barber-item">
-          <div>
+          <div class="barber-front">
             <h3>${barber.name || "Barbeiro"}</h3>
             <p><strong>Email:</strong> ${barber.email || "-"}</p>
             <p><strong>Telefone:</strong> ${barber.phone || "-"}</p>
@@ -649,6 +735,8 @@ function renderBarbers() {
             <p><strong>Horário:</strong> ${barber.workingHours?.start || "09:00"} - ${barber.workingHours?.end || "19:00"}</p>
             <p><strong>Almoço:</strong> ${barber.lunchBreak?.start || "13:00"} - ${barber.lunchBreak?.end || "14:00"}</p>
             <p><strong>Dias:</strong> ${days}</p>
+          </div>
+          <div class="barber-back" style="margin-top: 8px;">
             <p><strong>Cortes concluídos:</strong> ${completedCuts}</p>
             <p><strong>Nota média:</strong> ${averageRating > 0 ? averageRating.toFixed(1) : "0.0"} / 5 (${ratingCount})</p>
           </div>
@@ -674,18 +762,6 @@ function renderBarbers() {
       const id = button.getAttribute("data-barber-id")
       if (!id) return
       window.deleteBarber(id)
-    })
-  })
-
-  // attach toggle to show/hide barber-back on name click
-  container.querySelectorAll('.barber-item > div > h3').forEach((h3) => {
-    h3.style.cursor = 'pointer'
-    h3.addEventListener('click', () => {
-      const parent = h3.closest('.barber-item')
-      if (!parent) return
-      const back = parent.querySelector('.barber-back')
-      if (!back) return
-      back.style.display = back.style.display === 'none' ? '' : 'none'
     })
   })
 }
@@ -981,7 +1057,6 @@ function setupPromotionForm() {
 function setupProductForm() {
   const form = document.getElementById("productForm")
   const cancelBtn = document.getElementById("productCancelEditBtn")
-  const seedBtn = document.getElementById("seedProductsBtn")
   if (!form || !cancelBtn) return
 
   if (!form.dataset.bound) {
@@ -1544,6 +1619,13 @@ function loadProducts() {
   onValue(ref(database, "products"), (snapshot) => {
     state.products = snapshot.exists() ? snapshot.val() : {}
     renderProducts()
+  })
+}
+
+function loadOrders() {
+  onValue(ref(database, "orders"), (snapshot) => {
+    state.orders = snapshot.exists() ? snapshot.val() : {}
+    renderOrders()
   })
 }
 
@@ -2269,6 +2351,7 @@ setupRevenueControls()
 setupPromotionForm()
 setupProductForm()
 setupSpecialScheduleManager()
+renderOrders()
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
@@ -2285,6 +2368,7 @@ onAuthStateChanged(auth, async (user) => {
   loadClients()
   loadPromotions()
   loadProducts()
+  loadOrders()
   loadStoreSettings()
 })
 

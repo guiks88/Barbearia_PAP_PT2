@@ -49,7 +49,6 @@
             <button class="tab-link active" data-tab="team">Início</button>
             <button class="tab-link" data-tab="about">Sobre Nós</button>
             <button class="tab-link" data-tab="prices">Preços dos cabeleiros</button>
-            <button class="tab-link" data-tab="products">Nossos produtos</button>
             <button class="tab-link" data-tab="location">Localização</button>
         </div>
     </nav>
@@ -134,6 +133,42 @@
 
                 <h2 class="section-title" style="margin-top: 2rem;">Produtos em alta</h2>
                 <div class="products-grid" id="featuredProductsGrid" aria-label="Produtos em alta"></div>
+
+                <h2 class="section-title" style="margin-top: 2rem;" id="shop">Loja</h2>
+                <div class="shop-layout" aria-label="Loja">
+                    <div class="shop-products">
+                        <div class="shop-toolbar">
+                            <div class="shop-search">
+                                <i class="bi bi-search" aria-hidden="true"></i>
+                                <input type="search" id="shopSearchInput" placeholder="Pesquisar produtos" aria-label="Pesquisar produtos">
+                            </div>
+                            <select id="shopSortSelect" aria-label="Ordenar produtos">
+                                <option value="featured">Mais vendidos</option>
+                                <option value="price-asc">Preço (baixo &gt; alto)</option>
+                                <option value="price-desc">Preço (alto &gt; baixo)</option>
+                                <option value="name">Nome</option>
+                            </select>
+                        </div>
+                        <div class="products-grid" id="shopProductsGrid" aria-label="Produtos da loja"></div>
+                    </div>
+                    <aside class="shop-cart">
+                        <h3>O teu carrinho</h3>
+                        <div id="cartEmpty" class="cart-empty">Sem produtos no carrinho.</div>
+                        <div id="cartItems" class="cart-items"></div>
+                        <div class="cart-summary">
+                            <div class="cart-row">
+                                <span>Subtotal</span>
+                                <strong id="cartSubtotal">0.00€</strong>
+                            </div>
+                            <div class="cart-row">
+                                <span>Total</span>
+                                <strong id="cartTotal">0.00€</strong>
+                            </div>
+                            <p class="cart-note">Pagamento na loja.</p>
+                            <button type="button" class="btn btn-primary" id="cartCheckoutBtn">Finalizar pedido</button>
+                        </div>
+                    </aside>
+                </div>
 
                 <h2 class="section-title" style="margin-top: 2rem;">Cortes de Cabelo</h2>
                 <div class="cuts-grid">
@@ -308,12 +343,6 @@
                         </div>
                     </div>
                 </div>
-            </div>
-
-            <!-- Products Tab -->
-            <div id="products" class="tab-content">
-                <h2 class="section-title">Nossos produtos</h2>
-                <div class="products-grid" id="allProductsGrid" aria-label="Galeria de produtos"></div>
             </div>
 
             <!-- Location Tab -->
