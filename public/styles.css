@@ -556,6 +556,9 @@ main {
   box-shadow: var(--shadow-sm);
   position: sticky;
   top: 1.5rem;
+  align-self: start;
+  max-height: calc(100vh - 2.5rem);
+  overflow: auto;
 }
 
 .shop-cart h3 {
@@ -686,6 +689,7 @@ main {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+  flex: 1;
 }
 
 .product-name {
@@ -726,10 +730,12 @@ main {
   color: var(--color-text-secondary);
   font-size: 0.8rem;
   text-decoration: line-through;
+  min-height: 1.2em;
 }
 
 .product-add {
-  margin-top: 0.5rem;
+  margin-top: auto;
+  width: 100%;
 }
 
 .product-empty {
