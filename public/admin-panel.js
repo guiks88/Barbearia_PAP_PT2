@@ -1768,7 +1768,17 @@ window.editProduct = (id) => {
 
   activateAdminTab("products")
   const formBtn = document.getElementById("productFormTabBtn")
-  if (formBtn) formBtn.click()
+  const listBtn = document.getElementById("productListTabBtn")
+  const formPanel = document.getElementById("productFormPanel")
+  const listPanel = document.getElementById("productListPanel")
+  if (formPanel && listPanel) {
+    formPanel.style.display = ""
+    listPanel.style.display = "none"
+  }
+  formBtn?.classList.add("btn-primary")
+  formBtn?.classList.remove("btn-secondary")
+  listBtn?.classList.add("btn-secondary")
+  listBtn?.classList.remove("btn-primary")
 
   editingProductId = id
   const name = document.getElementById("productName")
