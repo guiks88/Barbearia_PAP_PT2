@@ -8,10 +8,6 @@ let barberName = null
 let barberEmail = null
 let allBookings = []
 let currentViewMode = "today"
-const activeFilters = {
-  date: true,
-  client: false,
-}
 
 function clearBarberSession() {
   sessionStorage.removeItem("barberId")
@@ -110,36 +106,19 @@ function toDateInputValue(dateObj) {
 
 function getFilterElements() {
   return {
-    toggleDateFilterBtn: document.getElementById("toggleDateFilterBtn"),
-    toggleClientFilterBtn: document.getElementById("toggleClientFilterBtn"),
-    dateFilterGroup: document.getElementById("dateFilterGroup"),
-    clientFilterGroup: document.getElementById("clientFilterGroup"),
     dateFromInput: document.getElementById("dateFrom"),
     dateToInput: document.getElementById("dateTo"),
-    clientSearchInput: document.getElementById("clientSearch"),
+    timeFromInput: document.getElementById("timeFrom"),
+    timeToInput: document.getElementById("timeTo"),
+    clientSearchNameInput: document.getElementById("clientSearchName"),
+    clientSearchEmailInput: document.getElementById("clientSearchEmail"),
+    clientSearchPhoneInput: document.getElementById("clientSearchPhone"),
+    serviceSearchInput: document.getElementById("serviceSearch"),
   }
 }
 
 function syncFilterControlsUI() {
-  const { toggleDateFilterBtn, toggleClientFilterBtn, dateFilterGroup, clientFilterGroup } = getFilterElements()
-
-  if (toggleDateFilterBtn) {
-    toggleDateFilterBtn.classList.toggle("active-filter", activeFilters.date)
-    toggleDateFilterBtn.setAttribute("aria-pressed", activeFilters.date ? "true" : "false")
-  }
-
-  if (toggleClientFilterBtn) {
-    toggleClientFilterBtn.classList.toggle("active-filter", activeFilters.client)
-    toggleClientFilterBtn.setAttribute("aria-pressed", activeFilters.client ? "true" : "false")
-  }
-
-  if (dateFilterGroup) {
-    dateFilterGroup.classList.toggle("hidden", !activeFilters.date)
-  }
-
-  if (clientFilterGroup) {
-    clientFilterGroup.classList.toggle("hidden", !activeFilters.client)
-  }
+  return
 }
 
 function getTodayWeekMonthRanges() {
@@ -197,14 +176,15 @@ function setDateRangeForMode(mode) {
 }
 
 function getDateRangeForFilter() {
-  if (!activeFilters.date) return null
-
   const fromInput = document.getElementById("dateFrom")
   const toInput = document.getElementById("dateTo")
-  if (!fromInput || !toInput || !fromInput.value || !toInput.value) return null
+  if (!fromInput || !toInput || (!fromInput.value && !toInput.value)) return null
 
-  const start = getDateOnly(fromInput.value)
-  const end = getDateOnly(toInput.value)
+  const fallbackStart = fromInput.value || toInput.value
+  const fallbackEnd = toInput.value || fromInput.value
+
+  const start = getDateOnly(fallbackStart)
+  const end = getDateOnly(fallbackEnd)
   end.setHours(23, 59, 59, 999)
 
   if (start > end) {
@@ -268,9 +248,19 @@ function sortBookingsByClosestExecution(bookings) {
 // Exibir marcações filtradas por intervalo e pesquisa
 function displayBookings() {
   const container = document.getElementById("appointmentsContainer")
-  const queryInput = document.getElementById("clientSearch")
+  const nameInput = document.getElementById("clientSearchName")
+  const emailInput = document.getElementById("clientSearchEmail")
+  const phoneInput = document.getElementById("clientSearchPhone")
+  const serviceInput = document.getElementById("serviceSearch")
+  const timeFromInput = document.getElementById("timeFrom")
+  const timeToInput = document.getElementById("timeTo")
   const pendingOnlyCheckbox = document.getElementById("pendingOnlyCheckbox")
-  const searchValue = activeFilters.client ? normalizeText(queryInput?.value) : ""
+  const nameSearch = normalizeText(nameInput?.value)
+  const emailSearch = normalizeText(emailInput?.value)
+  const phoneSearch = normalizeText(phoneInput?.value)
+  const serviceSearch = normalizeText(serviceInput?.value)
+  const timeFrom = timeFromInput?.value || ""
+  const timeTo = timeToInput?.value || ""
   const pendingOnly = !!pendingOnlyCheckbox?.checked
   const dateRange = getDateRangeForFilter()
 
@@ -283,12 +273,27 @@ function displayBookings() {
     })
   }
 
-  if (searchValue) {
+  if (nameSearch || emailSearch || phoneSearch || serviceSearch) {
     filteredBookings = filteredBookings.filter((booking) => {
-      const haystack = [booking.clientName, booking.clientEmail, booking.clientPhone, booking.service]
-        .map((value) => normalizeText(value))
-        .join(" ")
-      return haystack.includes(searchValue)
+      const nameValue = normalizeText(booking.clientName)
+      const emailValue = normalizeText(booking.clientEmail)
+      const phoneValue = normalizeText(booking.clientPhone)
+      const serviceValue = normalizeText(formatServiceName(booking.service))
+      if (nameSearch && !nameValue.includes(nameSearch)) return false
+      if (emailSearch && !emailValue.includes(emailSearch)) return false
+      if (phoneSearch && !phoneValue.includes(phoneSearch)) return false
+      if (serviceSearch && !serviceValue.includes(serviceSearch)) return false
+      return true
+    })
+  }
+
+  if (timeFrom || timeTo) {
+    filteredBookings = filteredBookings.filter((booking) => {
+      const bookingTime = String(booking.time || "")
+      if (!bookingTime) return false
+      if (timeFrom && bookingTime < timeFrom) return false
+      if (timeTo && bookingTime > timeTo) return false
+      return true
     })
   }
 
@@ -309,18 +314,18 @@ function displayBookings() {
   if (filteredBookings.length === 0) {
     let emptyMessage = "Não há marcações com os filtros atuais"
 
-    if (searchValue) {
+    if (nameSearch || emailSearch || phoneSearch || serviceSearch) {
       emptyMessage = "Nenhuma marcação encontrada para a pesquisa aplicada"
     } else if (pendingOnly) {
       emptyMessage = "Não há marcações por concluir para os filtros aplicados"
-    } else if (activeFilters.date) {
+    } else if (dateRange) {
       emptyMessage = "Não há marcações no intervalo selecionado"
     }
 
     container.innerHTML = `
       <div class="no-appointments">
         <p>${emptyMessage}</p>
-        <p style="font-size: 0.9rem; color: #999;">Ajuste o intervalo ou a pesquisa para tentar novamente.</p>
+        <p style="font-size: 0.9rem; color: #999;">Ajuste os filtros para tentar novamente.</p>
       </div>
     `
     return
@@ -695,10 +700,10 @@ function setupStatsFilters() {
       const mode = card.dataset.viewMode
       if (!mode) return
 
-      if (currentViewMode === mode && activeFilters.date) {
-        activeFilters.date = false
-        const dateFromInput = document.getElementById("dateFrom")
-        const dateToInput = document.getElementById("dateTo")
+      const dateFromInput = document.getElementById("dateFrom")
+      const dateToInput = document.getElementById("dateTo")
+      const hasDateRange = Boolean(dateFromInput?.value || dateToInput?.value)
+      if (currentViewMode === mode && hasDateRange) {
         if (dateFromInput) dateFromInput.value = ""
         if (dateToInput) dateToInput.value = ""
         setActiveStatCard(null)
@@ -709,9 +714,8 @@ function setupStatsFilters() {
         return
       }
 
-      currentViewMode = mode
-      activeFilters.date = true
-      setDateRangeForMode(mode)
+        currentViewMode = mode
+        setDateRangeForMode(mode)
       setActiveStatCard(mode)
       syncFilterControlsUI()
       updateViewModeLabel()
@@ -730,59 +734,25 @@ function setupStatsFilters() {
 
 function setupSearchAndRangeFilters() {
   const {
-    toggleDateFilterBtn,
-    toggleClientFilterBtn,
     dateFromInput,
     dateToInput,
-    clientSearchInput,
+    timeFromInput,
+    timeToInput,
+    clientSearchNameInput,
+    clientSearchEmailInput,
+    clientSearchPhoneInput,
+    serviceSearchInput,
   } = getFilterElements()
   const pendingOnlyCheckbox = document.getElementById("pendingOnlyCheckbox")
-
-  const setTodayDateRange = () => {
-    const { todayStart, todayEnd } = getTodayWeekMonthRanges()
-    setDateRangeInputs(todayStart, todayEnd)
-  }
-
-  if (toggleDateFilterBtn) {
-    toggleDateFilterBtn.addEventListener("click", () => {
-      activeFilters.date = !activeFilters.date
-
-      if (activeFilters.date) {
-        currentViewMode = "today"
-        setActiveStatCard("today")
-        if (!dateFromInput?.value || !dateToInput?.value) {
-          setTodayDateRange()
-        }
-      } else {
-        if (dateFromInput) dateFromInput.value = ""
-        if (dateToInput) dateToInput.value = ""
-        setActiveStatCard(null)
-        currentViewMode = "range"
-      }
-
-      syncFilterControlsUI()
-      updateViewModeLabel()
-      displayBookings()
-    })
-  }
-
-  if (toggleClientFilterBtn) {
-    toggleClientFilterBtn.addEventListener("click", () => {
-      activeFilters.client = !activeFilters.client
-      if (!activeFilters.client && clientSearchInput) {
-        clientSearchInput.value = ""
-      }
-
-      syncFilterControlsUI()
-      displayBookings()
-    })
-  }
-
-  if (clientSearchInput) {
-    clientSearchInput.addEventListener("input", () => {
-      displayBookings()
-    })
-  }
+  ;[
+    clientSearchNameInput,
+    clientSearchEmailInput,
+    clientSearchPhoneInput,
+    serviceSearchInput,
+  ].forEach((input) => {
+    if (!input) return
+    input.addEventListener("input", () => displayBookings())
+  })
 
   if (pendingOnlyCheckbox) {
     pendingOnlyCheckbox.addEventListener("change", () => {
@@ -792,7 +762,6 @@ function setupSearchAndRangeFilters() {
 
   if (dateFromInput) {
     dateFromInput.addEventListener("change", () => {
-      activeFilters.date = true
       currentViewMode = "range"
       setActiveStatCard(null)
       syncFilterControlsUI()
@@ -803,7 +772,6 @@ function setupSearchAndRangeFilters() {
 
   if (dateToInput) {
     dateToInput.addEventListener("change", () => {
-      activeFilters.date = true
       currentViewMode = "range"
       setActiveStatCard(null)
       syncFilterControlsUI()
@@ -811,6 +779,9 @@ function setupSearchAndRangeFilters() {
       displayBookings()
     })
   }
+
+  if (timeFromInput) timeFromInput.addEventListener("change", () => displayBookings())
+  if (timeToInput) timeToInput.addEventListener("change", () => displayBookings())
 }
 
 function setActiveStatCard(mode) {
@@ -823,7 +794,8 @@ function updateViewModeLabel() {
   const label = document.getElementById("viewModeLabel")
   if (!label) return
 
-  if (!activeFilters.date) {
+  const hasDateRange = Boolean(document.getElementById("dateFrom")?.value || document.getElementById("dateTo")?.value)
+  if (!hasDateRange) {
     label.textContent = "A mostrar: todas as marcações (sem filtro de datas)"
     return
   }

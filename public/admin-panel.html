@@ -179,6 +179,14 @@
                         <label for="bookingDateTo">Data até</label>
                         <input type="date" id="bookingDateTo">
                     </div>
+                    <div class="form-group">
+                        <label for="bookingTimeFrom">Hora de</label>
+                        <input type="time" id="bookingTimeFrom">
+                    </div>
+                    <div class="form-group">
+                        <label for="bookingTimeTo">Hora até</label>
+                        <input type="time" id="bookingTimeTo">
+                    </div>
                 </div>
                 <div id="allBookingsList"></div>
             </div>
@@ -403,6 +411,11 @@
                             <input type="url" id="productImage" placeholder="https://...">
                         </div>
                         <div class="form-group">
+                            <label for="productImageFile">Imagem (ficheiro)</label>
+                            <input type="file" id="productImageFile" accept="image/*">
+                            <small style="color: var(--color-text-secondary); font-size: 0.85rem;">Pode escolher imagem do PC, telemóvel ou tablet.</small>
+                        </div>
+                        <div class="form-group">
                             <label for="productStock">Stock</label>
                             <input type="number" id="productStock" min="0" step="1" value="0">
                         </div>
@@ -446,8 +459,24 @@
                 <h2>Pedidos</h2>
                 <div class="filter-grid">
                     <div class="form-group">
-                        <label for="orderSearch">Pesquisar</label>
-                        <input type="text" id="orderSearch" placeholder="ID, nome ou email">
+                        <label for="orderSearchId">ID</label>
+                        <input type="text" id="orderSearchId" placeholder="Pesquisar por ID">
+                    </div>
+                    <div class="form-group">
+                        <label for="orderSearchName">Nome</label>
+                        <input type="text" id="orderSearchName" placeholder="Pesquisar por nome">
+                    </div>
+                    <div class="form-group">
+                        <label for="orderSearchEmail">Email</label>
+                        <input type="text" id="orderSearchEmail" placeholder="Pesquisar por email">
+                    </div>
+                    <div class="form-group">
+                        <label for="orderSearchPhone">Telefone</label>
+                        <input type="text" id="orderSearchPhone" placeholder="Pesquisar por telefone">
+                    </div>
+                    <div class="form-group">
+                        <label for="orderSearchProducts">Produtos</label>
+                        <input type="text" id="orderSearchProducts" placeholder="Ex: pomada, shampoo">
                     </div>
                     <div class="form-group">
                         <label for="orderStatus">Estado</label>

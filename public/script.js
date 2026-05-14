@@ -831,6 +831,10 @@ function setupTeamSchedulesListener() {
   teamSchedulesListenerBound = true
   onValue(ref(database, 'barbers'), () => {
     initTeamSchedules()
+    const members = document.querySelectorAll('.team-member[data-barber-name]')
+    if (members.length) {
+      loadTeamStatsFromBarbersFallback(members)
+    }
   })
 }
 
@@ -1246,18 +1250,21 @@ function renderCart() {
   const emptyEl = document.getElementById('cartEmpty')
   const subtotalEl = document.getElementById('cartSubtotal')
   const totalEl = document.getElementById('cartTotal')
+  const summaryEl = document.getElementById('cartSummary')
   if (!itemsEl || !subtotalEl || !totalEl || !emptyEl) return
 
   const items = Object.values(cartState)
   if (!items.length) {
     itemsEl.innerHTML = ''
     emptyEl.style.display = 'block'
+    if (summaryEl) summaryEl.style.display = 'none'
     subtotalEl.textContent = formatEuro(0)
     totalEl.textContent = formatEuro(0)
     return
   }
 
   emptyEl.style.display = 'none'
+  if (summaryEl) summaryEl.style.display = ''
   let subtotal = 0
 
   itemsEl.innerHTML = items

@@ -41,8 +41,6 @@
                 <h2>Pedidos</h2>
                 <div class="filters-wrapper">
                     <div class="filters-tools">
-                        <button class="btn btn-secondary btn-small filter-toggle-btn" id="toggleDateFilterBtn" type="button">Entre datas</button>
-                        <button class="btn btn-secondary btn-small filter-toggle-btn" id="toggleClientFilterBtn" type="button">Filtrar por nome, email e telefone</button>
                         <label class="pending-only-toggle" for="pendingOnlyCheckbox">
                             <input type="checkbox" id="pendingOnlyCheckbox">
                             Ver só por concluir
@@ -50,17 +48,36 @@
                     </div>
 
                     <div class="filters-row">
-                        <div class="filter-group hidden" id="clientFilterGroup">
-                            <label for="clientSearch">Cliente:</label>
-                            <input type="text" id="clientSearch" placeholder="Nome, email ou telefone">
+                        <div class="filter-group" id="clientNameFilterGroup">
+                            <label for="clientSearchName">Nome:</label>
+                            <input type="text" id="clientSearchName" placeholder="Nome do cliente">
                         </div>
+                        <div class="filter-group" id="clientEmailFilterGroup">
+                            <label for="clientSearchEmail">Email:</label>
+                            <input type="text" id="clientSearchEmail" placeholder="Email do cliente">
+                        </div>
+                        <div class="filter-group" id="clientPhoneFilterGroup">
+                            <label for="clientSearchPhone">Telefone:</label>
+                            <input type="text" id="clientSearchPhone" placeholder="Telefone do cliente">
+                        </div>
+                        <div class="filter-group" id="serviceFilterGroup">
+                            <label for="serviceSearch">Serviço:</label>
+                            <input type="text" id="serviceSearch" placeholder="Serviço">
+                        </div>
+                    </div>
 
-                        <div class="filter-group hidden" id="dateFilterGroup">
-                            <label for="dateFrom">De:</label>
+                    <div class="filters-row">
+                        <div class="filter-group" id="dateFilterGroup">
+                            <label for="dateFrom">Data de:</label>
                             <input type="date" id="dateFrom">
-
-                            <label for="dateTo">Até:</label>
+                            <label for="dateTo">Data até:</label>
                             <input type="date" id="dateTo">
+                        </div>
+                        <div class="filter-group" id="timeFilterGroup">
+                            <label for="timeFrom">Hora de:</label>
+                            <input type="time" id="timeFrom">
+                            <label for="timeTo">Hora até:</label>
+                            <input type="time" id="timeTo">
                         </div>
                     </div>
                 </div>

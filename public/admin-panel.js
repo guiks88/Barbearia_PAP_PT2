@@ -1,8 +1,8 @@
-import { auth, database, firebaseConfig, firestore, AUTH_ACTION_URL } from "./firebase-config.js"
+﻿import { auth, database, firebaseConfig, firestore, AUTH_ACTION_URL } from "./firebase-config.js"
 import { ref, set, onValue, remove, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js"
 import { getAuth, createUserWithEmailAndPassword, onAuthStateChanged, sendEmailVerification, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
-import { doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"
+import { doc, setDoc, serverTimestamp, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"
 import {
   formatPhoneNumber,
   validatePhoneNumber,
@@ -33,7 +33,7 @@ const SERVICE_NAMES = {
   completo: "Pacote Completo",
 }
 
-const DAY_NAMES = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
+const DAY_NAMES = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "SÃ¡b"]
 
 const state = {
   barbers: {},
@@ -50,6 +50,7 @@ let editingProductId = null
 let editingBarberId = null
 let barberModalEscBound = false
 let revenueViewMode = 'barber' // 'barber' or 'service'
+let syncingBarberStats = false
 
 function normalize(value) {
   return String(value || "").toLowerCase().trim()
@@ -76,6 +77,14 @@ function isDateInRange(dateLike, fromLike, toLike) {
 
 function toTimeValue(hour, minute) {
   return `${hour}:${minute}`
+}
+
+function normalizeBarberEmail(emailValue) {
+  const raw = String(emailValue || "").trim().toLowerCase()
+  if (!raw) return ""
+  const localPart = raw.split("@")[0].replace(/[^a-z0-9._-]/g, "")
+  if (!localPart) return ""
+  return `${localPart}@barberia.pt`
 }
 
 function parseTimeValue(timeValue, fallbackHour = "09", fallbackMinute = "00") {
@@ -373,12 +382,18 @@ function setupFilters() {
     "bookingSearchBarber",
     "bookingDateFrom",
     "bookingDateTo",
+    "bookingTimeFrom",
+    "bookingTimeTo",
     "clientSearchName",
     "clientSearchEmail",
     "clientSearchPhone",
     "clientDateFrom",
     "clientDateTo",
-    "orderSearch",
+    "orderSearchId",
+    "orderSearchName",
+    "orderSearchEmail",
+    "orderSearchPhone",
+    "orderSearchProducts",
     "orderStatus",
     "orderDateFrom",
     "orderDateTo",
@@ -404,7 +419,11 @@ function setupFilters() {
 
 function getOrderFilterValues() {
   return {
-    search: normalize(document.getElementById("orderSearch")?.value),
+    id: normalize(document.getElementById("orderSearchId")?.value),
+    name: normalize(document.getElementById("orderSearchName")?.value),
+    email: normalize(document.getElementById("orderSearchEmail")?.value),
+    phone: normalize(document.getElementById("orderSearchPhone")?.value),
+    products: normalize(document.getElementById("orderSearchProducts")?.value),
     status: normalize(document.getElementById("orderStatus")?.value),
     dateFrom: document.getElementById("orderDateFrom")?.value || "",
     dateTo: document.getElementById("orderDateTo")?.value || "",
@@ -418,10 +437,23 @@ function filterOrderEntries() {
     if (!order) return false
 
     const status = normalize(order.status)
-    const haystack = normalize(`${id} ${order.clientName || ""} ${order.clientEmail || ""}`)
+    const idText = normalize(id)
+    const nameText = normalize(order.clientName)
+    const emailText = normalize(order.clientEmail)
+    const phoneText = normalize(order.clientPhone || order.phone || "")
+    const productNames = (Array.isArray(order.items) ? order.items : [])
+      .map((item) => normalize(item?.name || ""))
+      .join(" ")
+    const productTerms = filters.products
+      ? filters.products.split(",").map((value) => normalize(value)).filter(Boolean)
+      : []
 
     if (filters.status && status !== filters.status) return false
-    if (filters.search && !haystack.includes(filters.search)) return false
+    if (filters.id && !idText.includes(filters.id)) return false
+    if (filters.name && !nameText.includes(filters.name)) return false
+    if (filters.email && !emailText.includes(filters.email)) return false
+    if (filters.phone && !phoneText.includes(filters.phone)) return false
+    if (productTerms.length && !productTerms.every((term) => productNames.includes(term))) return false
 
     const createdDate = String(order.createdAt || "").split("T")[0]
     if ((filters.dateFrom || filters.dateTo) && !isDateInRange(createdDate, filters.dateFrom, filters.dateTo)) {
@@ -474,12 +506,25 @@ function renderOrders() {
         <div class="barber-item">
           <div>
             <h3>Pedido ${id}</h3>
-            <p><strong>Cliente:</strong> ${order.clientName || "-"} (${order.clientEmail || "-"})</p>
+            <p><strong>Nome:</strong> ${order.clientName || "-"}</p>
+            <p><strong>Email:</strong> ${order.clientEmail || "-"}</p>
+            <p><strong>Telefone:</strong> ${order.clientPhone || order.phone || "-"}</p>
             <p><strong>Data:</strong> ${createdAt}</p>
             <p><strong>Total:</strong> ${total}€</p>
             <p><strong>Estado:</strong> <span class="status-pill ${statusClass}">${statusLabel}</span></p>
             <div style="margin-top: 0.5rem;">
               ${items.map((item) => `<p style="margin: 0.2rem 0;">${item.qty || 0}x ${item.name || "Produto"} (${Number(item.lineTotal || 0).toFixed(2)}€)</p>`).join("")}
+            </div>
+            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.75rem;">
+              <select id="orderStatus_${id}" style="min-width:140px;">
+                <option value="pending" ${status === "pending" ? "selected" : ""}>Pendente</option>
+                <option value="ready" ${status === "ready" ? "selected" : ""}>Pronto</option>
+                <option value="completed" ${status === "completed" ? "selected" : ""}>Concluído</option>
+                <option value="cancelled" ${status === "cancelled" ? "selected" : ""}>Cancelado</option>
+              </select>
+              <button class="btn btn-secondary btn-small" onclick="updateOrderStatus('${id}')">Mudar estado</button>
+              <button class="btn btn-primary btn-small" onclick="editOrder('${id}')">Editar</button>
+              <button class="btn btn-danger btn-small" onclick="deleteOrder('${id}')">Eliminar</button>
             </div>
           </div>
         </div>
@@ -488,6 +533,56 @@ function renderOrders() {
     .join("")
 }
 
+window.updateOrderStatus = async (id) => {
+  try {
+    const order = state.orders?.[id]
+    if (!order) return
+    const statusValue = document.getElementById(`orderStatus_${id}`)?.value || "pending"
+    await set(ref(database, `orders/${id}`), {
+      ...order,
+      status: statusValue,
+      updatedAt: new Date().toISOString(),
+    })
+    showSuccess("Estado do pedido atualizado.")
+  } catch (error) {
+    showError("Erro ao atualizar estado do pedido: " + error.message)
+  }
+}
+
+window.editOrder = async (id) => {
+  try {
+    const order = state.orders?.[id]
+    if (!order) return
+
+    const nextName = prompt("Nome do cliente:", order.clientName || "")
+    if (nextName === null) return
+    const nextEmail = prompt("Email do cliente:", order.clientEmail || "")
+    if (nextEmail === null) return
+    const nextPhone = prompt("Telefone do cliente:", order.clientPhone || order.phone || "")
+    if (nextPhone === null) return
+
+    await set(ref(database, `orders/${id}`), {
+      ...order,
+      clientName: String(nextName).trim(),
+      clientEmail: String(nextEmail).trim(),
+      clientPhone: String(nextPhone).trim(),
+      updatedAt: new Date().toISOString(),
+    })
+    showSuccess("Pedido atualizado com sucesso.")
+  } catch (error) {
+    showError("Erro ao editar pedido: " + error.message)
+  }
+}
+
+window.deleteOrder = async (id) => {
+  try {
+    if (!confirm("Tem a certeza que quer eliminar este pedido?")) return
+    await remove(ref(database, `orders/${id}`))
+    showSuccess("Pedido eliminado com sucesso.")
+  } catch (error) {
+    showError("Erro ao eliminar pedido: " + error.message)
+  }
+}
 function setupRevenueControls() {
   // Revenue view mode buttons
   const byBarberBtn = document.getElementById("revenueByBarberBtn")
@@ -584,6 +679,8 @@ function getBookingFilterValues() {
     barber: normalize(document.getElementById("bookingSearchBarber")?.value),
     dateFrom: document.getElementById("bookingDateFrom")?.value || "",
     dateTo: document.getElementById("bookingDateTo")?.value || "",
+    timeFrom: document.getElementById("bookingTimeFrom")?.value || "",
+    timeTo: document.getElementById("bookingTimeTo")?.value || "",
   }
 }
 
@@ -626,6 +723,8 @@ function filterBookingEntries() {
     if ((filters.dateFrom || filters.dateTo) && !isDateInRange(booking.date, filters.dateFrom, filters.dateTo)) {
       return false
     }
+    if (filters.timeFrom && String(booking.time || "") < filters.timeFrom) return false
+    if (filters.timeTo && String(booking.time || "") > filters.timeTo) return false
 
     return true
   })
@@ -666,9 +765,9 @@ function getLifecycleStatus(booking) {
 
 function getExecutionStatus(booking) {
   const value = booking.executionStatus || "pending"
-  if (value === "in_progress") return { label: "A ser concluída", className: "is-progress" }
-  if (value === "completed") return { label: "Concluída", className: "is-completed" }
-  return { label: "Não concluída", className: "is-pending" }
+  if (value === "in_progress") return { label: "A ser concluÃ­da", className: "is-progress" }
+  if (value === "completed") return { label: "ConcluÃ­da", className: "is-completed" }
+  return { label: "NÃ£o concluÃ­da", className: "is-pending" }
 }
 
 function computeBarberStatsFromBookings(barberId) {
@@ -708,6 +807,52 @@ function computeBarberStatsFromBookings(barberId) {
   return { completedCuts, ratingCount, averageRating }
 }
 
+function buildBarberStatsById() {
+  const result = {}
+  Object.keys(state.barbers || {}).forEach((barberId) => {
+    result[barberId] = computeBarberStatsFromBookings(barberId)
+  })
+  return result
+}
+
+async function syncBarberStatsToDatabase() {
+  if (syncingBarberStats) return
+  syncingBarberStats = true
+  try {
+    const statsById = buildBarberStatsById()
+    const updates = Object.entries(statsById).map(async ([barberId, stats]) => {
+      const averageRating = Number((stats.averageRating || 0).toFixed(2))
+      const current = state.barbers?.[barberId] || {}
+      const nextCompleted = stats.completedCuts || 0
+      const nextCount = stats.ratingCount || 0
+      const currentCompleted = Number(current.completedCuts || 0)
+      const currentCount = Number(current.ratingCount || 0)
+      const currentAverage = Number(current.avgRating ?? current.averageRating ?? current.ratingAverage ?? current.notaMedia ?? 0)
+      if (
+        currentCompleted === nextCompleted &&
+        currentCount === nextCount &&
+        Number(currentAverage.toFixed(2)) === averageRating
+      ) {
+        return
+      }
+      await set(ref(database, `barbers/${barberId}`), {
+        ...current,
+        completedCuts: nextCompleted,
+        ratingCount: nextCount,
+        avgRating: averageRating,
+        averageRating,
+        ratingAverage: averageRating,
+        notaMedia: averageRating,
+      })
+    })
+    await Promise.all(updates)
+  } catch (error) {
+    console.warn("Não foi possível sincronizar estatísticas dos barbeiros:", error)
+  } finally {
+    syncingBarberStats = false
+  }
+}
+
 function renderBarbers() {
   const container = document.getElementById("barbersList")
   if (!container) return
@@ -732,13 +877,13 @@ function renderBarbers() {
             <p><strong>Email:</strong> ${barber.email || "-"}</p>
             <p><strong>Telefone:</strong> ${barber.phone || "-"}</p>
             <p><strong>Especialidade:</strong> ${barber.specialty || "-"}</p>
-            <p><strong>Horário:</strong> ${barber.workingHours?.start || "09:00"} - ${barber.workingHours?.end || "19:00"}</p>
-            <p><strong>Almoço:</strong> ${barber.lunchBreak?.start || "13:00"} - ${barber.lunchBreak?.end || "14:00"}</p>
+            <p><strong>HorÃ¡rio:</strong> ${barber.workingHours?.start || "09:00"} - ${barber.workingHours?.end || "19:00"}</p>
+            <p><strong>AlmoÃ§o:</strong> ${barber.lunchBreak?.start || "13:00"} - ${barber.lunchBreak?.end || "14:00"}</p>
             <p><strong>Dias:</strong> ${days}</p>
           </div>
           <div class="barber-back" style="margin-top: 8px;">
-            <p><strong>Cortes concluídos:</strong> ${completedCuts}</p>
-            <p><strong>Nota média:</strong> ${averageRating > 0 ? averageRating.toFixed(1) : "0.0"} / 5 (${ratingCount})</p>
+            <p><strong>Cortes concluÃ­dos:</strong> ${completedCuts}</p>
+            <p><strong>Nota mÃ©dia:</strong> ${averageRating > 0 ? averageRating.toFixed(1) : "0.0"} / 5 (${ratingCount})</p>
           </div>
           <div class="booking-actions">
             <button class="btn btn-secondary" data-action="edit-barber" data-barber-id="${id}">Editar</button>
@@ -788,7 +933,7 @@ function renderBookings() {
   })
 
   if (!entries.length) {
-    container.innerHTML = '<div class="empty-state">Nenhuma marcação encontrada</div>'
+    container.innerHTML = '<div class="empty-state">Nenhuma marcaÃ§Ã£o encontrada</div>'
     return
   }
 
@@ -811,10 +956,10 @@ function renderBookings() {
             <div class="booking-meta-grid">
               <p><strong>Email:</strong> ${booking.clientEmail || "-"}</p>
               <p><strong>Telefone:</strong> ${booking.clientPhone || booking.clientPhoneComplete || "-"}</p>
-              <p><strong>Serviço:</strong> ${serviceName} (${serviceDuration} min)</p>
+              <p><strong>ServiÃ§o:</strong> ${serviceName} (${serviceDuration} min)</p>
               <p><strong>Barbeiro:</strong> ${barberName}</p>
               <p><strong>Data:</strong> ${booking.date ? formatDate(booking.date) : "-"}</p>
-              <p><strong>Horário:</strong> ${booking.time || "-"}</p>
+              <p><strong>HorÃ¡rio:</strong> ${booking.time || "-"}</p>
             </div>
             <div class="status-row">
               ${showLifecycle ? `<span class="status-pill ${lifecycle.className}">${lifecycle.label}</span>` : ""}
@@ -824,14 +969,14 @@ function renderBookings() {
           <div class="booking-actions">
             <button class="btn btn-secondary btn-small" onclick="editBooking('${id}')">Editar</button>
             <select class="inline-select" onchange="setExecutionStatus('${id}', this.value)" ${isInactive ? "disabled" : ""}>
-              <option value="pending" ${execution.className === "is-pending" ? "selected" : ""}>Não concluída</option>
-              <option value="in_progress" ${execution.className === "is-progress" ? "selected" : ""}>A ser concluída</option>
-              <option value="completed" ${execution.className === "is-completed" ? "selected" : ""}>Concluída</option>
+              <option value="pending" ${execution.className === "is-pending" ? "selected" : ""}>NÃ£o concluÃ­da</option>
+              <option value="in_progress" ${execution.className === "is-progress" ? "selected" : ""}>A ser concluÃ­da</option>
+              <option value="completed" ${execution.className === "is-completed" ? "selected" : ""}>ConcluÃ­da</option>
             </select>
             ${booking.status === "cancel_requested" ? `<button class="btn btn-primary btn-small" onclick="approveCancellation('${id}')">Aprovar cancelamento</button>` : ""}
             ${booking.status === "cancel_requested" ? `<button class="btn btn-secondary btn-small" onclick="rejectCancellation('${id}')">Recusar cancelamento</button>` : ""}
             ${canReactivate ? `<button class="btn btn-primary btn-small" onclick="reactivateBooking('${id}')">Reativar</button>` : ""}
-            ${booking.executionStatus === "completed" ? `<button class="btn btn-secondary btn-small" disabled>Concluída</button>` : ""}
+            ${booking.executionStatus === "completed" ? `<button class="btn btn-secondary btn-small" disabled>ConcluÃ­da</button>` : ""}
             ${booking.status === "expired" ? `<button class="btn btn-secondary btn-small" disabled>Expirada</button>` : ""}
             ${canCancel ? `<button class="btn btn-danger btn-small" onclick="deleteBooking('${id}')">Cancelar</button>` : ""}
           </div>
@@ -882,7 +1027,7 @@ function resetPromotionForm() {
 
   editingPromotionId = null
   const saveBtn = document.getElementById("promotionSaveBtn")
-  if (saveBtn) saveBtn.textContent = "Guardar promoção"
+  if (saveBtn) saveBtn.textContent = "Guardar promoÃ§Ã£o"
 }
 
 function renderPromotions() {
@@ -896,7 +1041,7 @@ function renderPromotions() {
   })
 
   if (!entries.length) {
-    container.innerHTML = '<div class="empty-state">Sem promoções registadas</div>'
+    container.innerHTML = '<div class="empty-state">Sem promoÃ§Ãµes registadas</div>'
     return
   }
 
@@ -906,10 +1051,10 @@ function renderPromotions() {
       return `
         <div class="barber-item promotion-item-admin">
           <div>
-            <h3>${promo.title || "Promoção"}</h3>
-            <p><strong>Descrição:</strong> ${promo.description || "-"}</p>
-            <p><strong>Condição:</strong> ${promo.minCompletedCuts || 10} cortes concluídos</p>
-            <p><strong>Prémio:</strong> ${promo.rewardText || "-"}</p>
+            <h3>${promo.title || "PromoÃ§Ã£o"}</h3>
+            <p><strong>DescriÃ§Ã£o:</strong> ${promo.description || "-"}</p>
+            <p><strong>CondiÃ§Ã£o:</strong> ${promo.minCompletedCuts || 10} cortes concluÃ­dos</p>
+            <p><strong>PrÃ©mio:</strong> ${promo.rewardText || "-"}</p>
             <p><strong>Estado:</strong> <span class="status-pill ${isActive ? "is-active" : "is-cancelled"}">${isActive ? "Ativa" : "Inativa"}</span></p>
           </div>
           <div class="booking-actions">
@@ -933,13 +1078,28 @@ function resetProductForm() {
   const promo = document.getElementById("productPromo")
   const sales = document.getElementById("productSales")
   const active = document.getElementById("productActive")
+  const imageFile = document.getElementById("productImageFile")
   const saveBtn = document.getElementById("productSaveBtn")
 
   if (stock) stock.value = "0"
   if (promo) promo.value = "0"
   if (sales) sales.value = "0"
   if (active) active.checked = true
+  if (imageFile) imageFile.value = ""
   if (saveBtn) saveBtn.textContent = "Guardar produto"
+}
+
+function readImageFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    if (!file) {
+      resolve("")
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ""))
+    reader.onerror = () => reject(new Error("Não foi possível ler a imagem selecionada."))
+    reader.readAsDataURL(file)
+  })
 }
 
 function renderProducts() {
@@ -965,11 +1125,16 @@ function renderProducts() {
       const sales = Number(product.salesCount || 0)
       const isActive = product.isActive !== false
       return `
-        <div class="barber-item">
+        <div class="barber-item admin-product-item">
+          <div class="admin-product-media">
+            ${product.imageUrl
+              ? `<img src="${product.imageUrl}" alt="${product.name || "Produto"}" class="admin-product-image">`
+              : `<div class="admin-product-image admin-product-image-placeholder"></div>`}
+          </div>
           <div>
             <h3>${product.name || "Produto"}</h3>
-            <p><strong>Preço:</strong> ${price}€</p>
-            <p><strong>Promoção:</strong> ${promo}%</p>
+            <p><strong>PreÃ§o:</strong> ${price}â‚¬</p>
+            <p><strong>PromoÃ§Ã£o:</strong> ${promo}%</p>
             <p><strong>Stock:</strong> ${stock}</p>
             <p><strong>Vendas:</strong> ${sales}</p>
             <p><strong>Estado:</strong> <span class="status-pill ${isActive ? "is-active" : "is-cancelled"}">${isActive ? "Ativo" : "Inativo"}</span></p>
@@ -1017,7 +1182,7 @@ function setupPromotionForm() {
       const isActive = String(document.getElementById("promotionActive")?.value || "true") === "true"
 
       if (!title || !rewardText || !minCompletedCuts || minCompletedCuts < 1) {
-        showError("Preencha os campos da promoção corretamente.")
+        showError("Preencha os campos da promoÃ§Ã£o corretamente.")
         return
       }
 
@@ -1036,10 +1201,10 @@ function setupPromotionForm() {
 
       try {
         await set(ref(database, `promotions/${id}`), payload)
-        showSuccess(editingPromotionId ? "Promoção atualizada com sucesso!" : "Promoção criada com sucesso!")
+        showSuccess(editingPromotionId ? "PromoÃ§Ã£o atualizada com sucesso!" : "PromoÃ§Ã£o criada com sucesso!")
         resetPromotionForm()
       } catch (error) {
-        showError("Erro ao guardar promoção: " + error.message)
+        showError("Erro ao guardar promoÃ§Ã£o: " + error.message)
       }
     })
   }
@@ -1066,7 +1231,8 @@ function setupProductForm() {
 
       const name = document.getElementById("productName")?.value?.trim() || ""
       const price = Number(document.getElementById("productPrice")?.value || 0)
-      const imageUrl = document.getElementById("productImage")?.value?.trim() || ""
+      const imageUrlInput = document.getElementById("productImage")?.value?.trim() || ""
+      const imageFile = document.getElementById("productImageFile")?.files?.[0] || null
       const stock = Number(document.getElementById("productStock")?.value || 0)
       const promoPercent = Number(document.getElementById("productPromo")?.value || 0)
       const salesCount = Number(document.getElementById("productSales")?.value || 0)
@@ -1074,12 +1240,15 @@ function setupProductForm() {
       const isActive = document.getElementById("productActive")?.checked !== false
 
       if (!name || !Number.isFinite(price) || price <= 0) {
-        showError("Preencha nome e preço do produto.")
+        showError("Preencha nome e preÃ§o do produto.")
         return
       }
 
       const id = editingProductId || `product_${Date.now()}`
       const previous = state.products[id] || {}
+
+      const imageUrlFromFile = await readImageFileAsDataUrl(imageFile)
+      const imageUrl = imageUrlFromFile || imageUrlInput || previous.imageUrl || ""
 
       const payload = {
         name,
@@ -1160,7 +1329,7 @@ function normalizeSpecialSchedules(value) {
 function formatSpecialPeriodLabel(period, key) {
   if (period === "day") return `Dia ${key}`
   if (period === "week") return `Semana ${key}`
-  return `Mês ${key}`
+  return `MÃªs ${key}`
 }
 
 function getSpecialScheduleDefaults(targetValue, barberIdValue) {
@@ -1225,7 +1394,7 @@ function populateSpecialScheduleBarberSelect() {
 
   const entries = Object.entries(state.barbers || {})
   if (!entries.length) {
-    select.innerHTML = "<option value=''>Sem barbeiros disponíveis</option>"
+    select.innerHTML = "<option value=''>Sem barbeiros disponÃ­veis</option>"
     return
   }
 
@@ -1285,7 +1454,7 @@ function renderSpecialSchedulesList() {
   rows.sort((a, b) => `${a.period}-${a.key}`.localeCompare(`${b.period}-${b.key}`))
 
   if (!rows.length) {
-    container.innerHTML = `<div class="empty-state">Sem exceções definidas para ${source.title}.</div>`
+    container.innerHTML = `<div class="empty-state">Sem exceÃ§Ãµes definidas para ${source.title}.</div>`
     return
   }
 
@@ -1295,9 +1464,9 @@ function renderSpecialSchedulesList() {
       <div class="barber-item">
         <div>
           <h3>${source.title}</h3>
-          <p><strong>Período:</strong> ${formatSpecialPeriodLabel(row.period, row.key)}</p>
-          <p><strong>Horário:</strong> ${row.start} - ${row.end}</p>
-          ${row.lunchStart && row.lunchEnd ? `<p><strong>Almoço:</strong> ${row.lunchStart} - ${row.lunchEnd}</p>` : ""}
+          <p><strong>PerÃ­odo:</strong> ${formatSpecialPeriodLabel(row.period, row.key)}</p>
+          <p><strong>HorÃ¡rio:</strong> ${row.start} - ${row.end}</p>
+          ${row.lunchStart && row.lunchEnd ? `<p><strong>AlmoÃ§o:</strong> ${row.lunchStart} - ${row.lunchEnd}</p>` : ""}
         </div>
         <div class="booking-actions">
           <button class="btn btn-danger btn-small" data-action="delete-special-schedule" data-target="${source.target}" data-barber-id="${source.barberId || ""}" data-period="${row.period}" data-key="${row.key}">Remover</button>
@@ -1322,9 +1491,9 @@ function renderSpecialSchedulesList() {
 
       try {
         await remove(ref(database, path))
-        showSuccess("Exceção removida com sucesso!")
+        showSuccess("ExceÃ§Ã£o removida com sucesso!")
       } catch (error) {
-        showError("Erro ao remover exceção: " + error.message)
+        showError("Erro ao remover exceÃ§Ã£o: " + error.message)
       }
     })
   })
@@ -1373,17 +1542,25 @@ function setupSpecialScheduleManager() {
       const lunchEnd = getSelectTime("specialScheduleLunchEndHour", "specialScheduleLunchEndMinute")
 
       if (!selectedReference) {
-        showError("Indique a referência da exceção (dia/semana/mês).")
+        showError("Indique a referÃªncia da exceÃ§Ã£o (dia/semana/mÃªs).")
         return
+      }
+      if (selectedPeriod === "day") {
+        const selectedDate = dateOnly(selectedReference)
+        const today = dateOnly(new Date())
+        if (!selectedDate || !today || selectedDate < today) {
+          showError("NÃ£o Ã© permitido alterar horÃ¡rio de um dia que jÃ¡ passou.")
+          return
+        }
       }
 
       if (timeToMinutes(start) >= timeToMinutes(end)) {
-        showError("O horário de início da exceção deve ser anterior ao fim.")
+        showError("O horÃ¡rio de inÃ­cio da exceÃ§Ã£o deve ser anterior ao fim.")
         return
       }
 
       if (selectedTarget === "barber" && !selectedBarberId) {
-        showError("Selecione um barbeiro para aplicar a exceção.")
+        showError("Selecione um barbeiro para aplicar a exceÃ§Ã£o.")
         return
       }
 
@@ -1404,10 +1581,10 @@ function setupSpecialScheduleManager() {
 
       try {
         await set(ref(database, path), payload)
-        showSuccess("Exceção de horário guardada com sucesso!")
+        showSuccess("ExceÃ§Ã£o de horÃ¡rio guardada com sucesso!")
         reference.value = ""
       } catch (error) {
-        showError("Erro ao guardar exceção de horário: " + error.message)
+        showError("Erro ao guardar exceÃ§Ã£o de horÃ¡rio: " + error.message)
       }
     })
   }
@@ -1465,7 +1642,7 @@ function updateRevenue() {
   const bookings = getRevenueFilteredBookings()
   if (!bookings.length) {
     summaryContainer.innerHTML = ""
-    detailsContainer.innerHTML = '<div class="empty-state">Nenhuma marcação encontrada</div>'
+    detailsContainer.innerHTML = '<div class="empty-state">Nenhuma marcaÃ§Ã£o encontrada</div>'
     return
   }
 
@@ -1487,27 +1664,27 @@ function updateRevenue() {
   const totalBookings = bookings.length
   const label =
     mode === "day"
-      ? "(Período de Dias)"
+      ? "(PerÃ­odo de Dias)"
       : mode === "between-dates"
-        ? "(Período entre datas)"
+        ? "(PerÃ­odo entre datas)"
         : mode === "month"
-          ? "(Período de Mês)"
+          ? "(PerÃ­odo de MÃªs)"
           : mode === "year"
-            ? "(Período de Ano)"
-            : "(Todo o Período)"
+            ? "(PerÃ­odo de Ano)"
+            : "(Todo o PerÃ­odo)"
 
   summaryContainer.innerHTML = `
     <div class="revenue-card">
-      <h3>💰 Faturamento ${label}</h3>
-      <div class="revenue-value success">${totalRevenue.toFixed(2)}€</div>
+      <h3>ðŸ’° Faturamento ${label}</h3>
+      <div class="revenue-value success">${totalRevenue.toFixed(2)}â‚¬</div>
     </div>
     <div class="revenue-card">
-      <h3>Marcações ${label}</h3>
+      <h3>MarcaÃ§Ãµes ${label}</h3>
       <div class="revenue-value">${totalBookings}</div>
     </div>
     <div class="revenue-card">
-      <h3>📊 Média por Marcação</h3>
-      <div class="revenue-value">${(totalRevenue / totalBookings).toFixed(2)}€</div>
+      <h3>ðŸ“Š MÃ©dia por MarcaÃ§Ã£o</h3>
+      <div class="revenue-value">${(totalRevenue / totalBookings).toFixed(2)}â‚¬</div>
     </div>
   `
 
@@ -1521,19 +1698,19 @@ function updateRevenue() {
         details += `
           <div class="barber-item">
             <div><h3>${name}</h3></div>
-            <div style="text-align: right;"><p style="font-size: 1.4rem; font-weight: 800; color: var(--color-success);">${value.toFixed(2)}€</p></div>
+            <div style="text-align: right;"><p style="font-size: 1.4rem; font-weight: 800; color: var(--color-success);">${value.toFixed(2)}â‚¬</p></div>
           </div>
         `
       })
   } else {
-    details += '<h3 style="color: var(--color-text-primary); margin-bottom: 1rem;">Faturamento por Serviço</h3>'
+    details += '<h3 style="color: var(--color-text-primary); margin-bottom: 1rem;">Faturamento por ServiÃ§o</h3>'
     Object.entries(revenueByService)
       .sort((a, b) => b[1] - a[1])
       .forEach(([service, value]) => {
         details += `
           <div class="barber-item">
             <div><h3>${service}</h3></div>
-            <div style="text-align: right;"><p style="font-size: 1.4rem; font-weight: 800; color: var(--color-accent);">${value.toFixed(2)}€</p></div>
+            <div style="text-align: right;"><p style="font-size: 1.4rem; font-weight: 800; color: var(--color-accent);">${value.toFixed(2)}â‚¬</p></div>
           </div>
         `
       })
@@ -1578,7 +1755,7 @@ function loadBarbers() {
           start: fallbackLunch.start,
           end: fallbackLunch.end,
         }).catch((error) => {
-          console.error(`Erro ao gravar hora de almoço para barbeiro ${id}:`, error)
+          console.error(`Erro ao gravar hora de almoÃ§o para barbeiro ${id}:`, error)
         })
       })
     }
@@ -1589,6 +1766,7 @@ function loadBarbers() {
     renderBarbers()
     renderBookings()
     updateRevenue()
+    syncBarberStatsToDatabase()
   })
 }
 
@@ -1598,6 +1776,7 @@ function loadBookings() {
     renderBarbers()
     renderBookings()
     updateRevenue()
+    syncBarberStatsToDatabase()
   })
 }
 
@@ -1716,7 +1895,7 @@ function openBarberForm(barber = null, barberId = null) {
   const passwordInput = document.getElementById("barberPassword")
 
   if (title) title.textContent = "Editar Barbeiro"
-  if (submitBtn) submitBtn.textContent = "Guardar Alterações"
+  if (submitBtn) submitBtn.textContent = "Guardar AlteraÃ§Ãµes"
   if (passwordGroup) passwordGroup.classList.add("hidden")
   if (passwordInput) {
     passwordInput.required = false
@@ -1745,7 +1924,7 @@ function closeBarberForm() {
 window.editBarber = (id) => {
   const barber = state.barbers[id]
   if (!barber) {
-    showError("Barbeiro não encontrado.")
+    showError("Barbeiro nÃ£o encontrado.")
     return
   }
 
@@ -1758,7 +1937,7 @@ window.editBarber = (id) => {
 window.editPromotion = (id) => {
   const promo = state.promotions[id]
   if (!promo) {
-    showError("Promoção não encontrada.")
+    showError("PromoÃ§Ã£o nÃ£o encontrada.")
     return
   }
 
@@ -1775,15 +1954,28 @@ window.editPromotion = (id) => {
   if (rewardText) rewardText.value = promo.rewardText || ""
   if (description) description.value = promo.description || ""
   if (active) active.value = promo.isActive === false ? "false" : "true"
-  if (saveBtn) saveBtn.textContent = "Atualizar promoção"
+  if (saveBtn) saveBtn.textContent = "Atualizar promoÃ§Ã£o"
 
+  activateAdminTab("promotions")
+  const formBtn = document.getElementById("promotionFormTabBtn")
+  const listBtn = document.getElementById("promotionListTabBtn")
+  const formPanel = document.getElementById("promotionFormPanel")
+  const listPanel = document.getElementById("promotionListPanel")
+  if (formPanel && listPanel) {
+    formPanel.style.display = ""
+    listPanel.style.display = "none"
+  }
+  formBtn?.classList.add("btn-primary")
+  formBtn?.classList.remove("btn-secondary")
+  listBtn?.classList.add("btn-secondary")
+  listBtn?.classList.remove("btn-primary")
   document.getElementById("promotions-tab")?.scrollIntoView({ behavior: "smooth", block: "start" })
 }
 
 window.editProduct = (id) => {
   const product = state.products[id]
   if (!product) {
-    showError("Produto não encontrado.")
+    showError("Produto nÃ£o encontrado.")
     return
   }
 
@@ -1826,16 +2018,16 @@ window.editProduct = (id) => {
 }
 
 window.deletePromotion = async (id) => {
-  if (!confirm("Tem certeza que deseja eliminar esta promoção?")) return
+  if (!confirm("Tem certeza que deseja eliminar esta promoÃ§Ã£o?")) return
 
   try {
     await remove(ref(database, `promotions/${id}`))
     if (editingPromotionId === id) {
       resetPromotionForm()
     }
-    showSuccess("Promoção eliminada com sucesso!")
+    showSuccess("PromoÃ§Ã£o eliminada com sucesso!")
   } catch (error) {
-    showError("Erro ao eliminar promoção: " + error.message)
+    showError("Erro ao eliminar promoÃ§Ã£o: " + error.message)
   }
 }
 
@@ -1858,6 +2050,11 @@ window.deleteBarber = async (id) => {
 
   try {
     await remove(ref(database, `barbers/${id}`))
+    try {
+      await deleteDoc(doc(firestore, "users", id))
+    } catch (firestoreError) {
+      console.warn("Sem permissÃ£o para eliminar user no Firestore:", firestoreError)
+    }
     showSuccess("Barbeiro eliminado com sucesso!")
   } catch (error) {
     showError("Erro ao eliminar barbeiro: " + error.message)
@@ -1865,10 +2062,15 @@ window.deleteBarber = async (id) => {
 }
 
 window.deleteClient = async (id) => {
-  if (!confirm("Tem certeza que deseja eliminar este cliente? As marcações associadas serão mantidas.")) return
+  if (!confirm("Tem certeza que deseja eliminar este cliente? As marcaÃ§Ãµes associadas serÃ£o mantidas.")) return
 
   try {
     await remove(ref(database, `clients/${id}`))
+    try {
+      await deleteDoc(doc(firestore, "users", id))
+    } catch (firestoreError) {
+      console.warn("Sem permissÃ£o para eliminar user no Firestore:", firestoreError)
+    }
     showSuccess("Cliente eliminado com sucesso!")
   } catch (error) {
     showError("Erro ao eliminar cliente: " + error.message)
@@ -1876,19 +2078,19 @@ window.deleteClient = async (id) => {
 }
 
 window.deleteBooking = async (id) => {
-  if (!confirm("Tem certeza que deseja cancelar esta marcação?")) return
+  if (!confirm("Tem certeza que deseja cancelar esta marcaÃ§Ã£o?")) return
 
   try {
     const bookingRef = ref(database, `bookings/${id}`)
     const snapshot = await get(bookingRef)
     if (!snapshot.exists()) {
-      showError("Marcação não encontrada.")
+      showError("MarcaÃ§Ã£o nÃ£o encontrada.")
       return
     }
 
     const booking = snapshot.val()
     if (booking.executionStatus === "completed" || booking.status === "expired") {
-      showError("Não é possível cancelar uma marcação concluída ou expirada.")
+      showError("NÃ£o Ã© possÃ­vel cancelar uma marcaÃ§Ã£o concluÃ­da ou expirada.")
       return
     }
     await set(bookingRef, {
@@ -1899,9 +2101,9 @@ window.deleteBooking = async (id) => {
       updatedAt: new Date().toISOString(),
     })
 
-    showSuccess("Marcação cancelada com sucesso!")
+    showSuccess("MarcaÃ§Ã£o cancelada com sucesso!")
   } catch (error) {
-    showError("Erro ao cancelar marcação: " + error.message)
+    showError("Erro ao cancelar marcaÃ§Ã£o: " + error.message)
   }
 }
 
@@ -1910,7 +2112,7 @@ window.approveCancellation = async (id) => {
     const bookingRef = ref(database, `bookings/${id}`)
     const snapshot = await get(bookingRef)
     if (!snapshot.exists()) {
-      showError("Marcação não encontrada.")
+      showError("MarcaÃ§Ã£o nÃ£o encontrada.")
       return
     }
 
@@ -1937,7 +2139,7 @@ window.rejectCancellation = async (id) => {
     const bookingRef = ref(database, `bookings/${id}`)
     const snapshot = await get(bookingRef)
     if (!snapshot.exists()) {
-      showError("Marcação não encontrada.")
+      showError("MarcaÃ§Ã£o nÃ£o encontrada.")
       return
     }
 
@@ -1966,7 +2168,7 @@ window.reactivateBooking = async (id) => {
     const bookingRef = ref(database, `bookings/${id}`)
     const snapshot = await get(bookingRef)
     if (!snapshot.exists()) {
-      showError("Marcação não encontrada.")
+      showError("MarcaÃ§Ã£o nÃ£o encontrada.")
       return
     }
 
@@ -1976,12 +2178,12 @@ window.reactivateBooking = async (id) => {
         ...booking,
         status: "expired",
         cancelledBy: "system",
-        cancellationReason: "Data da marcação já passou",
+        cancellationReason: "Data da marcaÃ§Ã£o jÃ¡ passou",
         cancelledAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         updatedBy: "admin",
       })
-      showError("A marcação já passou e foi marcada como expirada.")
+      showError("A marcaÃ§Ã£o jÃ¡ passou e foi marcada como expirada.")
       return
     }
 
@@ -1998,9 +2200,9 @@ window.reactivateBooking = async (id) => {
       updatedBy: "admin",
     })
 
-    showSuccess("Marcação reativada com sucesso!")
+    showSuccess("MarcaÃ§Ã£o reativada com sucesso!")
   } catch (error) {
-    showError("Erro ao reativar marcação: " + error.message)
+    showError("Erro ao reativar marcaÃ§Ã£o: " + error.message)
   }
 }
 
@@ -2010,40 +2212,40 @@ window.editBooking = async (id) => {
     const snapshot = await get(bookingRef)
 
     if (!snapshot.exists()) {
-      showError("Marcação não encontrada.")
+      showError("MarcaÃ§Ã£o nÃ£o encontrada.")
       return
     }
 
     const booking = snapshot.val()
     if (booking.status === "cancelled") {
-      showError("Não é possível editar uma marcação anulada.")
+      showError("NÃ£o Ã© possÃ­vel editar uma marcaÃ§Ã£o anulada.")
       return
     }
 
     const newDate = window.prompt("Nova data (AAAA-MM-DD)", booking.date || "")
     if (!newDate) return
 
-    const newTime = window.prompt("Novo horário (HH:MM)", booking.time || "")
+    const newTime = window.prompt("Novo horÃ¡rio (HH:MM)", booking.time || "")
     if (!newTime) return
 
     if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
-      showError("Data inválida. Use o formato AAAA-MM-DD.")
+      showError("Data invÃ¡lida. Use o formato AAAA-MM-DD.")
       return
     }
 
     if (!/^\d{2}:\d{2}$/.test(newTime)) {
-      showError("Horário inválido. Use o formato HH:MM.")
+      showError("HorÃ¡rio invÃ¡lido. Use o formato HH:MM.")
       return
     }
 
     const newDateTime = new Date(`${newDate}T${newTime}:00`)
     if (Number.isNaN(newDateTime.getTime())) {
-      showError("Data ou horário inválidos.")
+      showError("Data ou horÃ¡rio invÃ¡lidos.")
       return
     }
 
     if (newDateTime < new Date()) {
-      showError("Não é possível mover para uma data no passado.")
+      showError("NÃ£o Ã© possÃ­vel mover para uma data no passado.")
       return
     }
 
@@ -2055,9 +2257,9 @@ window.editBooking = async (id) => {
       updatedBy: "admin",
     })
 
-    showSuccess("Marcação editada com sucesso!")
+    showSuccess("MarcaÃ§Ã£o editada com sucesso!")
   } catch (error) {
-    showError("Erro ao editar marcação: " + error.message)
+    showError("Erro ao editar marcaÃ§Ã£o: " + error.message)
   }
 }
 
@@ -2066,7 +2268,7 @@ window.setExecutionStatus = async (id, statusValue) => {
     const bookingRef = ref(database, `bookings/${id}`)
     const snapshot = await get(bookingRef)
     if (!snapshot.exists()) {
-      showError("Marcação não encontrada.")
+      showError("MarcaÃ§Ã£o nÃ£o encontrada.")
       return
     }
 
@@ -2087,9 +2289,9 @@ window.setExecutionStatus = async (id, statusValue) => {
     }
 
     await set(bookingRef, update)
-    showSuccess("Estado da marcação atualizado!")
+    showSuccess("Estado da marcaÃ§Ã£o atualizado!")
   } catch (error) {
-    showError("Erro ao atualizar estado da marcação: " + error.message)
+    showError("Erro ao atualizar estado da marcaÃ§Ã£o: " + error.message)
   }
 }
 
@@ -2109,7 +2311,7 @@ async function verifyAdminAccess(user) {
     sessionStorage.setItem("adminId", user.uid)
     sessionStorage.setItem("adminName", adminData.name)
     sessionStorage.setItem("isAdmin", "true")
-    document.getElementById("adminNameDisplay").textContent = `Olá, ${adminData.name}`
+    document.getElementById("adminNameDisplay").textContent = `OlÃ¡, ${adminData.name}`
 
     return true
   } catch (error) {
@@ -2119,16 +2321,27 @@ async function verifyAdminAccess(user) {
 }
 
 setupPhoneValidation("barberPhone")
+const barberEmailInput = document.getElementById("barberEmail")
+if (barberEmailInput) {
+  barberEmailInput.addEventListener("blur", () => {
+    barberEmailInput.value = normalizeBarberEmail(barberEmailInput.value)
+  })
+}
 
 document.getElementById("barberForm").addEventListener("submit", async (e) => {
   e.preventDefault()
 
-  const email = document.getElementById("barberEmail").value
+  const email = normalizeBarberEmail(document.getElementById("barberEmail").value)
+  document.getElementById("barberEmail").value = email
   const phone = document.getElementById("barberPhone").value
   const password = document.getElementById("barberPassword").value
+  if (!email) {
+    showError("Email invÃ¡lido. Use apenas o nome antes de @barberia.pt.")
+    return
+  }
 
   if (!validatePhoneNumber(phone)) {
-    showError("Número de telefone inválido. Use 9 dígitos começando com 9.")
+    showError("NÃºmero de telefone invÃ¡lido. Use 9 dÃ­gitos comeÃ§ando com 9.")
     return
   }
 
@@ -2148,22 +2361,22 @@ document.getElementById("barberForm").addEventListener("submit", async (e) => {
   const lunchEndMinutes = timeToMinutes(lunchEndTime)
 
   if (workStartMinutes >= workEndMinutes) {
-    showError("O horário de início deve ser anterior ao horário de fim.")
+    showError("O horÃ¡rio de inÃ­cio deve ser anterior ao horÃ¡rio de fim.")
     return
   }
 
   if (lunchStartMinutes >= lunchEndMinutes) {
-    showError("O início do almoço deve ser anterior ao fim do almoço.")
+    showError("O inÃ­cio do almoÃ§o deve ser anterior ao fim do almoÃ§o.")
     return
   }
 
   if (lunchEndMinutes - lunchStartMinutes !== 60) {
-    showError("A hora de almoço do barbeiro deve ter exatamente 1 hora.")
+    showError("A hora de almoÃ§o do barbeiro deve ter exatamente 1 hora.")
     return
   }
 
   if (lunchStartMinutes < workStartMinutes || lunchEndMinutes > workEndMinutes) {
-    showError("A hora de almoço do barbeiro deve estar dentro do horário de trabalho.")
+    showError("A hora de almoÃ§o do barbeiro deve estar dentro do horÃ¡rio de trabalho.")
     return
   }
 
@@ -2173,7 +2386,7 @@ document.getElementById("barberForm").addEventListener("submit", async (e) => {
   const storeEndMinutes = timeToMinutes(storeOpenEnd)
 
   if (workStartMinutes < storeStartMinutes || workEndMinutes > storeEndMinutes) {
-    showError("O horário do barbeiro deve respeitar o horário da loja.")
+    showError("O horÃ¡rio do barbeiro deve respeitar o horÃ¡rio da loja.")
     return
   }
 
@@ -2215,7 +2428,7 @@ document.getElementById("barberForm").addEventListener("submit", async (e) => {
     if (editingBarberId) {
       const existingSnapshot = await get(ref(database, `barbers/${editingBarberId}`))
       if (!existingSnapshot.exists()) {
-        showError("Barbeiro não encontrado para edição.")
+        showError("Barbeiro nÃ£o encontrado para ediÃ§Ã£o.")
         return
       }
 
@@ -2226,15 +2439,19 @@ document.getElementById("barberForm").addEventListener("submit", async (e) => {
         createdAt: existing.createdAt || new Date().toISOString(),
       })
 
-      await setDoc(
-        doc(firestore, "users", editingBarberId),
-        {
-          fullName: newBarber.name,
-          phone: newBarber.phone,
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true },
-      )
+      try {
+        await setDoc(
+          doc(firestore, "users", editingBarberId),
+          {
+            fullName: newBarber.name,
+            phone: newBarber.phone,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true },
+        )
+      } catch (firestoreError) {
+        console.warn("Sem permissÃ£o para atualizar Firestore users do barbeiro:", firestoreError)
+      }
 
       closeBarberForm()
       showSuccess("Barbeiro atualizado com sucesso!")
@@ -2251,25 +2468,29 @@ document.getElementById("barberForm").addEventListener("submit", async (e) => {
 
     await set(ref(database, `barbers/${barberUid}`), newBarber)
 
-    await setDoc(doc(firestore, "users", barberUid), {
-      uid: barberUid,
-      email,
-      fullName: newBarber.name,
-      role: "barber",
-      roles: ["barber"],
-      birthDate: null,
-      phone: newBarber.phone,
-      isActive: true,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    })
+    try {
+      await setDoc(doc(firestore, "users", barberUid), {
+        uid: barberUid,
+        email,
+        fullName: newBarber.name,
+        role: "barber",
+        roles: ["barber"],
+        birthDate: null,
+        phone: newBarber.phone,
+        isActive: true,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      })
+    } catch (firestoreError) {
+      console.warn("Sem permissÃ£o para criar user no Firestore. Barbeiro criado no Realtime DB/Auth:", firestoreError)
+    }
 
     await signOut(secondaryAuth)
     closeBarberForm()
     showSuccess("Barbeiro adicionado com sucesso!")
   } catch (error) {
     if (error.code === "auth/email-already-in-use") {
-      showError("Este email já está registado no Firebase Auth.")
+      showError("Este email jÃ¡ estÃ¡ registado no Firebase Auth.")
     } else {
       showError("Erro ao adicionar barbeiro: " + error.message)
     }
@@ -2281,7 +2502,7 @@ document.getElementById("storeScheduleForm").addEventListener("submit", async (e
 
   const openDays = Array.from(document.querySelectorAll('#storeOpenDays input[type="checkbox"]:checked')).map((cb) => Number(cb.value))
   if (!openDays.length) {
-    showError("Selecione pelo menos um dia em que a loja está aberta.")
+    showError("Selecione pelo menos um dia em que a loja estÃ¡ aberta.")
     return
   }
 
@@ -2296,17 +2517,17 @@ document.getElementById("storeScheduleForm").addEventListener("submit", async (e
   const storeLunchEndMinutes = timeToMinutes(storeLunchEndTime)
 
   if (storeStartMinutes >= storeEndMinutes) {
-    showError("O horário de abertura da loja deve ser anterior ao fecho.")
+    showError("O horÃ¡rio de abertura da loja deve ser anterior ao fecho.")
     return
   }
 
   if (storeLunchStartMinutes >= storeLunchEndMinutes) {
-    showError("O início do almoço da loja deve ser anterior ao fim do almoço.")
+    showError("O inÃ­cio do almoÃ§o da loja deve ser anterior ao fim do almoÃ§o.")
     return
   }
 
   if (storeLunchStartMinutes < storeStartMinutes || storeLunchEndMinutes > storeEndMinutes) {
-    showError("A pausa de almoço da loja deve estar dentro do horário de abertura.")
+    showError("A pausa de almoÃ§o da loja deve estar dentro do horÃ¡rio de abertura.")
     return
   }
 
@@ -2325,9 +2546,9 @@ document.getElementById("storeScheduleForm").addEventListener("submit", async (e
 
   try {
     await set(ref(database, "storeSettings"), payload)
-    showSuccess("Horário da loja guardado com sucesso!")
+    showSuccess("HorÃ¡rio da loja guardado com sucesso!")
   } catch (error) {
-    showError("Erro ao guardar horário da loja: " + error.message)
+    showError("Erro ao guardar horÃ¡rio da loja: " + error.message)
   }
 })
 
@@ -2338,7 +2559,7 @@ document.getElementById("bookingPriorityCancel")?.addEventListener("change", (ev
   renderBookings()
 })
 
-// Inicializa controles visuais imediatamente para evitar UI sem ação
+// Inicializa controles visuais imediatamente para evitar UI sem aÃ§Ã£o
 setupTopTabs()
 setupScheduleTabs()
 setupPromotionTabs()
@@ -2378,3 +2599,4 @@ document.getElementById("logoutBtn").addEventListener("click", () => {
     window.location.href = "index.html"
   })
 })
+
