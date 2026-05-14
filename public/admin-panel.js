@@ -33,7 +33,7 @@ const SERVICE_NAMES = {
   completo: "Pacote Completo",
 }
 
-const DAY_NAMES = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "SÃ¡b"]
+const DAY_NAMES = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
 
 const state = {
   barbers: {},
@@ -430,6 +430,44 @@ function getOrderFilterValues() {
   }
 }
 
+function setupOrderEditModal() {
+  const modal = document.getElementById("orderEditModal")
+  const closeBtn = document.getElementById("orderEditCloseBtn")
+  const backdrop = document.getElementById("orderEditBackdrop")
+  const form = document.getElementById("orderEditForm")
+  if (!modal || !closeBtn || !backdrop || !form) return
+
+  const closeModal = () => {
+    modal.classList.add("hidden")
+    modal.setAttribute("aria-hidden", "true")
+    document.body.classList.remove("modal-open")
+  }
+
+  closeBtn.addEventListener("click", closeModal)
+  backdrop.addEventListener("click", closeModal)
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault()
+    const id = document.getElementById("orderEditId")?.value || ""
+    const order = state.orders?.[id]
+    if (!id || !order) return
+    try {
+      await set(ref(database, `orders/${id}`), {
+        ...order,
+        clientName: String(document.getElementById("orderEditName")?.value || "").trim(),
+        clientEmail: String(document.getElementById("orderEditEmail")?.value || "").trim(),
+        clientPhone: String(document.getElementById("orderEditPhone")?.value || "").trim(),
+        status: String(document.getElementById("orderEditStatus")?.value || "pending"),
+        updatedAt: new Date().toISOString(),
+      })
+      closeModal()
+      showSuccess("Pedido atualizado com sucesso.")
+    } catch (error) {
+      showError("Erro ao editar pedido: " + error.message)
+    }
+  })
+}
+
 function filterOrderEntries() {
   const filters = getOrderFilterValues()
 
@@ -487,7 +525,7 @@ function renderOrders() {
       const items = Array.isArray(order.items) ? order.items : []
 
       const statusLabel = status === "completed"
-        ? "Concluido"
+        ? "Concluído"
         : status === "ready"
           ? "Pronto"
           : status === "cancelled"
@@ -504,7 +542,8 @@ function renderOrders() {
 
       return `
         <div class="barber-item">
-          <div>
+          <div style="display:flex; justify-content:space-between; gap:1rem; align-items:flex-start; flex-wrap:wrap;">
+            <div style="min-width:260px; flex:1;">
             <h3>Pedido ${id}</h3>
             <p><strong>Nome:</strong> ${order.clientName || "-"}</p>
             <p><strong>Email:</strong> ${order.clientEmail || "-"}</p>
@@ -515,14 +554,14 @@ function renderOrders() {
             <div style="margin-top: 0.5rem;">
               ${items.map((item) => `<p style="margin: 0.2rem 0;">${item.qty || 0}x ${item.name || "Produto"} (${Number(item.lineTotal || 0).toFixed(2)}€)</p>`).join("")}
             </div>
-            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.75rem;">
-              <select id="orderStatus_${id}" style="min-width:140px;">
+            </div>
+            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.75rem; justify-content:flex-end;">
+              <select id="orderStatus_${id}" style="min-width:140px;" onchange="updateOrderStatus('${id}')">
                 <option value="pending" ${status === "pending" ? "selected" : ""}>Pendente</option>
                 <option value="ready" ${status === "ready" ? "selected" : ""}>Pronto</option>
                 <option value="completed" ${status === "completed" ? "selected" : ""}>Concluído</option>
                 <option value="cancelled" ${status === "cancelled" ? "selected" : ""}>Cancelado</option>
               </select>
-              <button class="btn btn-secondary btn-small" onclick="updateOrderStatus('${id}')">Mudar estado</button>
               <button class="btn btn-primary btn-small" onclick="editOrder('${id}')">Editar</button>
               <button class="btn btn-danger btn-small" onclick="deleteOrder('${id}')">Eliminar</button>
             </div>
@@ -550,28 +589,18 @@ window.updateOrderStatus = async (id) => {
 }
 
 window.editOrder = async (id) => {
-  try {
-    const order = state.orders?.[id]
-    if (!order) return
-
-    const nextName = prompt("Nome do cliente:", order.clientName || "")
-    if (nextName === null) return
-    const nextEmail = prompt("Email do cliente:", order.clientEmail || "")
-    if (nextEmail === null) return
-    const nextPhone = prompt("Telefone do cliente:", order.clientPhone || order.phone || "")
-    if (nextPhone === null) return
-
-    await set(ref(database, `orders/${id}`), {
-      ...order,
-      clientName: String(nextName).trim(),
-      clientEmail: String(nextEmail).trim(),
-      clientPhone: String(nextPhone).trim(),
-      updatedAt: new Date().toISOString(),
-    })
-    showSuccess("Pedido atualizado com sucesso.")
-  } catch (error) {
-    showError("Erro ao editar pedido: " + error.message)
-  }
+  const order = state.orders?.[id]
+  if (!order) return
+  const modal = document.getElementById("orderEditModal")
+  if (!modal) return
+  document.getElementById("orderEditId").value = id
+  document.getElementById("orderEditName").value = order.clientName || ""
+  document.getElementById("orderEditEmail").value = order.clientEmail || ""
+  document.getElementById("orderEditPhone").value = order.clientPhone || order.phone || ""
+  document.getElementById("orderEditStatus").value = order.status || "pending"
+  modal.classList.remove("hidden")
+  modal.setAttribute("aria-hidden", "false")
+  document.body.classList.add("modal-open")
 }
 
 window.deleteOrder = async (id) => {
@@ -877,13 +906,13 @@ function renderBarbers() {
             <p><strong>Email:</strong> ${barber.email || "-"}</p>
             <p><strong>Telefone:</strong> ${barber.phone || "-"}</p>
             <p><strong>Especialidade:</strong> ${barber.specialty || "-"}</p>
-            <p><strong>HorÃ¡rio:</strong> ${barber.workingHours?.start || "09:00"} - ${barber.workingHours?.end || "19:00"}</p>
-            <p><strong>AlmoÃ§o:</strong> ${barber.lunchBreak?.start || "13:00"} - ${barber.lunchBreak?.end || "14:00"}</p>
+            <p><strong>Horário:</strong> ${barber.workingHours?.start || "09:00"} - ${barber.workingHours?.end || "19:00"}</p>
+            <p><strong>Almoço:</strong> ${barber.lunchBreak?.start || "13:00"} - ${barber.lunchBreak?.end || "14:00"}</p>
             <p><strong>Dias:</strong> ${days}</p>
           </div>
           <div class="barber-back" style="margin-top: 8px;">
-            <p><strong>Cortes concluÃ­dos:</strong> ${completedCuts}</p>
-            <p><strong>Nota mÃ©dia:</strong> ${averageRating > 0 ? averageRating.toFixed(1) : "0.0"} / 5 (${ratingCount})</p>
+            <p><strong>Cortes concluídos:</strong> ${completedCuts}</p>
+            <p><strong>Nota média:</strong> ${averageRating > 0 ? averageRating.toFixed(1) : "0.0"} / 5 (${ratingCount})</p>
           </div>
           <div class="booking-actions">
             <button class="btn btn-secondary" data-action="edit-barber" data-barber-id="${id}">Editar</button>
@@ -2572,6 +2601,7 @@ setupRevenueControls()
 setupPromotionForm()
 setupProductForm()
 setupSpecialScheduleManager()
+setupOrderEditModal()
 renderOrders()
 
 onAuthStateChanged(auth, async (user) => {

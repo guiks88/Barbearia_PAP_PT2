@@ -499,6 +499,42 @@
                 </div>
                 <div id="ordersList"></div>
             </div>
+            <div class="admin-modal hidden" id="orderEditModal" aria-hidden="true">
+                <div class="admin-modal-backdrop" id="orderEditBackdrop"></div>
+                <div class="card admin-modal-card" role="dialog" aria-modal="true" aria-labelledby="orderEditTitle">
+                    <div class="admin-modal-header">
+                        <h2 id="orderEditTitle">Editar Pedido</h2>
+                        <button type="button" class="btn btn-secondary btn-small" id="orderEditCloseBtn">Fechar</button>
+                    </div>
+                    <form id="orderEditForm">
+                        <input type="hidden" id="orderEditId">
+                        <div class="form-group">
+                            <label for="orderEditName">Nome</label>
+                            <input type="text" id="orderEditName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="orderEditEmail">Email</label>
+                            <input type="email" id="orderEditEmail" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="orderEditPhone">Telefone</label>
+                            <input type="text" id="orderEditPhone">
+                        </div>
+                        <div class="form-group">
+                            <label for="orderEditStatus">Estado</label>
+                            <select id="orderEditStatus">
+                                <option value="pending">Pendente</option>
+                                <option value="ready">Pronto</option>
+                                <option value="completed">Concluído</option>
+                                <option value="cancelled">Cancelado</option>
+                            </select>
+                        </div>
+                        <div class="promotion-form-actions">
+                            <button type="submit" class="btn btn-primary" style="flex: 1;">Guardar alterações</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </section>
 
         <section id="clients-tab" class="tab-content">

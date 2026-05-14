@@ -129,6 +129,42 @@ let shopProductsCache = []
 let cartState = {}
 let productsListenerBound = false
 
+const PAP_FALLBACK_PRODUCTS = [
+  {
+    id: 'pap_pomada_modeladora',
+    name: 'Pomada Modeladora Barberia',
+    description: 'Fixação média com acabamento natural para uso diário.',
+    price: 14.9,
+    promoPercent: 0,
+    stock: 12,
+    salesCount: 8,
+    imageUrl: 'logo-barbearia.png',
+    isActive: true,
+  },
+  {
+    id: 'pap_shampoo_masculino',
+    name: 'Shampoo Masculino Barberia',
+    description: 'Limpeza suave com frescura mentolada para cabelo e couro cabeludo.',
+    price: 11.9,
+    promoPercent: 0,
+    stock: 10,
+    salesCount: 6,
+    imageUrl: 'logo-barbearia.png',
+    isActive: true,
+  },
+  {
+    id: 'pap_oleo_barba',
+    name: 'Óleo de Barba Barberia',
+    description: 'Hidrata, suaviza e dá brilho sem deixar sensação oleosa.',
+    price: 13.5,
+    promoPercent: 0,
+    stock: 9,
+    salesCount: 5,
+    imageUrl: 'logo-barbearia.png',
+    isActive: true,
+  },
+]
+
 function getSafeStock(product) {
   return Math.max(0, Number(product?.stock || 0))
 }
@@ -741,48 +777,23 @@ function initTeamRatings() {
   if (teamStatsListenerBound) return
   teamStatsListenerBound = true
 
-  const fetchAndApplyStats = async () => {
-    try {
-      const snapshot = await get(ref(database, 'bookings'))
-      const stats = {}
-      const bookings = snapshot.exists() ? Object.values(snapshot.val() || {}) : []
-
-      bookings.forEach((booking) => {
-        const barberName = booking?.barberName || booking?.barber || booking?.barberId
-        if (!barberName) return
-
-        const key = normalizePersonName(barberName)
-        if (!stats[key]) {
-          stats[key] = { ratingTotal: 0, ratingCount: 0, completedCuts: 0 }
-        }
-
-        const lifecycle = booking.status || ''
-        const isCancelled = lifecycle === 'cancelled' || lifecycle === 'expired'
-        const isCompleted = booking.executionStatus === 'completed'
-
-        if (isCompleted && !isCancelled) {
-          stats[key].completedCuts += 1
-        }
-
-        const ratingValue = Number(booking.rating)
-          if (isCompleted && !isCancelled && Number.isFinite(ratingValue) && ratingValue > 0.5) {
-          stats[key].ratingTotal += ratingValue
-          stats[key].ratingCount += 1
-        }
-      })
-
-      applyTeamStatsToUi(members, stats)
-    } catch (error) {
-      console.warn('Leitura de bookings indisponivel sem login. A usar fallback de barbeiros.', error)
-      loadTeamStatsFromBarbersFallback(members)
-    }
-  }
-
-  fetchAndApplyStats()
-  if (teamStatsPollIntervalId) clearInterval(teamStatsPollIntervalId)
-  teamStatsPollIntervalId = setInterval(fetchAndApplyStats, 15000)
-
-  loadTeamStatsFromBarbersFallback(members)
+  onValue(ref(database, 'barbers'), (snapshot) => {
+    const entries = snapshot.exists() ? Object.values(snapshot.val() || {}) : []
+    const stats = {}
+    entries.forEach((barber) => {
+      const key = normalizePersonName(barber?.name || barber?.nome || '')
+      if (!key) return
+      const ratingCount = Number(barber?.ratingCount || 0) || 0
+      const averageRating = Number(barber?.avgRating ?? barber?.averageRating ?? barber?.ratingAverage ?? barber?.notaMedia ?? 0) || 0
+      const completedCuts = Number(barber?.completedCuts ?? barber?.totalCuts ?? barber?.cortesFeitos ?? barber?.cutsCount ?? 0) || 0
+      stats[key] = {
+        ratingCount,
+        ratingTotal: ratingCount > 0 ? averageRating * ratingCount : 0,
+        completedCuts,
+      }
+    })
+    applyTeamStatsToUi(members, stats)
+  })
 }
 
 async function initTeamSchedules() {
@@ -1391,13 +1402,16 @@ function loadProducts() {
 
   onValue(ref(database, 'products'), (snapshot) => {
     const products = snapshot.exists() ? snapshot.val() : {}
-    const entries = Object.entries(products)
+    let entries = Object.entries(products)
       .filter(([, product]) => product && product.isActive !== false)
       .map(([id, product]) => ({
         id,
         ...product,
         salesCount: Number(product.salesCount || 0),
       }))
+    if (!entries.length) {
+      entries = [...PAP_FALLBACK_PRODUCTS]
+    }
 
     const featured = [...entries].sort((a, b) => b.salesCount - a.salesCount).slice(0, 5)
     shopProductsCache = [...entries]
