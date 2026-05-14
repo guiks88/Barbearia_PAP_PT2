@@ -1,7 +1,7 @@
 ﻿import { auth, database, firebaseConfig, firestore, AUTH_ACTION_URL } from "./firebase-config.js"
 import { ref, set, onValue, remove, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js"
-import { getAuth, createUserWithEmailAndPassword, onAuthStateChanged, sendEmailVerification, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
+import { getAuth, createUserWithEmailAndPassword, onAuthStateChanged, sendEmailVerification, signOut, getIdToken } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
 import { doc, setDoc, serverTimestamp, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"
 import {
   formatPhoneNumber,
@@ -11,6 +11,7 @@ import {
   showError,
   formatDate,
   SERVICE_DURATION,
+  installMojibakeAutoFix,
 } from "./utils.js"
 
 const secondaryApp = initializeApp(firebaseConfig, "secondary")
@@ -51,6 +52,9 @@ let editingBarberId = null
 let barberModalEscBound = false
 let revenueViewMode = 'barber' // 'barber' or 'service'
 let syncingBarberStats = false
+const DELETE_AUTH_USER_ENDPOINT = `https://europe-west1-${firebaseConfig.projectId}.cloudfunctions.net/deleteFirebaseAuthUser`
+
+installMojibakeAutoFix()
 
 function normalize(value) {
   return String(value || "").toLowerCase().trim()
@@ -98,6 +102,36 @@ function parseTimeValue(timeValue, fallbackHour = "09", fallbackMinute = "00") {
 function timeToMinutes(timeValue) {
   const [hour, minute] = String(timeValue || "00:00").split(":").map(Number)
   return (hour || 0) * 60 + (minute || 0)
+}
+
+function getWeekRangeFromInput(weekValue) {
+  const raw = String(weekValue || "").trim()
+  const match = raw.match(/^(\d{4})-W(\d{2})$/)
+  if (!match) return { from: "", to: "" }
+
+  const year = Number(match[1])
+  const week = Number(match[2])
+  if (!Number.isFinite(year) || !Number.isFinite(week) || week < 1 || week > 53) {
+    return { from: "", to: "" }
+  }
+
+  const jan4 = new Date(year, 0, 4)
+  const jan4Day = jan4.getDay() || 7
+  const mondayWeek1 = new Date(jan4)
+  mondayWeek1.setDate(jan4.getDate() - (jan4Day - 1))
+
+  const monday = new Date(mondayWeek1)
+  monday.setDate(mondayWeek1.getDate() + (week - 1) * 7)
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+
+  const toDateText = (date) =>
+    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
+
+  return {
+    from: toDateText(monday),
+    to: toDateText(sunday),
+  }
 }
 
 function getBookingDateTime(booking) {
@@ -375,11 +409,15 @@ function setupFilters() {
     "barberSearchEmail",
     "barberSearchPhone",
     "barberSearchSpecialty",
+    "bookingFilterPeriod",
     "bookingSearchClientName",
     "bookingSearchClientPhone",
     "bookingSearchClientEmail",
     "bookingSearchService",
     "bookingSearchBarber",
+    "bookingDay",
+    "bookingWeek",
+    "bookingMonth",
     "bookingDateFrom",
     "bookingDateTo",
     "bookingTimeFrom",
@@ -466,6 +504,68 @@ function setupOrderEditModal() {
       showError("Erro ao editar pedido: " + error.message)
     }
   })
+}
+
+function setupBookingPeriodControls() {
+  const period = document.getElementById("bookingFilterPeriod")
+  const day = document.getElementById("bookingDay")
+  const week = document.getElementById("bookingWeek")
+  const month = document.getElementById("bookingMonth")
+  const from = document.getElementById("bookingDateFrom")
+  const to = document.getElementById("bookingDateTo")
+  const dayWrap = document.getElementById("bookingDayWrap")
+  const weekWrap = document.getElementById("bookingWeekWrap")
+  const monthWrap = document.getElementById("bookingMonthWrap")
+  const fromWrap = document.getElementById("bookingDateFromWrap")
+  const toWrap = document.getElementById("bookingDateToWrap")
+  if (!period || !day || !week || !month || !from || !to) return
+
+  const now = new Date()
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
+  const jan4 = new Date(now.getFullYear(), 0, 4)
+  const jan4Day = jan4.getDay() || 7
+  const mondayWeek1 = new Date(jan4)
+  mondayWeek1.setDate(jan4.getDate() - (jan4Day - 1))
+  const thisMonday = new Date(now)
+  thisMonday.setDate(now.getDate() - ((now.getDay() || 7) - 1))
+  const weekIndex = Math.floor((thisMonday - mondayWeek1) / (7 * 24 * 60 * 60 * 1000)) + 1
+  const currentWeek = `${now.getFullYear()}-W${String(Math.max(1, weekIndex)).padStart(2, "0")}`
+
+  day.value = day.value || today
+  week.value = week.value || currentWeek
+  month.value = month.value || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+
+  const refresh = () => {
+    const mode = period.value || "day"
+    const isDay = mode === "day"
+    const isWeek = mode === "week"
+    const isMonth = mode === "month"
+    const isRange = mode === "between-dates"
+
+    day.disabled = !isDay
+    week.disabled = !isWeek
+    month.disabled = !isMonth
+    from.disabled = !isRange
+    to.disabled = !isRange
+
+    if (dayWrap) dayWrap.classList.toggle("hidden", !isDay)
+    if (weekWrap) weekWrap.classList.toggle("hidden", !isWeek)
+    if (monthWrap) monthWrap.classList.toggle("hidden", !isMonth)
+    if (fromWrap) fromWrap.classList.toggle("hidden", !isRange)
+    if (toWrap) toWrap.classList.toggle("hidden", !isRange)
+
+    renderBookings()
+    updateRevenue()
+  }
+
+  period.addEventListener("change", refresh)
+  day.addEventListener("change", refresh)
+  week.addEventListener("change", refresh)
+  month.addEventListener("change", refresh)
+  from.addEventListener("change", refresh)
+  to.addEventListener("change", refresh)
+
+  refresh()
 }
 
 function filterOrderEntries() {
@@ -640,21 +740,34 @@ function setupRevenueControls() {
   // Period filter controls
   const filter = document.getElementById("revenueFilter")
   const dayInput = document.getElementById("revenueDay")
+  const weekInput = document.getElementById("revenueWeek")
   const monthInput = document.getElementById("revenueMonth")
   const yearSelect = document.getElementById("revenueYear")
   const dateFrom = document.getElementById("revenueDateFrom")
   const dateTo = document.getElementById("revenueDateTo")
+  const timeFrom = document.getElementById("revenueTimeFrom")
+  const timeTo = document.getElementById("revenueTimeTo")
   const dayWrap = document.getElementById("revenueDayWrap")
+  const weekWrap = document.getElementById("revenueWeekWrap")
   const monthWrap = document.getElementById("revenueMonthWrap")
   const yearWrap = document.getElementById("revenueYearWrap")
   const dateFromWrap = document.getElementById("revenueDateFromWrap")
   const dateToWrap = document.getElementById("revenueDateToWrap")
 
-  if (!filter || !dayInput || !monthInput || !yearSelect || !dateFrom || !dateTo) return
+  if (!filter || !dayInput || !weekInput || !monthInput || !yearSelect || !dateFrom || !dateTo || !timeFrom || !timeTo) return
 
   const now = new Date()
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
+  const jan4 = new Date(now.getFullYear(), 0, 4)
+  const jan4Day = jan4.getDay() || 7
+  const mondayWeek1 = new Date(jan4)
+  mondayWeek1.setDate(jan4.getDate() - (jan4Day - 1))
+  const thisMonday = new Date(now)
+  thisMonday.setDate(now.getDate() - ((now.getDay() || 7) - 1))
+  const weekIndex = Math.floor((thisMonday - mondayWeek1) / (7 * 24 * 60 * 60 * 1000)) + 1
+  const currentWeek = `${now.getFullYear()}-W${String(Math.max(1, weekIndex)).padStart(2, "0")}`
   dayInput.value = today
+  weekInput.value = currentWeek
   monthInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
 
   yearSelect.innerHTML = ""
@@ -666,12 +779,14 @@ function setupRevenueControls() {
     const mode = filter.value
 
     dayInput.disabled = mode !== "day"
+    weekInput.disabled = mode !== "week"
     monthInput.disabled = mode !== "month"
     yearSelect.disabled = mode !== "year"
     dateFrom.disabled = mode !== "between-dates"
     dateTo.disabled = mode !== "between-dates"
 
     if (dayWrap) dayWrap.classList.toggle("hidden", mode !== "day")
+    if (weekWrap) weekWrap.classList.toggle("hidden", mode !== "week")
     if (monthWrap) monthWrap.classList.toggle("hidden", mode !== "month")
     if (yearWrap) yearWrap.classList.toggle("hidden", mode !== "year")
     if (dateFromWrap) dateFromWrap.classList.toggle("hidden", mode !== "between-dates")
@@ -682,10 +797,13 @@ function setupRevenueControls() {
 
   filter.addEventListener("change", refreshUi)
   dayInput.addEventListener("change", refreshUi)
+  weekInput.addEventListener("change", refreshUi)
   monthInput.addEventListener("change", refreshUi)
   yearSelect.addEventListener("change", refreshUi)
   dateFrom.addEventListener("change", refreshUi)
   dateTo.addEventListener("change", refreshUi)
+  timeFrom.addEventListener("change", refreshUi)
+  timeTo.addEventListener("change", refreshUi)
 
   refreshUi()
 }
@@ -700,14 +818,43 @@ function getBarberFilterValues() {
 }
 
 function getBookingFilterValues() {
+  const period = document.getElementById("bookingFilterPeriod")?.value || "day"
+  const day = document.getElementById("bookingDay")?.value || ""
+  const week = document.getElementById("bookingWeek")?.value || ""
+  const month = document.getElementById("bookingMonth")?.value || ""
+  const betweenFrom = document.getElementById("bookingDateFrom")?.value || ""
+  const betweenTo = document.getElementById("bookingDateTo")?.value || ""
+  let dateFrom = ""
+  let dateTo = ""
+
+  if (period === "day") {
+    dateFrom = day
+    dateTo = day
+  } else if (period === "week") {
+    const range = getWeekRangeFromInput(week)
+    dateFrom = range.from
+    dateTo = range.to
+  } else if (period === "month") {
+    const [year, monthNumber] = month.split("-").map(Number)
+    if (Number.isFinite(year) && Number.isFinite(monthNumber)) {
+      const monthStart = new Date(year, monthNumber - 1, 1)
+      const monthEnd = new Date(year, monthNumber, 0)
+      dateFrom = `${monthStart.getFullYear()}-${String(monthStart.getMonth() + 1).padStart(2, "0")}-${String(monthStart.getDate()).padStart(2, "0")}`
+      dateTo = `${monthEnd.getFullYear()}-${String(monthEnd.getMonth() + 1).padStart(2, "0")}-${String(monthEnd.getDate()).padStart(2, "0")}`
+    }
+  } else if (period === "between-dates") {
+    dateFrom = betweenFrom
+    dateTo = betweenTo
+  }
+
   return {
     clientName: normalize(document.getElementById("bookingSearchClientName")?.value),
     clientPhone: normalize(document.getElementById("bookingSearchClientPhone")?.value),
     clientEmail: normalize(document.getElementById("bookingSearchClientEmail")?.value),
     service: normalize(document.getElementById("bookingSearchService")?.value),
     barber: normalize(document.getElementById("bookingSearchBarber")?.value),
-    dateFrom: document.getElementById("bookingDateFrom")?.value || "",
-    dateTo: document.getElementById("bookingDateTo")?.value || "",
+    dateFrom,
+    dateTo,
     timeFrom: document.getElementById("bookingTimeFrom")?.value || "",
     timeTo: document.getElementById("bookingTimeTo")?.value || "",
   }
@@ -794,9 +941,9 @@ function getLifecycleStatus(booking) {
 
 function getExecutionStatus(booking) {
   const value = booking.executionStatus || "pending"
-  if (value === "in_progress") return { label: "A ser concluÃ­da", className: "is-progress" }
-  if (value === "completed") return { label: "ConcluÃ­da", className: "is-completed" }
-  return { label: "NÃ£o concluÃ­da", className: "is-pending" }
+  if (value === "in_progress") return { label: "A ser concluída", className: "is-progress" }
+  if (value === "completed") return { label: "Concluída", className: "is-completed" }
+  return { label: "Não concluída", className: "is-pending" }
 }
 
 function computeBarberStatsFromBookings(barberId) {
@@ -962,7 +1109,7 @@ function renderBookings() {
   })
 
   if (!entries.length) {
-    container.innerHTML = '<div class="empty-state">Nenhuma marcaÃ§Ã£o encontrada</div>'
+    container.innerHTML = '<div class="empty-state">Nenhuma marcação encontrada</div>'
     return
   }
 
@@ -985,10 +1132,10 @@ function renderBookings() {
             <div class="booking-meta-grid">
               <p><strong>Email:</strong> ${booking.clientEmail || "-"}</p>
               <p><strong>Telefone:</strong> ${booking.clientPhone || booking.clientPhoneComplete || "-"}</p>
-              <p><strong>ServiÃ§o:</strong> ${serviceName} (${serviceDuration} min)</p>
+              <p><strong>Serviço:</strong> ${serviceName} (${serviceDuration} min)</p>
               <p><strong>Barbeiro:</strong> ${barberName}</p>
               <p><strong>Data:</strong> ${booking.date ? formatDate(booking.date) : "-"}</p>
-              <p><strong>HorÃ¡rio:</strong> ${booking.time || "-"}</p>
+              <p><strong>Horário:</strong> ${booking.time || "-"}</p>
             </div>
             <div class="status-row">
               ${showLifecycle ? `<span class="status-pill ${lifecycle.className}">${lifecycle.label}</span>` : ""}
@@ -998,14 +1145,14 @@ function renderBookings() {
           <div class="booking-actions">
             <button class="btn btn-secondary btn-small" onclick="editBooking('${id}')">Editar</button>
             <select class="inline-select" onchange="setExecutionStatus('${id}', this.value)" ${isInactive ? "disabled" : ""}>
-              <option value="pending" ${execution.className === "is-pending" ? "selected" : ""}>NÃ£o concluÃ­da</option>
-              <option value="in_progress" ${execution.className === "is-progress" ? "selected" : ""}>A ser concluÃ­da</option>
-              <option value="completed" ${execution.className === "is-completed" ? "selected" : ""}>ConcluÃ­da</option>
+              <option value="pending" ${execution.className === "is-pending" ? "selected" : ""}>Não concluída</option>
+              <option value="in_progress" ${execution.className === "is-progress" ? "selected" : ""}>A ser concluída</option>
+              <option value="completed" ${execution.className === "is-completed" ? "selected" : ""}>Concluída</option>
             </select>
             ${booking.status === "cancel_requested" ? `<button class="btn btn-primary btn-small" onclick="approveCancellation('${id}')">Aprovar cancelamento</button>` : ""}
             ${booking.status === "cancel_requested" ? `<button class="btn btn-secondary btn-small" onclick="rejectCancellation('${id}')">Recusar cancelamento</button>` : ""}
             ${canReactivate ? `<button class="btn btn-primary btn-small" onclick="reactivateBooking('${id}')">Reativar</button>` : ""}
-            ${booking.executionStatus === "completed" ? `<button class="btn btn-secondary btn-small" disabled>ConcluÃ­da</button>` : ""}
+            ${booking.executionStatus === "completed" ? `<button class="btn btn-secondary btn-small" disabled>Concluída</button>` : ""}
             ${booking.status === "expired" ? `<button class="btn btn-secondary btn-small" disabled>Expirada</button>` : ""}
             ${canCancel ? `<button class="btn btn-danger btn-small" onclick="deleteBooking('${id}')">Cancelar</button>` : ""}
           </div>
@@ -1105,16 +1252,16 @@ function resetProductForm() {
 
   const stock = document.getElementById("productStock")
   const promo = document.getElementById("productPromo")
-  const sales = document.getElementById("productSales")
   const active = document.getElementById("productActive")
   const imageFile = document.getElementById("productImageFile")
+  const imageFileName = document.getElementById("productImageFileName")
   const saveBtn = document.getElementById("productSaveBtn")
 
   if (stock) stock.value = "0"
   if (promo) promo.value = "0"
-  if (sales) sales.value = "0"
   if (active) active.checked = true
   if (imageFile) imageFile.value = ""
+  if (imageFileName) imageFileName.textContent = "Nenhum ficheiro selecionado."
   if (saveBtn) saveBtn.textContent = "Guardar produto"
 }
 
@@ -1151,7 +1298,6 @@ function renderProducts() {
       const price = Number(product.price || 0).toFixed(2)
       const promo = Number(product.promoPercent || 0)
       const stock = Number(product.stock || 0)
-      const sales = Number(product.salesCount || 0)
       const isActive = product.isActive !== false
       return `
         <div class="barber-item admin-product-item">
@@ -1162,10 +1308,9 @@ function renderProducts() {
           </div>
           <div>
             <h3>${product.name || "Produto"}</h3>
-            <p><strong>PreÃ§o:</strong> ${price}â‚¬</p>
-            <p><strong>PromoÃ§Ã£o:</strong> ${promo}%</p>
+            <p><strong>Preço:</strong> ${price}€</p>
+            <p><strong>Promoção:</strong> ${promo}%</p>
             <p><strong>Stock:</strong> ${stock}</p>
-            <p><strong>Vendas:</strong> ${sales}</p>
             <p><strong>Estado:</strong> <span class="status-pill ${isActive ? "is-active" : "is-cancelled"}">${isActive ? "Ativo" : "Inativo"}</span></p>
           </div>
           <div class="booking-actions">
@@ -1251,6 +1396,8 @@ function setupPromotionForm() {
 function setupProductForm() {
   const form = document.getElementById("productForm")
   const cancelBtn = document.getElementById("productCancelEditBtn")
+  const imageFileInput = document.getElementById("productImageFile")
+  const imageFileName = document.getElementById("productImageFileName")
   if (!form || !cancelBtn) return
 
   if (!form.dataset.bound) {
@@ -1264,7 +1411,6 @@ function setupProductForm() {
       const imageFile = document.getElementById("productImageFile")?.files?.[0] || null
       const stock = Number(document.getElementById("productStock")?.value || 0)
       const promoPercent = Number(document.getElementById("productPromo")?.value || 0)
-      const salesCount = Number(document.getElementById("productSales")?.value || 0)
       const description = document.getElementById("productDescription")?.value?.trim() || ""
       const isActive = document.getElementById("productActive")?.checked !== false
 
@@ -1285,7 +1431,7 @@ function setupProductForm() {
         imageUrl,
         stock: Number.isFinite(stock) ? stock : 0,
         promoPercent: Number.isFinite(promoPercent) ? promoPercent : 0,
-        salesCount: Number.isFinite(salesCount) ? salesCount : 0,
+        salesCount: Number(previous.salesCount || 0),
         description,
         isActive,
         createdAt: previous.createdAt || new Date().toISOString(),
@@ -1306,6 +1452,15 @@ function setupProductForm() {
     cancelBtn.dataset.bound = "true"
     cancelBtn.addEventListener("click", () => {
       resetProductForm()
+    })
+  }
+
+  if (imageFileInput && !imageFileInput.dataset.bound) {
+    imageFileInput.dataset.bound = "true"
+    imageFileInput.addEventListener("change", () => {
+      if (!imageFileName) return
+      const selected = imageFileInput.files?.[0]
+      imageFileName.textContent = selected ? selected.name : "Nenhum ficheiro selecionado."
     })
   }
 
@@ -1624,10 +1779,13 @@ function setupSpecialScheduleManager() {
 function getRevenueFilteredBookings() {
   const mode = document.getElementById("revenueFilter")?.value || "all"
   const dayValue = document.getElementById("revenueDay")?.value || ""
+  const weekValue = document.getElementById("revenueWeek")?.value || ""
   const monthValue = document.getElementById("revenueMonth")?.value || ""
   const yearValue = Number(document.getElementById("revenueYear")?.value || new Date().getFullYear())
   const dateFrom = document.getElementById("revenueDateFrom")?.value || ""
   const dateTo = document.getElementById("revenueDateTo")?.value || ""
+  const timeFrom = document.getElementById("revenueTimeFrom")?.value || ""
+  const timeTo = document.getElementById("revenueTimeTo")?.value || ""
 
   return Object.values(state.bookings)
     .filter((booking) => booking.status !== "cancelled" && booking.status !== "expired")
@@ -1646,6 +1804,12 @@ function getRevenueFilteredBookings() {
         return isDateInRange(booking.date, dateFrom, dateTo)
       }
 
+      if (mode === "week") {
+        const range = getWeekRangeFromInput(weekValue)
+        if (!range.from || !range.to) return false
+        return isDateInRange(booking.date, range.from, range.to)
+      }
+
       if (mode === "month") {
         if (!monthValue) return false
         const [year, month] = monthValue.split("-").map(Number)
@@ -1657,6 +1821,12 @@ function getRevenueFilteredBookings() {
         return bookingDate.getFullYear() === yearValue
       }
 
+      return true
+    })
+    .filter((booking) => {
+      const bookingTime = String(booking.time || "")
+      if (timeFrom && bookingTime < timeFrom) return false
+      if (timeTo && bookingTime > timeTo) return false
       return true
     })
 }
@@ -1671,7 +1841,7 @@ function updateRevenue() {
   const bookings = getRevenueFilteredBookings()
   if (!bookings.length) {
     summaryContainer.innerHTML = ""
-    detailsContainer.innerHTML = '<div class="empty-state">Nenhuma marcaÃ§Ã£o encontrada</div>'
+    detailsContainer.innerHTML = '<div class="empty-state">Nenhuma marcação encontrada</div>'
     return
   }
 
@@ -1693,27 +1863,29 @@ function updateRevenue() {
   const totalBookings = bookings.length
   const label =
     mode === "day"
-      ? "(PerÃ­odo de Dias)"
+      ? "(Período de Dias)"
+      : mode === "week"
+        ? "(Período de Semana)"
       : mode === "between-dates"
-        ? "(PerÃ­odo entre datas)"
+        ? "(Período entre datas)"
         : mode === "month"
-          ? "(PerÃ­odo de MÃªs)"
+          ? "(Período de Mês)"
           : mode === "year"
-            ? "(PerÃ­odo de Ano)"
-            : "(Todo o PerÃ­odo)"
+            ? "(Período de Ano)"
+            : "(Todo o Período)"
 
   summaryContainer.innerHTML = `
     <div class="revenue-card">
-      <h3>ðŸ’° Faturamento ${label}</h3>
-      <div class="revenue-value success">${totalRevenue.toFixed(2)}â‚¬</div>
+      <h3>Faturamento ${label}</h3>
+      <div class="revenue-value success">${totalRevenue.toFixed(2)}€</div>
     </div>
     <div class="revenue-card">
-      <h3>MarcaÃ§Ãµes ${label}</h3>
+      <h3>Marcações ${label}</h3>
       <div class="revenue-value">${totalBookings}</div>
     </div>
     <div class="revenue-card">
-      <h3>ðŸ“Š MÃ©dia por MarcaÃ§Ã£o</h3>
-      <div class="revenue-value">${(totalRevenue / totalBookings).toFixed(2)}â‚¬</div>
+      <h3>Média por Marcação</h3>
+      <div class="revenue-value">${(totalRevenue / totalBookings).toFixed(2)}€</div>
     </div>
   `
 
@@ -1727,19 +1899,19 @@ function updateRevenue() {
         details += `
           <div class="barber-item">
             <div><h3>${name}</h3></div>
-            <div style="text-align: right;"><p style="font-size: 1.4rem; font-weight: 800; color: var(--color-success);">${value.toFixed(2)}â‚¬</p></div>
+            <div style="text-align: right;"><p style="font-size: 1.4rem; font-weight: 800; color: var(--color-success);">${value.toFixed(2)}€</p></div>
           </div>
         `
       })
   } else {
-    details += '<h3 style="color: var(--color-text-primary); margin-bottom: 1rem;">Faturamento por ServiÃ§o</h3>'
+    details += '<h3 style="color: var(--color-text-primary); margin-bottom: 1rem;">Faturamento por Serviço</h3>'
     Object.entries(revenueByService)
       .sort((a, b) => b[1] - a[1])
       .forEach(([service, value]) => {
         details += `
           <div class="barber-item">
             <div><h3>${service}</h3></div>
-            <div style="text-align: right;"><p style="font-size: 1.4rem; font-weight: 800; color: var(--color-accent);">${value.toFixed(2)}â‚¬</p></div>
+            <div style="text-align: right;"><p style="font-size: 1.4rem; font-weight: 800; color: var(--color-accent);">${value.toFixed(2)}€</p></div>
           </div>
         `
       })
@@ -1994,6 +2166,7 @@ window.editPromotion = (id) => {
     formPanel.style.display = ""
     listPanel.style.display = "none"
   }
+
   formBtn?.classList.add("btn-primary")
   formBtn?.classList.remove("btn-secondary")
   listBtn?.classList.add("btn-secondary")
@@ -2028,9 +2201,9 @@ window.editProduct = (id) => {
   const image = document.getElementById("productImage")
   const stock = document.getElementById("productStock")
   const promo = document.getElementById("productPromo")
-  const sales = document.getElementById("productSales")
   const description = document.getElementById("productDescription")
   const active = document.getElementById("productActive")
+  const imageFileName = document.getElementById("productImageFileName")
   const saveBtn = document.getElementById("productSaveBtn")
 
   if (name) name.value = product.name || ""
@@ -2038,12 +2211,40 @@ window.editProduct = (id) => {
   if (image) image.value = product.imageUrl || ""
   if (stock) stock.value = product.stock ?? 0
   if (promo) promo.value = product.promoPercent ?? 0
-  if (sales) sales.value = product.salesCount ?? 0
   if (description) description.value = product.description || ""
   if (active) active.checked = product.isActive !== false
+  if (imageFileName) imageFileName.textContent = "Nenhum ficheiro selecionado."
   if (saveBtn) saveBtn.textContent = "Atualizar produto"
 
   document.getElementById("products-tab")?.scrollIntoView({ behavior: "smooth", block: "start" })
+}
+
+async function requestFirebaseAuthUserDeletion(uid) {
+  const currentUser = auth.currentUser
+  if (!currentUser) {
+    throw new Error("Sessão de administrador inválida para eliminar utilizador no Auth.")
+  }
+
+  const token = await getIdToken(currentUser, true)
+  const response = await fetch(DELETE_AUTH_USER_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ uid }),
+  })
+
+  if (!response.ok) {
+    let message = "Falha ao eliminar utilizador no Firebase Auth."
+    try {
+      const payload = await response.json()
+      if (payload?.message) message = payload.message
+    } catch {
+      // ignore parse error
+    }
+    throw new Error(message)
+  }
 }
 
 window.deletePromotion = async (id) => {
@@ -2079,10 +2280,21 @@ window.deleteBarber = async (id) => {
 
   try {
     await remove(ref(database, `barbers/${id}`))
+    let authDeleteError = null
+    try {
+      await requestFirebaseAuthUserDeletion(id)
+    } catch (authError) {
+      authDeleteError = authError
+      console.warn("Erro ao eliminar barbeiro no Firebase Auth:", authError)
+    }
     try {
       await deleteDoc(doc(firestore, "users", id))
     } catch (firestoreError) {
       console.warn("Sem permissÃ£o para eliminar user no Firestore:", firestoreError)
+    }
+    if (authDeleteError) {
+      showError(`Barbeiro removido do sistema, mas não foi possível eliminar no Auth: ${authDeleteError.message}`)
+      return
     }
     showSuccess("Barbeiro eliminado com sucesso!")
   } catch (error) {
@@ -2095,10 +2307,21 @@ window.deleteClient = async (id) => {
 
   try {
     await remove(ref(database, `clients/${id}`))
+    let authDeleteError = null
+    try {
+      await requestFirebaseAuthUserDeletion(id)
+    } catch (authError) {
+      authDeleteError = authError
+      console.warn("Erro ao eliminar cliente no Firebase Auth:", authError)
+    }
     try {
       await deleteDoc(doc(firestore, "users", id))
     } catch (firestoreError) {
       console.warn("Sem permissÃ£o para eliminar user no Firestore:", firestoreError)
+    }
+    if (authDeleteError) {
+      showError(`Cliente removido do sistema, mas não foi possível eliminar no Auth: ${authDeleteError.message}`)
+      return
     }
     showSuccess("Cliente eliminado com sucesso!")
   } catch (error) {
@@ -2596,6 +2819,7 @@ setupProductTabs()
 setupBarberFormMode()
 setupBarberFormTimes()
 setupStoreScheduleTimes()
+setupBookingPeriodControls()
 setupFilters()
 setupRevenueControls()
 setupPromotionForm()

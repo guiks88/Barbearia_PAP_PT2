@@ -31,6 +31,73 @@ export function setupPhoneValidation(inputId) {
   }
 }
 
+const MOJIBAKE_MAP = [
+  ["Ã€", "À"], ["Ã", "Á"], ["Ã‚", "Â"], ["Ãƒ", "Ã"], ["Ã‡", "Ç"], ["Ãˆ", "È"], ["Ã‰", "É"], ["ÃŠ", "Ê"],
+  ["ÃŒ", "Ì"], ["Ã", "Í"], ["Ã‘", "Ñ"], ["Ã’", "Ò"], ["Ã“", "Ó"], ["Ã”", "Ô"], ["Ã•", "Õ"], ["Ã™", "Ù"],
+  ["Ãš", "Ú"], ["Ã ", "à"], ["Ã¡", "á"], ["Ã¢", "â"], ["Ã£", "ã"], ["Ã§", "ç"], ["Ã¨", "è"], ["Ã©", "é"],
+  ["Ãª", "ê"], ["Ã­", "í"], ["Ã³", "ó"], ["Ã´", "ô"], ["Ãµ", "õ"], ["Ãº", "ú"], ["Ã±", "ñ"], ["Ãœ", "Ü"],
+  ["â‚¬", "€"], ["Âº", "º"], ["Âª", "ª"], ["Â·", "·"], ["â†", "←"], ["â€“", "–"], ["â€”", "—"], ["Â", ""],
+]
+
+function fixMojibakeTextValue(value) {
+  let result = String(value || "")
+  MOJIBAKE_MAP.forEach(([from, to]) => {
+    result = result.split(from).join(to)
+  })
+  return result
+}
+
+function fixMojibakeInNode(node) {
+  if (!node) return
+  if (node.nodeType === Node.TEXT_NODE) {
+    const fixed = fixMojibakeTextValue(node.nodeValue || "")
+    if (fixed !== node.nodeValue) node.nodeValue = fixed
+    return
+  }
+
+  if (node.nodeType !== Node.ELEMENT_NODE) return
+  const element = node
+  if (element.hasAttribute("placeholder")) {
+    element.setAttribute("placeholder", fixMojibakeTextValue(element.getAttribute("placeholder")))
+  }
+  if (element.hasAttribute("title")) {
+    element.setAttribute("title", fixMojibakeTextValue(element.getAttribute("title")))
+  }
+
+  Array.from(element.childNodes).forEach((child) => fixMojibakeInNode(child))
+}
+
+function applyMojibakeFixToDocument() {
+  if (!document?.body) return
+  fixMojibakeInNode(document.body)
+}
+
+export function installMojibakeAutoFix() {
+  if (window.__mojibakeAutoFixInstalled) return
+  window.__mojibakeAutoFixInstalled = true
+
+  const run = () => applyMojibakeFixToDocument()
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", run, { once: true })
+  } else {
+    run()
+  }
+
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      mutation.addedNodes.forEach((added) => fixMojibakeInNode(added))
+      if (mutation.type === "characterData" && mutation.target) {
+        fixMojibakeInNode(mutation.target)
+      }
+    })
+  })
+  observer.observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+    characterData: true,
+  })
+}
+
 export function showSuccess(message) {
   const div = document.createElement("div")
   div.className = "success-message"

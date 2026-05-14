@@ -152,6 +152,16 @@
                 </div>
                 <div class="filter-grid">
                     <div class="form-group">
+                        <label for="bookingFilterPeriod">Período</label>
+                        <select id="bookingFilterPeriod">
+                            <option value="day">Dia</option>
+                            <option value="week">Semana</option>
+                            <option value="month">Mês</option>
+                            <option value="between-dates">Entre datas</option>
+                            <option value="all">Todo o período</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
                         <label for="bookingSearchClientName">Nome do cliente</label>
                         <input type="text" id="bookingSearchClientName" placeholder="Pesquisar nome">
                     </div>
@@ -171,11 +181,23 @@
                         <label for="bookingSearchBarber">Barbeiro</label>
                         <input type="text" id="bookingSearchBarber" placeholder="Pesquisar barbeiro">
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" id="bookingDayWrap">
+                        <label for="bookingDay">Dia</label>
+                        <input type="date" id="bookingDay">
+                    </div>
+                    <div class="form-group hidden" id="bookingWeekWrap">
+                        <label for="bookingWeek">Semana</label>
+                        <input type="week" id="bookingWeek">
+                    </div>
+                    <div class="form-group hidden" id="bookingMonthWrap">
+                        <label for="bookingMonth">Mês</label>
+                        <input type="month" id="bookingMonth">
+                    </div>
+                    <div class="form-group hidden" id="bookingDateFromWrap">
                         <label for="bookingDateFrom">Data de</label>
                         <input type="date" id="bookingDateFrom">
                     </div>
-                    <div class="form-group">
+                    <div class="form-group hidden" id="bookingDateToWrap">
                         <label for="bookingDateTo">Data até</label>
                         <input type="date" id="bookingDateTo">
                     </div>
@@ -356,6 +378,7 @@
                         <label for="revenueFilter">Período</label>
                         <select id="revenueFilter" style="padding: 0.75rem; border: 1px solid var(--color-border); border-radius: 8px; background: white; color: #1a1a2e; font-size: 0.95rem;">
                             <option value="day">Período de Dias</option>
+                            <option value="week">Período de Semana</option>
                             <option value="between-dates">Período entre datas</option>
                             <option value="month">Período de Mês</option>
                             <option value="year">Período de Ano</option>
@@ -370,6 +393,10 @@
                         <label for="revenueMonth">Mês e Ano</label>
                         <input type="month" id="revenueMonth" style="padding: 0.75rem; border: 1px solid var(--color-border); border-radius: 8px; background: white; color: #1a1a2e; font-size: 0.95rem;">
                     </div>
+                    <div class="form-group hidden" id="revenueWeekWrap" style="margin-bottom: 0;">
+                        <label for="revenueWeek">Semana</label>
+                        <input type="week" id="revenueWeek" style="padding: 0.75rem; border: 1px solid var(--color-border); border-radius: 8px; background: white; color: #1a1a2e; font-size: 0.95rem;">
+                    </div>
                     <div class="form-group hidden" id="revenueYearWrap" style="margin-bottom: 0;">
                         <label for="revenueYear">Ano</label>
                         <select id="revenueYear" style="padding: 0.75rem; border: 1px solid var(--color-border); border-radius: 8px; background: white; color: #1a1a2e; font-size: 0.95rem;"></select>
@@ -381,6 +408,14 @@
                     <div class="form-group hidden" id="revenueDateToWrap" style="margin-bottom: 0;">
                         <label for="revenueDateTo">Data até</label>
                         <input type="date" id="revenueDateTo" style="padding: 0.75rem; border: 1px solid var(--color-border); border-radius: 8px; background: white; color: #1a1a2e; font-size: 0.95rem;">
+                    </div>
+                    <div class="form-group" id="revenueTimeFromWrap" style="margin-bottom: 0;">
+                        <label for="revenueTimeFrom">Hora de</label>
+                        <input type="time" id="revenueTimeFrom" style="padding: 0.75rem; border: 1px solid var(--color-border); border-radius: 8px; background: white; color: #1a1a2e; font-size: 0.95rem;">
+                    </div>
+                    <div class="form-group" id="revenueTimeToWrap" style="margin-bottom: 0;">
+                        <label for="revenueTimeTo">Hora até</label>
+                        <input type="time" id="revenueTimeTo" style="padding: 0.75rem; border: 1px solid var(--color-border); border-radius: 8px; background: white; color: #1a1a2e; font-size: 0.95rem;">
                     </div>
                 </div>
                 <div class="revenue-summary" id="revenueSummary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;"></div>
@@ -413,6 +448,7 @@
                         <div class="form-group">
                             <label for="productImageFile">Imagem (ficheiro)</label>
                             <input type="file" id="productImageFile" accept="image/*">
+                            <small id="productImageFileName" style="display:block; margin-top:0.35rem; color: var(--color-text-secondary); font-size: 0.85rem;">Nenhum ficheiro selecionado.</small>
                             <small style="color: var(--color-text-secondary); font-size: 0.85rem;">Pode escolher imagem do PC, telemóvel ou tablet.</small>
                         </div>
                         <div class="form-group">
@@ -422,10 +458,6 @@
                         <div class="form-group">
                             <label for="productPromo">Promoção (%)</label>
                             <input type="number" id="productPromo" min="0" max="90" step="1" value="0">
-                        </div>
-                        <div class="form-group">
-                            <label for="productSales">Vendas (para destaque)</label>
-                            <input type="number" id="productSales" min="0" step="1" value="0">
                         </div>
                     </div>
 

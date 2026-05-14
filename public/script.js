@@ -1,7 +1,7 @@
 import { auth, database } from "./firebase-config.js"
 import { ref, get, onValue, set, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
-import { showSuccess, showError } from "./utils.js"
+import { showSuccess, showError, installMojibakeAutoFix } from "./utils.js"
 
 const helpTexts = {
   register: {
@@ -128,6 +128,66 @@ let teamStatsPollIntervalId = null
 let shopProductsCache = []
 let cartState = {}
 let productsListenerBound = false
+
+installMojibakeAutoFix()
+
+const PAP_IMPORTED_PRODUCTS = [
+  {
+    id: "pap_gel_cabelo_barba",
+    name: "Gel Cabelo e Barba",
+    description: "Fixação média e acabamento limpo para cabelo e barba.",
+    price: 12.9,
+    promoPercent: 0,
+    stock: 15,
+    salesCount: 9,
+    imageUrl: "logo-barbearia.png",
+    isActive: true,
+  },
+  {
+    id: "pap_pomada_cabelo",
+    name: "Pomada para Cabelo",
+    description: "Modela com controlo flexível e brilho natural.",
+    price: 14.9,
+    promoPercent: 0,
+    stock: 12,
+    salesCount: 8,
+    imageUrl: "logo-barbearia.png",
+    isActive: true,
+  },
+  {
+    id: "pap_tinta_louro_muito_claro",
+    name: "Tinta Louro Muito Claro 100",
+    description: "Coloração com cobertura uniforme e tom luminoso.",
+    price: 9.9,
+    promoPercent: 0,
+    stock: 10,
+    salesCount: 7,
+    imageUrl: "logo-barbearia.png",
+    isActive: true,
+  },
+  {
+    id: "pap_tinta_preto",
+    name: "Tinta para Cabelo Preto",
+    description: "Tom preto intenso com acabamento uniforme.",
+    price: 9.9,
+    promoPercent: 0,
+    stock: 9,
+    salesCount: 6,
+    imageUrl: "logo-barbearia.png",
+    isActive: true,
+  },
+  {
+    id: "pap_oleo_barba",
+    name: "Óleo para Barba",
+    description: "Hidrata, suaviza e dá brilho sem sensação oleosa.",
+    price: 13.5,
+    promoPercent: 0,
+    stock: 9,
+    salesCount: 5,
+    imageUrl: "logo-barbearia.png",
+    isActive: true,
+  },
+]
 
 const PAP_FALLBACK_PRODUCTS = [
   {
@@ -1409,11 +1469,23 @@ function loadProducts() {
         ...product,
         salesCount: Number(product.salesCount || 0),
       }))
+    const fallbackEntries = [...PAP_FALLBACK_PRODUCTS, ...PAP_IMPORTED_PRODUCTS]
+      .filter((product) => product && product.isActive !== false)
+      .map((product) => ({
+        ...product,
+        salesCount: Number(product.salesCount || 0),
+      }))
+
     if (!entries.length) {
-      entries = [...PAP_FALLBACK_PRODUCTS]
+      entries = [...fallbackEntries]
+    } else {
+      const existingIds = new Set(entries.map((product) => product.id))
+      fallbackEntries.forEach((product) => {
+        if (!existingIds.has(product.id)) entries.push(product)
+      })
     }
 
-    const featured = [...entries].sort((a, b) => b.salesCount - a.salesCount).slice(0, 5)
+    const featured = [...entries].sort((a, b) => b.salesCount - a.salesCount).slice(0, 4)
     shopProductsCache = [...entries]
 
     renderProductCards(featuredContainer, featured)
