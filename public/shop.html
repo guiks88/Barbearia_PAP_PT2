@@ -13,6 +13,12 @@
             <h1 class="logo">Área de Cliente - Barbearia João Castro</h1>
             <nav class="nav">
                 <a href="client-menu.html" class="btn btn-secondary">Voltar à Área de Cliente</a>
+                <button type="button" class="btn btn-primary cart-toggle-btn" id="cartToggleBtn">
+                    <i class="bi bi-cart3" aria-hidden="true"></i>
+                    Carrinho
+                    <span class="cart-badge hidden" id="cartBadge">0</span>
+                </button>
+                <button type="button" class="btn btn-danger" id="shopLogoutBtn">Sair</button>
                 <a href="index.html" class="btn btn-secondary">Voltar ao Início</a>
             </nav>
         </div>
@@ -20,6 +26,27 @@
 
     <main class="container" style="max-width:1100px; padding: 2rem 1rem;">
         <h2 class="section-title">Loja</h2>
+        <section class="shop-cart-panel hidden" id="shopCartPanel" aria-label="Carrinho de compras">
+            <div class="shop-cart-panel-header">
+                <h3><i class="bi bi-cart3" aria-hidden="true"></i> O teu carrinho</h3>
+                <button type="button" class="btn btn-secondary btn-small" id="cartCloseBtn">Fechar</button>
+            </div>
+            <div id="cartEmpty" class="cart-empty">Sem produtos no carrinho.</div>
+            <div id="cartItems" class="cart-items"></div>
+            <div class="cart-summary" id="cartSummary">
+                <div class="cart-row">
+                    <span>Subtotal</span>
+                    <strong id="cartSubtotal">0.00</strong>
+                </div>
+                <div class="cart-row">
+                    <span>Total</span>
+                    <strong id="cartTotal">0.00</strong>
+                </div>
+                <p class="cart-note">Pagamento na loja.</p>
+                <button type="button" class="btn btn-primary" id="cartCheckoutBtn">Finalizar pedido</button>
+                <button type="button" class="btn btn-secondary" id="cartCancelBtn">Cancelar pedido</button>
+            </div>
+        </section>
         <div class="shop-layout" aria-label="Loja">
             <div class="shop-products">
                 <div class="shop-toolbar">
@@ -36,24 +63,6 @@
                 </div>
                 <div class="products-grid" id="shopProductsGrid" aria-label="Produtos da loja"></div>
             </div>
-            <aside class="shop-cart">
-                <h3><i class="bi bi-cart3" aria-hidden="true"></i> O teu carrinho</h3>
-                <div id="cartEmpty" class="cart-empty">Sem produtos no carrinho.</div>
-                <div id="cartItems" class="cart-items"></div>
-                <div class="cart-summary" id="cartSummary">
-                    <div class="cart-row">
-                        <span>Subtotal</span>
-                        <strong id="cartSubtotal">0.00€</strong>
-                    </div>
-                    <div class="cart-row">
-                        <span>Total</span>
-                        <strong id="cartTotal">0.00€</strong>
-                    </div>
-                    <p class="cart-note">Pagamento na loja.</p>
-                    <button type="button" class="btn btn-primary" id="cartCheckoutBtn">Finalizar pedido</button>
-                    <button type="button" class="btn btn-secondary" id="cartCancelBtn">Cancelar pedido</button>
-                </div>
-            </aside>
         </div>
     </main>
 
@@ -66,4 +75,3 @@
     <script type="module" src="script.js"></script>
 </body>
 </html>
-
