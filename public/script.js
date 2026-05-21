@@ -1640,3 +1640,4 @@ window.addEventListener('load', loadStoreHours);
 window.addEventListener('load', updateMainAuthButton);
 window.addEventListener('load', initStoreStatusBadge);
 
+
