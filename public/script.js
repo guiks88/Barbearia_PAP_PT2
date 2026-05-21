@@ -1374,7 +1374,7 @@ function renderCart() {
       btn.addEventListener('click', () => updateCartQty(id, -1))
     })
     row.querySelectorAll('[data-action="increase"]').forEach((btn) => {
-      btn.addEventListener('click', async () => { try { const productSnap = await get(ref(database, products/)); const productData = productSnap.exists() ? productSnap.val() : {}; const currentStock = Number(productData.stock || 0); const current = cartState[id] || {}; const availableToAdd = Math.max(0, currentStock - (current.qty || 0)); if (availableToAdd <= 0) { showError('Sem stock disponível para esse produto.'); return } updateCartQty(id, 1) } catch (err) { console.error('Erro ao validar stock:', err); showError('Erro ao verificar stock.') } })
+      btn.addEventListener('click', async () => { try { const productSnap = await get(ref(database, `products/${id}`)); const productData = productSnap.exists() ? productSnap.val() : {}; const currentStock = Number(productData.stock || 0); const current = cartState[id] || {}; const availableToAdd = Math.max(0, currentStock - (current.qty || 0)); if (availableToAdd <= 0) { showError('Sem stock disponível para esse produto.'); return } updateCartQty(id, 1) } catch (err) { console.error('Erro ao validar stock:', err); showError('Erro ao verificar stock.') } })
     })
     row.querySelectorAll('[data-action="remove"]').forEach((btn) => {
       btn.addEventListener('click', () => removeFromCart(id))
@@ -1639,6 +1639,8 @@ window.addEventListener('load', initShopCart);
 window.addEventListener('load', loadStoreHours);
 window.addEventListener('load', updateMainAuthButton);
 window.addEventListener('load', initStoreStatusBadge);
+
+
 
 
 
