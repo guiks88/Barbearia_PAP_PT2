@@ -1,0 +1,61 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "admins": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).exists())",
+        ".write": "auth != null && auth.uid === $uid && (!root.child('admins').exists() || root.child('admins').child(auth.uid).exists())"
+      }
+    },
+
+    "barbers": {
+      ".read": true,
+      "$uid": {
+        ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || auth.uid === $uid)"
+      }
+    },
+
+    "clients": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).exists()",
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).exists())",
+        ".write": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).exists())"
+      }
+    },
+
+    "bookings": {
+      ".read": "auth != null",
+      "$bookingId": {
+        ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (!data.exists() && newData.child('clientUid').val() === auth.uid) || (data.exists() && data.child('clientUid').val() === auth.uid && newData.child('clientUid').val() === auth.uid) || (data.exists() && data.child('barberId').val() === auth.uid && newData.child('barberId').val() === auth.uid))"
+      }
+    },
+
+    "promotions": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('admins').child(auth.uid).exists()"
+    },
+
+    "storeSettings": {
+      ".read": true,
+      ".write": "auth != null && root.child('admins').child(auth.uid).exists()"
+    }
+    ,
+    "products": {
+      ".read": true,
+      "$productId": {
+        ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (data.exists() && newData.child('stock').isNumber() && data.child('stock').isNumber() && newData.child('stock').val() >= 0 && newData.child('stock').val() <= data.child('stock').val()))"
+      }
+    },
+
+    "orders": {
+      ".indexOn": ["clientUid"],
+      ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || (query.orderByChild == 'clientUid' && query.equalTo == auth.uid))",
+      "$orderId": {
+        ".read": "auth != null && (root.child('admins').child(auth.uid).exists() || data.child('clientUid').val() === auth.uid)",
+        ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || (!data.exists() && newData.child('clientUid').val() === auth.uid))"
+      }
+    }
+  }
+}
