@@ -1641,3 +1641,4 @@ window.addEventListener('load', updateMainAuthButton);
 window.addEventListener('load', initStoreStatusBadge);
 
 
+
