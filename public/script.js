@@ -1463,14 +1463,14 @@ function loadProducts() {
   onValue(ref(database, 'products'), (snapshot) => {
     const products = snapshot.exists() ? snapshot.val() : {}
     let entries = Object.entries(products)
-      .filter(([, product]) => product && product.isActive !== false)
+      .filter(([, product]) => product && product.isActive !== false && product.name && (product.price !== undefined && product.price !== null))
       .map(([id, product]) => ({
         id,
         ...product,
         salesCount: Number(product.salesCount || 0),
       }))
     const fallbackEntries = [...PAP_FALLBACK_PRODUCTS, ...PAP_IMPORTED_PRODUCTS]
-      .filter((product) => product && product.isActive !== false)
+      .filter((product) => product && product.isActive !== false && product.name && (product.price !== undefined && product.price !== null))
       .map((product) => ({
         ...product,
         salesCount: Number(product.salesCount || 0),
@@ -1639,6 +1639,7 @@ window.addEventListener('load', initShopCart);
 window.addEventListener('load', loadStoreHours);
 window.addEventListener('load', updateMainAuthButton);
 window.addEventListener('load', initStoreStatusBadge);
+
 
 
 
