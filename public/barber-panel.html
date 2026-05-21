@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel do Barbeiro - Barbearia João Castro</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="barber-page">
+    <div class="barber-panel">
+        <div class="barber-header">
+            <div class="barber-header-top">
+                <div>
+                    <h1><span id="barberNameDisplay">Barbeiro</span></h1>
+                    <p id="barberEmailDisplay"></p>
+                </div>
+                <div class="barber-header-actions">
+                    <a href="index.html" class="btn btn-secondary btn-small" id="menuHomeBtn">Menu Principal</a>
+                    <button class="btn btn-danger btn-small" id="logoutBtn" type="button">Sair</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card clickable" data-view-mode="today" role="button" tabindex="0" aria-label="Ver cortes de hoje">
+                <h3 id="todayCount">0</h3>
+                <p>Marcações Hoje</p>
+            </div>
+            <div class="stat-card clickable" data-view-mode="week" role="button" tabindex="0" aria-label="Ver cortes desta semana">
+                <h3 id="weekCount">0</h3>
+                <p>Marcações esta Semana</p>
+            </div>
+            <div class="stat-card clickable" data-view-mode="month" role="button" tabindex="0" aria-label="Ver cortes deste mês">
+                <h3 id="monthCount">0</h3>
+                <p>Marcações este Mês</p>
+            </div>
+        </div>
+
+        <div class="schedule-container">
+            <div class="schedule-header">
+                <h2>Pedidos</h2>
+                <div class="filters-wrapper">
+                    <div class="filters-tools">
+                        <label class="pending-only-toggle" for="pendingOnlyCheckbox">
+                            <input type="checkbox" id="pendingOnlyCheckbox">
+                            Ver só por concluir
+                        </label>
+                    </div>
+
+                    <div class="filters-row">
+                        <div class="filter-group" id="clientNameFilterGroup">
+                            <label for="clientSearchName">Nome:</label>
+                            <input type="text" id="clientSearchName" placeholder="Nome do cliente">
+                        </div>
+                        <div class="filter-group" id="clientEmailFilterGroup">
+                            <label for="clientSearchEmail">Email:</label>
+                            <input type="text" id="clientSearchEmail" placeholder="Email do cliente">
+                        </div>
+                        <div class="filter-group" id="clientPhoneFilterGroup">
+                            <label for="clientSearchPhone">Telefone:</label>
+                            <input type="text" id="clientSearchPhone" placeholder="Telefone do cliente">
+                        </div>
+                        <div class="filter-group" id="serviceFilterGroup">
+                            <label for="serviceSearch">Serviço:</label>
+                            <input type="text" id="serviceSearch" placeholder="Serviço">
+                        </div>
+                    </div>
+
+                    <div class="filters-row">
+                        <div class="filter-group" id="dateFilterGroup">
+                            <label for="dateFrom">Data de:</label>
+                            <input type="date" id="dateFrom">
+                            <label for="dateTo">Data até:</label>
+                            <input type="date" id="dateTo">
+                        </div>
+                        <div class="filter-group" id="timeFilterGroup">
+                            <label for="timeFrom">Hora de:</label>
+                            <input type="time" id="timeFrom">
+                            <label for="timeTo">Hora até:</label>
+                            <input type="time" id="timeTo">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <p class="view-mode-label" id="viewModeLabel">A mostrar: cortes deste mês</p>
+
+            <div id="appointmentsContainer" class="appointments-grid">
+                <div class="loading">
+                    <p>A carregar marcações...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="barber-panel.js"></script>
+</body>
+</html>

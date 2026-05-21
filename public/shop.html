@@ -1,0 +1,69 @@
+﻿<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Área de Cliente - Barbearia João Castro</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <h1 class="logo">Área de Cliente - Barbearia João Castro</h1>
+            <nav class="nav">
+                <a href="client-menu.html" class="btn btn-secondary">Voltar à Área de Cliente</a>
+                <a href="index.html" class="btn btn-secondary">Voltar ao Início</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container" style="max-width:1100px; padding: 2rem 1rem;">
+        <h2 class="section-title">Loja</h2>
+        <div class="shop-layout" aria-label="Loja">
+            <div class="shop-products">
+                <div class="shop-toolbar">
+                    <div class="shop-search">
+                        <i class="bi bi-search" aria-hidden="true"></i>
+                        <input type="search" id="shopSearchInput" placeholder="Pesquisar produtos" aria-label="Pesquisar produtos">
+                    </div>
+                    <select id="shopSortSelect" aria-label="Ordenar produtos">
+                        <option value="featured">Mais vendidos</option>
+                        <option value="price-asc">Preço (baixo &gt; alto)</option>
+                        <option value="price-desc">Preço (alto &gt; baixo)</option>
+                        <option value="name">Nome</option>
+                    </select>
+                </div>
+                <div class="products-grid" id="shopProductsGrid" aria-label="Produtos da loja"></div>
+            </div>
+            <aside class="shop-cart">
+                <h3><i class="bi bi-cart3" aria-hidden="true"></i> O teu carrinho</h3>
+                <div id="cartEmpty" class="cart-empty">Sem produtos no carrinho.</div>
+                <div id="cartItems" class="cart-items"></div>
+                <div class="cart-summary" id="cartSummary">
+                    <div class="cart-row">
+                        <span>Subtotal</span>
+                        <strong id="cartSubtotal">0.00€</strong>
+                    </div>
+                    <div class="cart-row">
+                        <span>Total</span>
+                        <strong id="cartTotal">0.00€</strong>
+                    </div>
+                    <p class="cart-note">Pagamento na loja.</p>
+                    <button type="button" class="btn btn-primary" id="cartCheckoutBtn">Finalizar pedido</button>
+                    <button type="button" class="btn btn-secondary" id="cartCancelBtn">Cancelar pedido</button>
+                </div>
+            </aside>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2026 Barbearia João Castro. Todos os direitos reservados.</p>
+        </div>
+    </footer>
+
+    <script type="module" src="script.js"></script>
+</body>
+</html>
+
