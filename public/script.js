@@ -1,4 +1,4 @@
-import { auth, database } from "./firebase-config.js"
+﻿import { auth, database } from "./firebase-config.js"
 import { ref, get, onValue, set, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
 import { showSuccess, showError, installMojibakeAutoFix } from "./utils.js"
@@ -9,113 +9,113 @@ const helpTexts = {
     content: `
       <h3>Registo de Cliente - Passo a Passo</h3>
       <ol>
-        <li><strong>Clique em "Registar como Cliente"</strong> na página inicial</li>
+        <li><strong>Clique em "Registar como Cliente"</strong> na pÃ¡gina inicial</li>
         <li><strong>Preencha os seus dados:</strong>
           <ul>
             <li>Nome completo</li>
-            <li>Email (será usado para login)</li>
-            <li>Telefone (9 dígitos)</li>
-            <li>Senha (mínimo 6 caracteres)</li>
+            <li>Email (serÃ¡ usado para login)</li>
+            <li>Telefone (9 dÃ­gitos)</li>
+            <li>Senha (mÃ­nimo 6 caracteres)</li>
           </ul>
         </li>
         <li><strong>Clique em "Registar"</strong></li>
-        <li><strong>Será automaticamente redirecionado</strong> para a página de marcações</li>
+        <li><strong>SerÃ¡ automaticamente redirecionado</strong> para a pÃ¡gina de marcaÃ§Ãµes</li>
       </ol>
-      <p><strong>Dica:</strong> Após o registo, já pode fazer marcações imediatamente!</p>
+      <p><strong>Dica:</strong> ApÃ³s o registo, jÃ¡ pode fazer marcaÃ§Ãµes imediatamente!</p>
       <a href="client-register.html" class="help-action-btn">Registar Agora</a>
-      <button class="help-back-btn" onclick="showHelpOptions()">← Voltar</button>
+      <button class="help-back-btn" onclick="showHelpOptions()">â† Voltar</button>
     `,
   },
   booking: {
-    title: "Como faço uma marcação?",
+    title: "Como faÃ§o uma marcaÃ§Ã£o?",
     content: `
-      <h3>Fazer uma Marcação - Passo a Passo</h3>
+      <h3>Fazer uma MarcaÃ§Ã£o - Passo a Passo</h3>
       <ol>
-        <li><strong>Faça login na página de marcações</strong> usando seu email/nome e senha</li>
-        <li><strong>Escolha o serviço desejado:</strong>
+        <li><strong>FaÃ§a login na pÃ¡gina de marcaÃ§Ãµes</strong> usando seu email/nome e senha</li>
+        <li><strong>Escolha o serviÃ§o desejado:</strong>
           <ul>
-            <li>Corte de Cabelo - 15€ (30 min)</li>
-            <li>Barba - 10€ (20 min)</li>
-            <li>Corte + Barba - 22€ (45 min)</li>
-            <li>Sobrancelha - 5€ (10 min)</li>
-            <li>Pacote Completo - 35€ (60 min)</li>
+            <li>Corte de Cabelo - 15â‚¬ (30 min)</li>
+            <li>Barba - 10â‚¬ (20 min)</li>
+            <li>Corte + Barba - 22â‚¬ (45 min)</li>
+            <li>Sobrancelha - 5â‚¬ (10 min)</li>
+            <li>Pacote Completo - 35â‚¬ (60 min)</li>
           </ul>
         </li>
-        <li><strong>Selecione o barbeiro</strong> da sua preferência</li>
-        <li><strong>Escolha a data e horário</strong> disponíveis</li>
-        <li><strong>Confirme a marcação</strong></li>
+        <li><strong>Selecione o barbeiro</strong> da sua preferÃªncia</li>
+        <li><strong>Escolha a data e horÃ¡rio</strong> disponÃ­veis</li>
+        <li><strong>Confirme a marcaÃ§Ã£o</strong></li>
       </ol>
       <p><strong>Importante:</strong> O sistema verifica automaticamente a disponibilidade do barbeiro!</p>
-      <a href="bookings.html" class="help-action-btn">Fazer Marcação</a>
-      <button class="help-back-btn" onclick="showHelpOptions()">← Voltar</button>
+      <a href="bookings.html" class="help-action-btn">Fazer MarcaÃ§Ã£o</a>
+      <button class="help-back-btn" onclick="showHelpOptions()">â† Voltar</button>
     `,
   },
   login: {
-    title: "Como faço login?",
+    title: "Como faÃ§o login?",
     content: `
       <h3>Login de Cliente</h3>
-      <p><strong>Se já tem uma conta registada:</strong></p>
+      <p><strong>Se jÃ¡ tem uma conta registada:</strong></p>
       <ol>
-        <li><strong>Vá para "Fazer Marcação"</strong> na página inicial</li>
+        <li><strong>VÃ¡ para "Fazer MarcaÃ§Ã£o"</strong> na pÃ¡gina inicial</li>
         <li><strong>Insira o seu email ou nome</strong> (ambos funcionam)</li>
         <li><strong>Insira a sua senha</strong></li>
         <li><strong>Clique em "Autenticar"</strong></li>
       </ol>
       <p><strong>Esqueceu a senha?</strong> Entre em contacto com a barbearia para redefinir.</p>
-      <p><strong>Ainda não tem conta?</strong> Faça o registo primeiro!</p>
+      <p><strong>Ainda nÃ£o tem conta?</strong> FaÃ§a o registo primeiro!</p>
       <a href="bookings.html" class="help-action-btn">Ir para Login</a>
-      <button class="help-back-btn" onclick="showHelpOptions()">← Voltar</button>
+      <button class="help-back-btn" onclick="showHelpOptions()">â† Voltar</button>
     `,
   },
   prices: {
-    title: "Tabela de Preços",
+    title: "Tabela de PreÃ§os",
     content: `
-      <h3>Serviços e Preços por Barbeiro</h3>
-      <p><strong>João Pedro (Económico)</strong><br>
-      Corte 14€ (25 min) · Barba 9€ (20 min) · Corte + Barba 20€ (40 min) · Sobrancelha 5€ (10 min) · Completo 32€ (55 min)</p>
-      <p><strong>Ana (Intermédio)</strong><br>
-      Corte 15€ (30 min) · Barba 10€ (20 min) · Corte + Barba 22€ (45 min) · Sobrancelha 5€ (10 min) · Completo 35€ (60 min)</p>
+      <h3>ServiÃ§os e PreÃ§os por Barbeiro</h3>
+      <p><strong>JoÃ£o Pedro (EconÃ³mico)</strong><br>
+      Corte 14â‚¬ (25 min) Â· Barba 9â‚¬ (20 min) Â· Corte + Barba 20â‚¬ (40 min) Â· Sobrancelha 5â‚¬ (10 min) Â· Completo 32â‚¬ (55 min)</p>
+      <p><strong>Ana (IntermÃ©dio)</strong><br>
+      Corte 15â‚¬ (30 min) Â· Barba 10â‚¬ (20 min) Â· Corte + Barba 22â‚¬ (45 min) Â· Sobrancelha 5â‚¬ (10 min) Â· Completo 35â‚¬ (60 min)</p>
       <p><strong>Manuel (Premium)</strong><br>
-      Corte 18€ (35 min) · Barba 12€ (25 min) · Corte + Barba 26€ (55 min) · Sobrancelha 6€ (10 min) · Completo 42€ (70 min)</p>
+      Corte 18â‚¬ (35 min) Â· Barba 12â‚¬ (25 min) Â· Corte + Barba 26â‚¬ (55 min) Â· Sobrancelha 6â‚¬ (10 min) Â· Completo 42â‚¬ (70 min)</p>
       <ul style="list-style: none; padding: 0;">
         <li style="background: rgba(212, 175, 55, 0.1); padding: 1rem; margin-bottom: 0.5rem; border-radius: 8px; border: 1px solid rgba(212, 175, 55, 0.2);">
-          <strong style="color: #d4af37;">João Pedro</strong><br>
-          Perfil económico
+          <strong style="color: #d4af37;">JoÃ£o Pedro</strong><br>
+          Perfil econÃ³mico
         </li>
         <li style="background: rgba(212, 175, 55, 0.1); padding: 1rem; margin-bottom: 0.5rem; border-radius: 8px; border: 1px solid rgba(212, 175, 55, 0.2);">
           <strong style="color: #d4af37;">Ana</strong><br>
-          Perfil intermédio
+          Perfil intermÃ©dio
         </li>
         <li style="background: rgba(212, 175, 55, 0.1); padding: 1rem; margin-bottom: 0.5rem; border-radius: 8px; border: 1px solid rgba(212, 175, 55, 0.2);">
           <strong style="color: #d4af37;">Manuel</strong><br>
           Perfil premium
         </li>
       </ul>
-      <p><strong>Horário de funcionamento:</strong> 09:00 - 19:00</p>
-      <a href="bookings.html" class="help-action-btn">Fazer Marcação</a>
-      <button class="help-back-btn" onclick="showHelpOptions()">← Voltar</button>
+      <p><strong>HorÃ¡rio de funcionamento:</strong> 09:00 - 19:00</p>
+      <a href="bookings.html" class="help-action-btn">Fazer MarcaÃ§Ã£o</a>
+      <button class="help-back-btn" onclick="showHelpOptions()">â† Voltar</button>
     `,
   },
   admin: {
     title: "Acesso de Administrador",
     content: `
-      <h3>Painel de Administração</h3>
-      <p><strong>Se é administrador da barbearia:</strong></p>
+      <h3>Painel de AdministraÃ§Ã£o</h3>
+      <p><strong>Se Ã© administrador da barbearia:</strong></p>
       <ol>
         <li><strong>Clique em "Entrar como Admin"</strong></li>
-        <li><strong>Faça login com suas credenciais</strong></li>
-        <li><strong>Acesse o painel de gestão</strong> onde pode:
+        <li><strong>FaÃ§a login com suas credenciais</strong></li>
+        <li><strong>Acesse o painel de gestÃ£o</strong> onde pode:
           <ul>
             <li>Registar e gerir barbeiros</li>
-            <li>Ver todas as marcações</li>
+            <li>Ver todas as marcaÃ§Ãµes</li>
             <li>Gerir clientes</li>
-            <li>Cancelar marcações</li>
+            <li>Cancelar marcaÃ§Ãµes</li>
           </ul>
         </li>
       </ol>
-      <p><strong>Nota:</strong> Apenas 1 administrador é permitido no sistema por motivos de segurança.</p>
+      <p><strong>Nota:</strong> Apenas 1 administrador Ã© permitido no sistema por motivos de seguranÃ§a.</p>
       <a href="admin-login.html" class="help-action-btn">Login Admin</a>
-      <button class="help-back-btn" onclick="showHelpOptions()">← Voltar</button>
+      <button class="help-back-btn" onclick="showHelpOptions()">â† Voltar</button>
     `,
   },
 }
@@ -135,7 +135,7 @@ const PAP_IMPORTED_PRODUCTS = [
   {
     id: "pap_gel_cabelo_barba",
     name: "Gel Cabelo e Barba",
-    description: "Fixação média e acabamento limpo para cabelo e barba.",
+    description: "FixaÃ§Ã£o mÃ©dia e acabamento limpo para cabelo e barba.",
     price: 12.9,
     promoPercent: 0,
     stock: 15,
@@ -146,7 +146,7 @@ const PAP_IMPORTED_PRODUCTS = [
   {
     id: "pap_pomada_cabelo",
     name: "Pomada para Cabelo",
-    description: "Modela com controlo flexível e brilho natural.",
+    description: "Modela com controlo flexÃ­vel e brilho natural.",
     price: 14.9,
     promoPercent: 0,
     stock: 12,
@@ -157,7 +157,7 @@ const PAP_IMPORTED_PRODUCTS = [
   {
     id: "pap_tinta_louro_muito_claro",
     name: "Tinta Louro Muito Claro 100",
-    description: "Coloração com cobertura uniforme e tom luminoso.",
+    description: "ColoraÃ§Ã£o com cobertura uniforme e tom luminoso.",
     price: 9.9,
     promoPercent: 0,
     stock: 10,
@@ -178,8 +178,8 @@ const PAP_IMPORTED_PRODUCTS = [
   },
   {
     id: "pap_oleo_barba",
-    name: "Óleo para Barba",
-    description: "Hidrata, suaviza e dá brilho sem sensação oleosa.",
+    name: "Ã“leo para Barba",
+    description: "Hidrata, suaviza e dÃ¡ brilho sem sensaÃ§Ã£o oleosa.",
     price: 13.5,
     promoPercent: 0,
     stock: 9,
@@ -193,7 +193,7 @@ const PAP_FALLBACK_PRODUCTS = [
   {
     id: 'pap_pomada_modeladora',
     name: 'Pomada Modeladora Barberia',
-    description: 'Fixação média com acabamento natural para uso diário.',
+    description: 'FixaÃ§Ã£o mÃ©dia com acabamento natural para uso diÃ¡rio.',
     price: 14.9,
     promoPercent: 0,
     stock: 12,
@@ -214,8 +214,8 @@ const PAP_FALLBACK_PRODUCTS = [
   },
   {
     id: 'pap_oleo_barba',
-    name: 'Óleo de Barba Barberia',
-    description: 'Hidrata, suaviza e dá brilho sem deixar sensação oleosa.',
+    name: 'Ã“leo de Barba Barberia',
+    description: 'Hidrata, suaviza e dÃ¡ brilho sem deixar sensaÃ§Ã£o oleosa.',
     price: 13.5,
     promoPercent: 0,
     stock: 9,
@@ -230,7 +230,7 @@ function getSafeStock(product) {
 }
 
 function formatEuro(value) {
-  return `${Number(value || 0).toFixed(2)}€`
+  return `${Number(value || 0).toFixed(2)}â‚¬`
 }
 
 function getPendingShopProductId() {
@@ -522,8 +522,8 @@ function initCutsGallery() {
 
   const galleries = {
     hair: [
-      { name: 'Clássico Curto', image: 'https://images.pexels.com/photos/1453005/pexels-photo-1453005.jpeg?auto=compress&cs=tinysrgb&w=600' },
-      { name: 'Degradé Alto', image: 'https://images.pexels.com/photos/2076932/pexels-photo-2076932.jpeg?auto=compress&cs=tinysrgb&w=600' },
+      { name: 'ClÃ¡ssico Curto', image: 'https://images.pexels.com/photos/1453005/pexels-photo-1453005.jpeg?auto=compress&cs=tinysrgb&w=600' },
+      { name: 'DegradÃ© Alto', image: 'https://images.pexels.com/photos/2076932/pexels-photo-2076932.jpeg?auto=compress&cs=tinysrgb&w=600' },
       { name: 'Crop Texturizado', image: 'https://images.pexels.com/photos/1813272/pexels-photo-1813272.jpeg?auto=compress&cs=tinysrgb&w=600' },
       { name: 'Pompadour Moderno', image: 'https://images.pexels.com/photos/897270/pexels-photo-897270.jpeg?auto=compress&cs=tinysrgb&w=600' },
       { name: 'Mid Fade', image: 'https://images.pexels.com/photos/1319461/pexels-photo-1319461.jpeg?auto=compress&cs=tinysrgb&w=600' },
@@ -548,8 +548,8 @@ function initCutsGallery() {
     const items = galleries[category] || galleries.hair
     titleEl.textContent = title
     subtitleEl.textContent = category === 'beard'
-      ? 'Inspirações de barba e acabamento para o seu próximo visual.'
-      : 'Inspirações de cortes de cabelo para escolher o seu estilo.'
+      ? 'InspiraÃ§Ãµes de barba e acabamento para o seu prÃ³ximo visual.'
+      : 'InspiraÃ§Ãµes de cortes de cabelo para escolher o seu estilo.'
 
     gridEl.innerHTML = items.map((item) => `
       <article class="cut-gallery-item">
@@ -946,11 +946,11 @@ async function loadPromotions() {
           <div style="background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: 12px; padding: 1.5rem; box-shadow: var(--shadow);">
             <div style="display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: start;">
               <div>
-                <h3 style="font-size: 1.25rem; margin-bottom: 0.5rem;">${promo.title || 'Promoção'}</h3>
+                <h3 style="font-size: 1.25rem; margin-bottom: 0.5rem;">${promo.title || 'PromoÃ§Ã£o'}</h3>
                 <p style="color: var(--color-text-secondary); margin-bottom: 1rem;">${promo.description || ''}</p>
                 <div style="background: rgba(62, 167, 184, 0.1); padding: 1rem; border-radius: 8px; border-left: 3px solid var(--color-accent);">
-                  <p style="margin: 0.5rem 0;"><strong>Condição:</strong> ${promo.minCompletedCuts || 10} cortes concluídos</p>
-                  <p style="margin: 0.5rem 0;"><strong>Prémio:</strong> ${promo.rewardText || 'Não especificado'}</p>
+                  <p style="margin: 0.5rem 0;"><strong>CondiÃ§Ã£o:</strong> ${promo.minCompletedCuts || 10} cortes concluÃ­dos</p>
+                  <p style="margin: 0.5rem 0;"><strong>PrÃ©mio:</strong> ${promo.rewardText || 'NÃ£o especificado'}</p>
                 </div>
               </div>
               <span style="background: var(--color-accent); color: white; padding: 0.5rem 1rem; border-radius: 8px; font-weight: 600; font-size: 0.9rem;">Ativa</span>
@@ -960,7 +960,7 @@ async function loadPromotions() {
         .join('')
     })
   } catch (error) {
-    console.error('Erro ao carregar promoções:', error)
+    console.error('Erro ao carregar promoÃ§Ãµes:', error)
   }
 }
 
@@ -991,7 +991,7 @@ async function loadStoreHours() {
       `
     })
   } catch (error) {
-    console.error('Erro ao carregar horário da loja:', error)
+    console.error('Erro ao carregar horÃ¡rio da loja:', error)
   }
 }
 
@@ -1018,7 +1018,7 @@ function updateMainAuthButton() {
 
   const setBarberLoggedIn = () => {
     mainAuthCta.href = 'barber-panel.html'
-    mainAuthCta.innerHTML = '<i class="bi bi-journal-check" aria-hidden="true"></i> Ver marcações dos clientes'
+    mainAuthCta.innerHTML = '<i class="bi bi-journal-check" aria-hidden="true"></i> Ver marcaÃ§Ãµes dos clientes'
     if (mainLogoutBtn) {
       mainLogoutBtn.style.display = 'inline-flex'
     }
@@ -1030,7 +1030,7 @@ function updateMainAuthButton() {
       try {
         await signOut(auth)
       } catch (error) {
-        console.error('Erro ao terminar sessão:', error)
+        console.error('Erro ao terminar sessÃ£o:', error)
       }
 
       sessionStorage.removeItem('clientEmail')
@@ -1086,7 +1086,7 @@ function renderProductCards(container, products) {
   if (!container) return
 
   if (!products.length) {
-    container.innerHTML = '<div class="product-empty">Sem produtos disponíveis.</div>'
+    container.innerHTML = '<div class="product-empty">Sem produtos disponÃ­veis.</div>'
     return
   }
 
@@ -1105,7 +1105,7 @@ function renderProductCards(container, products) {
           ${image}
           <div class="product-info">
             <div class="product-name">${product.name || 'Produto'}</div>
-            <div class="product-description">${product.description || 'Produto disponível na barbearia.'}</div>
+            <div class="product-description">${product.description || 'Produto disponÃ­vel na barbearia.'}</div>
             <div class="product-meta">
               <span class="product-price">${formatEuro(finalPrice)}</span>
               ${badge}
@@ -1175,13 +1175,13 @@ function initShopCart() {
     checkoutBtn.addEventListener('click', async () => {
       const items = Object.values(cartState)
       if (!items.length) {
-        showError('O carrinho está vazio.')
+        showError('O carrinho estÃ¡ vazio.')
         return
       }
 
       const user = auth.currentUser
       if (!user) {
-        showError('Faça login para finalizar o pedido.')
+        showError('FaÃ§a login para finalizar o pedido.')
         return
       }
 
@@ -1244,7 +1244,7 @@ function initShopCart() {
         ])
 
         setCartState({})
-        showSuccess('Pedido registado. O pagamento é feito na loja.')
+        showSuccess('Pedido registado. O pagamento Ã© feito na loja.')
       } catch (error) {
         showError('Nao foi possivel finalizar o pedido: ' + error.message)
       }
@@ -1374,7 +1374,7 @@ function renderCart() {
       btn.addEventListener('click', () => updateCartQty(id, -1))
     })
     row.querySelectorAll('[data-action="increase"]').forEach((btn) => {
-      btn.addEventListener('click', () => updateCartQty(id, 1))
+      btn.addEventListener('click', async () => { try { const productSnap = await get(ref(database, products/)); const productData = productSnap.exists() ? productSnap.val() : {}; const currentStock = Number(productData.stock || 0); const current = cartState[id] || {}; const availableToAdd = Math.max(0, currentStock - (current.qty || 0)); if (availableToAdd <= 0) { showError('Sem stock disponível para esse produto.'); return } updateCartQty(id, 1) } catch (err) { console.error('Erro ao validar stock:', err); showError('Erro ao verificar stock.') } })
     })
     row.querySelectorAll('[data-action="remove"]').forEach((btn) => {
       btn.addEventListener('click', () => removeFromCart(id))
@@ -1408,7 +1408,7 @@ function renderShopProducts() {
   }
 
   if (!list.length) {
-    container.innerHTML = '<div class="product-empty">Sem produtos disponíveis.</div>'
+    container.innerHTML = '<div class="product-empty">Sem produtos disponÃ­veis.</div>'
     return
   }
 
@@ -1427,7 +1427,7 @@ function renderShopProducts() {
           ${image}
           <div class="product-info">
             <div class="product-name">${product.name || 'Produto'}</div>
-            <div class="product-description">${product.description || 'Produto disponível na barbearia.'}</div>
+            <div class="product-description">${product.description || 'Produto disponÃ­vel na barbearia.'}</div>
             <div class="product-meta">
               <span class="product-price">${formatEuro(finalPrice)}</span>
               ${badge}
@@ -1639,3 +1639,4 @@ window.addEventListener('load', initShopCart);
 window.addEventListener('load', loadStoreHours);
 window.addEventListener('load', updateMainAuthButton);
 window.addEventListener('load', initStoreStatusBadge);
+
