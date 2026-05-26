@@ -1,11 +1,12 @@
 ﻿import { auth, database } from "./firebase-config.js"
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
 import { ref, onValue, query, orderByChild, equalTo, get, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
-import { showSuccess, showError, installMojibakeAutoFix } from "./utils.js"
+import { showSuccess, showError, installMojibakeAutoFix, updateClientAreaNav } from "./utils.js"
 
 const listEl = document.getElementById("clientOrdersList")
 
 installMojibakeAutoFix()
+updateClientAreaNav()
 
 function formatDateTime(value) {
   if (!value) return "-"
@@ -32,16 +33,32 @@ function renderOrders(entries) {
     .map(([id, order]) => {
       const items = Array.isArray(order.items) ? order.items : []
       const total = Number(order.total || 0).toFixed(2)
+      const status = order.status || 'pending'
+      const isLocked = status === 'ready' || status === 'completed'
+      const isCancelled = status === 'cancelled'
       return `
-        <article class="client-booking-card">
-          <h3>Pedido ${id}</h3>
-          <p><strong>Data:</strong> ${formatDateTime(order.createdAt)}</p>
-          <p><strong>Estado:</strong> ${statusLabel(order.status)}</p>
-          <p><strong>Total:</strong> ${total}</p>
-          <div style="margin-top: 0.5rem;">
-            ${items.map((item) => `<p style="margin: 0.2rem 0;">${item.qty || 0}x ${item.name || "Produto"} (${Number(item.lineTotal || 0).toFixed(2)})</p>`).join("")}
+        <article class="client-booking-card order-card">
+          <div class="order-card-header">
+            <h3>Pedido ${id}</h3>
+            <span class="status-pill ${status === 'completed'
+              ? 'is-completed'
+              : status === 'ready'
+                ? 'is-progress'
+                : status === 'cancelled'
+                  ? 'is-cancelled'
+                  : 'is-warning'}">${statusLabel(status)}</span>
           </div>
-          ${order.status === 'pending' ? `<div class="order-actions" style="margin-top:0.5rem;"><button class="btn btn-secondary order-edit-btn" data-order-id="${id}">Editar</button> <button class="btn btn-danger order-cancel-btn" data-order-id="${id}">Cancelar</button></div>` : ''}
+          <p><strong>Data:</strong> ${formatDateTime(order.createdAt)}</p>
+          <p><strong>Total:</strong> ${total}</p>
+          <div class="order-items">
+            ${items.map((item) => `<p>${item.qty || 0}x ${item.name || "Produto"} (${Number(item.lineTotal || 0).toFixed(2)})</p>`).join("")}
+          </div>
+          ${!isLocked && !isCancelled ? `
+            <div class="order-actions">
+              <button class="btn btn-secondary order-edit-btn" data-order-id="${id}">Editar</button>
+              <button class="btn btn-danger order-cancel-btn" data-order-id="${id}">Cancelar</button>
+            </div>
+          ` : ''}
         </article>
       `
     })
@@ -50,7 +67,10 @@ function renderOrders(entries) {
 
 async function cancelOrder(orderId, order) {
   try {
-    if (!order || order.status !== 'pending') { showError('Não é possível cancelar este pedido.'); return }
+    if (!order || order.status === 'ready' || order.status === 'completed' || order.status === 'cancelled') {
+      showError('Não é possível cancelar este pedido.')
+      return
+    }
     const updates = []
     for (const item of order.items || []) {
       try {
@@ -68,7 +88,10 @@ async function cancelOrder(orderId, order) {
 
 async function editOrder(orderId, order) {
   try {
-    if (!order || order.status !== 'pending') { showError('Não é possível editar este pedido.'); return }
+    if (!order || order.status === 'ready' || order.status === 'completed' || order.status === 'cancelled') {
+      showError('Não é possível editar este pedido.')
+      return
+    }
     const cart = JSON.parse(localStorage.getItem('cartItems') || '{}')
     for (const item of order.items || []) {
       try {

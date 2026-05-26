@@ -1,7 +1,7 @@
 ﻿import { auth, database } from "./firebase-config.js"
 import { ref, get, onValue, set, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
-import { showSuccess, showError, installMojibakeAutoFix } from "./utils.js"
+import { showSuccess, showError, installMojibakeAutoFix, updateClientAreaNav } from "./utils.js"
 
 const helpTexts = {
   register: {
@@ -603,6 +603,299 @@ const TEAM_BARBER_SCHEDULES = {
   manuel: { start: '10:00', end: '19:00', lunchStart: '14:00', lunchEnd: '15:00' },
 }
 
+const TEAM_FALLBACK_IMAGES = {
+  manuel: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120&h=120&fit=crop',
+  ana: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=120&h=120&fit=crop',
+  'joao pedro': 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=120&h=120&fit=crop',
+}
+
+const DEFAULT_TEAM_IMAGE = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120&h=120&fit=crop'
+
+const DEFAULT_SERVICE_LIST = [
+  { id: 'corte', name: 'Corte de Cabelo', price: 15, duration: 30 },
+  { id: 'barba', name: 'Barba', price: 10, duration: 20 },
+  { id: 'corte-barba', name: 'Corte + Barba', price: 22, duration: 45 },
+  { id: 'sobrancelha', name: 'Sobrancelha', price: 5, duration: 10 },
+  { id: 'completo', name: 'Pacote Completo', price: 35, duration: 60 },
+]
+
+const DEFAULT_TEAM_BARBERS = [
+  {
+    id: 'joao-pedro',
+    name: 'João Pedro',
+    specialty: 'Económico',
+    description: 'Servico rapido e economico para quem quer eficiencia no dia a dia',
+    imageUrl: TEAM_FALLBACK_IMAGES['joao pedro'],
+    workingHours: { start: '09:00', end: '19:00' },
+    lunchBreak: { start: '12:30', end: '13:30' },
+    services: [
+      { id: 'corte', name: 'Corte de Cabelo', price: 14, duration: 25 },
+      { id: 'barba', name: 'Barba', price: 9, duration: 20 },
+      { id: 'corte-barba', name: 'Corte + Barba', price: 20, duration: 40 },
+      { id: 'sobrancelha', name: 'Sobrancelha', price: 5, duration: 10 },
+      { id: 'completo', name: 'Pacote Completo', price: 32, duration: 55 },
+    ],
+  },
+  {
+    id: 'ana',
+    name: 'Ana',
+    specialty: 'Intermédio',
+    description: 'Ritmo intermedio com equilibrio entre precisao, tempo e preco',
+    imageUrl: TEAM_FALLBACK_IMAGES.ana,
+    workingHours: { start: '09:00', end: '18:00' },
+    lunchBreak: { start: '13:00', end: '14:00' },
+    services: [
+      { id: 'corte', name: 'Corte de Cabelo', price: 15, duration: 30 },
+      { id: 'barba', name: 'Barba', price: 10, duration: 20 },
+      { id: 'corte-barba', name: 'Corte + Barba', price: 22, duration: 45 },
+      { id: 'sobrancelha', name: 'Sobrancelha', price: 5, duration: 10 },
+      { id: 'completo', name: 'Pacote Completo', price: 35, duration: 60 },
+    ],
+  },
+  {
+    id: 'manuel',
+    name: 'Manuel',
+    specialty: 'Premium',
+    description: 'Cortes premium, mais demorados e com acabamento de alto detalhe',
+    imageUrl: TEAM_FALLBACK_IMAGES.manuel,
+    workingHours: { start: '10:00', end: '19:00' },
+    lunchBreak: { start: '14:00', end: '15:00' },
+    services: [
+      { id: 'corte', name: 'Corte de Cabelo', price: 18, duration: 35 },
+      { id: 'barba', name: 'Barba', price: 12, duration: 25 },
+      { id: 'corte-barba', name: 'Corte + Barba', price: 26, duration: 55 },
+      { id: 'sobrancelha', name: 'Sobrancelha', price: 6, duration: 10 },
+      { id: 'completo', name: 'Pacote Completo', price: 42, duration: 70 },
+    ],
+  },
+]
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function normalizeServiceId(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+}
+
+function normalizeBarberServices(services) {
+  if (!Array.isArray(services) || !services.length) {
+    return DEFAULT_SERVICE_LIST.map((service) => ({ ...service }))
+  }
+
+  const normalized = services
+    .map((service, index) => {
+      const name = String(service?.name || '').trim()
+      const price = Number(service?.price || 0)
+      const duration = Number(service?.duration || 0)
+      const id = String(service?.id || normalizeServiceId(name) || `service_${index}`)
+      return { id, name, price, duration }
+    })
+    .filter((service) => service.name && service.price > 0 && service.duration > 0)
+
+  return normalized.length ? normalized : DEFAULT_SERVICE_LIST.map((service) => ({ ...service }))
+}
+
+function formatServicePrice(value) {
+  const numericValue = Number(value || 0)
+  if (!Number.isFinite(numericValue)) return '0€'
+  return Number.isInteger(numericValue)
+    ? `${numericValue}€`
+    : `${numericValue.toFixed(2)}€`
+}
+
+function getFallbackTeamImage(barberName) {
+  const normalized = normalizePersonName(barberName)
+  if (TEAM_FALLBACK_IMAGES[normalized]) return TEAM_FALLBACK_IMAGES[normalized]
+
+  const matchKey = Object.keys(TEAM_FALLBACK_IMAGES).find((key) => {
+    return normalized.includes(key) || key.includes(normalized)
+  })
+  if (matchKey) return TEAM_FALLBACK_IMAGES[matchKey]
+
+  return DEFAULT_TEAM_IMAGE
+}
+
+function getBarberDescription(barber) {
+  return (
+    barber?.note ||
+    barber?.nota ||
+    barber?.description ||
+    barber?.descricao ||
+    barber?.bio ||
+    barber?.specialty ||
+    'Barbeiro profissional'
+  )
+}
+
+function getBarberSchedule(barber) {
+  const configured = getConfiguredTeamSchedule(barber?.name || '')
+  return {
+    start: barber?.workingHours?.start || configured?.start || null,
+    end: barber?.workingHours?.end || configured?.end || null,
+    lunchStart: barber?.lunchBreak?.start || configured?.lunchStart || null,
+    lunchEnd: barber?.lunchBreak?.end || configured?.lunchEnd || null,
+  }
+}
+
+function buildTeamStatsFromBarbers(barbers) {
+  const stats = {}
+  barbers.forEach((barber) => {
+    const key = normalizePersonName(barber?.name || barber?.nome || '')
+    if (!key) return
+
+    const ratingCount = Number(barber?.ratingCount ?? barber?.ratingsCount ?? barber?.totalRatings ?? 0) || 0
+    const averageRating = Number(barber?.avgRating ?? barber?.averageRating ?? barber?.ratingAverage ?? barber?.notaMedia ?? 0) || 0
+    const ratingTotal = Number(barber?.ratingTotal ?? barber?.ratingSum ?? 0) || (ratingCount > 0 ? averageRating * ratingCount : 0)
+    const completedCuts = Number(barber?.completedCuts ?? barber?.totalCuts ?? barber?.cortesFeitos ?? barber?.cutsCount ?? 0) || 0
+
+    stats[key] = {
+      ratingCount,
+      ratingTotal,
+      completedCuts,
+    }
+  })
+
+  return stats
+}
+
+function buildPublicBarbersFromSnapshot(snapshot) {
+  const raw = snapshot.exists() ? snapshot.val() : {}
+  const allEntries = Object.entries(raw).filter(([, barber]) => barber)
+  const activeEntries = allEntries.filter(([, barber]) => barber.isActive !== false)
+
+  if (!activeEntries.length && allEntries.length === 0) {
+    return { barbers: DEFAULT_TEAM_BARBERS.map((barber) => ({ ...barber })), usedFallback: true }
+  }
+
+  const barbers = activeEntries.map(([id, barber]) => ({ id, ...barber }))
+  return { barbers, usedFallback: false }
+}
+
+function renderTeamMembers(barbers) {
+  const grid = document.getElementById('teamGrid') || document.querySelector('.team-grid')
+  if (!grid) return
+
+  if (!barbers.length) {
+    grid.innerHTML = '<div class="empty-state">Sem barbeiros ativos no momento.</div>'
+    return
+  }
+
+  const sorted = [...barbers].sort((a, b) => String(a?.name || '').localeCompare(String(b?.name || ''), 'pt'))
+
+  grid.innerHTML = sorted
+    .map((barber) => {
+      const name = barber?.name || barber?.nome || 'Barbeiro'
+      const imageUrl = barber?.imageUrl || barber?.photoUrl || barber?.avatarUrl || getFallbackTeamImage(name)
+      const schedule = getBarberSchedule(barber)
+      const scheduleLabel = schedule.start && schedule.end ? `Horario: ${schedule.start} - ${schedule.end}` : 'Horario: a definir'
+      const lunchLabel = schedule.lunchStart && schedule.lunchEnd ? `Almoco: ${schedule.lunchStart} - ${schedule.lunchEnd}` : 'Almoco: a definir'
+      const description = getBarberDescription(barber)
+
+      return `
+        <div class="team-member" data-barber-name="${escapeHtml(name)}">
+          <div class="team-card-inner">
+            <div class="team-card-face team-card-front">
+              <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(name)}" class="member-avatar">
+              <h3>${escapeHtml(name)}</h3>
+              <p class="member-role member-schedule">${escapeHtml(scheduleLabel)}</p>
+              <p class="member-role member-lunch">${escapeHtml(lunchLabel)}</p>
+            </div>
+            <div class="team-card-face team-card-back">
+              <p class="member-role member-description">${escapeHtml(description)}</p>
+              <div class="member-public-stats">
+                <p class="member-rating">
+                  <i class="bi bi-star-fill" aria-hidden="true"></i>
+                  <span class="member-rating-value" data-barber-rating>0.0</span>
+                  <span class="member-rating-total">/5</span>
+                  <span class="member-rating-count" data-barber-rating-count>(0 avaliacoes)</span>
+                </p>
+                <p class="member-cuts" data-barber-cuts>0 cortes concluidos</p>
+              </div>
+              <button type="button" class="btn btn-primary btn-small team-book-btn">Marcar</button>
+            </div>
+          </div>
+        </div>
+      `
+    })
+    .join('')
+}
+
+function renderPriceLists(barbers) {
+  const container = document.getElementById('barberPricesList')
+  if (!container) return
+
+  if (!barbers.length) {
+    container.innerHTML = '<div class="empty-state">Sem barbeiros ativos no momento.</div>'
+    return
+  }
+
+  const sorted = [...barbers].sort((a, b) => String(a?.name || '').localeCompare(String(b?.name || ''), 'pt'))
+
+  container.innerHTML = sorted
+    .map((barber, index) => {
+      const name = barber?.name || barber?.nome || 'Barbeiro'
+      const specialty = barber?.specialty || barber?.especialidade || ''
+      const label = specialty ? `${name} (${specialty})` : name
+      const services = normalizeBarberServices(barber?.services)
+      const headingStyle = index === 0 ? '' : ' style="margin-top: 1.25rem;"'
+
+      return `
+        <h4 class="subsection-title"${headingStyle}>${escapeHtml(label)}</h4>
+        <div class="services-list">
+          ${services.map((service) => `
+            <div class="service-item">
+              <div class="service-info">
+                <h4>${escapeHtml(service.name)}</h4>
+                <p class="service-duration">${Number(service.duration || 0)} minutos</p>
+              </div>
+              <p class="service-price">${formatServicePrice(service.price)}</p>
+            </div>
+          `).join('')}
+        </div>
+      `
+    })
+    .join('')
+}
+
+function renderAboutContent(settings = {}) {
+  const container = document.getElementById('aboutContent')
+  if (!container) return
+
+  if (!container.dataset.fallbackHtml) {
+    container.dataset.fallbackHtml = container.innerHTML
+  }
+
+  const aboutText = String(settings?.aboutText || settings?.about || '').trim()
+  if (!aboutText) {
+    container.innerHTML = container.dataset.fallbackHtml
+    return
+  }
+
+  container.innerHTML = ''
+  aboutText
+    .split(/\n\s*\n/)
+    .map((paragraph) => paragraph.replace(/\n+/g, ' ').trim())
+    .filter(Boolean)
+    .forEach((paragraph) => {
+      const p = document.createElement('p')
+      p.className = 'about-text'
+      p.textContent = paragraph
+      container.appendChild(p)
+    })
+}
+
 function getConfiguredTeamSchedule(barberName) {
   const normalizedName = normalizePersonName(barberName)
   if (TEAM_BARBER_SCHEDULES[normalizedName]) return TEAM_BARBER_SCHEDULES[normalizedName]
@@ -836,11 +1129,22 @@ async function initTeamSchedules() {
 function setupTeamSchedulesListener() {
   if (teamSchedulesListenerBound) return
   teamSchedulesListenerBound = true
-  onValue(ref(database, 'barbers'), () => {
-    initTeamSchedules()
+  teamStatsListenerBound = true
+  onValue(ref(database, 'barbers'), (snapshot) => {
+    const { barbers, usedFallback } = buildPublicBarbersFromSnapshot(snapshot)
+    renderTeamMembers(barbers)
+    renderPriceLists(barbers)
+    initTeamQuickBooking()
+    initTeamFlipCards()
+
     const members = document.querySelectorAll('.team-member[data-barber-name]')
     if (members.length) {
-      loadTeamStatsFromBarbersFallback(members)
+      const stats = buildTeamStatsFromBarbers(barbers)
+      applyTeamStatsToUi(members, stats)
+
+      if (usedFallback) {
+        loadTeamStatsFromBarbersFallback(members)
+      }
     }
   })
 }
@@ -925,6 +1229,8 @@ async function loadStoreHours() {
           <span class="store-hours-item"><strong>Almoco:</strong> ${lunchStart} - ${lunchEnd}</span>
         </div>
       `
+
+      renderAboutContent(settings)
     })
   } catch (error) {
     console.error('Erro ao carregar horÃ¡rio da loja:', error)
@@ -1442,7 +1748,6 @@ function renderShopProducts() {
         showError('Sem stock disponÃ­vel para esse produto.')
         return
       }
-      showSuccess('Produto adicionado ao carrinho.')
     })
   })
 }
@@ -1489,10 +1794,7 @@ function loadProducts() {
     if (shopContainer && pendingProductId) {
       const pendingProduct = shopProductsCache.find((item) => item.id === pendingProductId)
       if (pendingProduct && getSafeStock(pendingProduct) > 0) {
-        const result = addToCart(pendingProduct)
-        if (result.added > 0) {
-          showSuccess('Produto pre-selecionado e adicionado ao carrinho.')
-        }
+        addToCart(pendingProduct)
       }
       sessionStorage.removeItem('pendingShopProductId')
       const url = new URL(window.location.href)
@@ -1598,6 +1900,7 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initShopCart);
   document.addEventListener('DOMContentLoaded', loadStoreHours);
   document.addEventListener('DOMContentLoaded', updateMainAuthButton);
+  document.addEventListener('DOMContentLoaded', updateClientAreaNav);
   document.addEventListener('DOMContentLoaded', initStoreStatusBadge);
 } else {
   initTabs();
@@ -1615,6 +1918,7 @@ if (document.readyState === 'loading') {
   initShopCart();
   loadStoreHours();
   updateMainAuthButton();
+  updateClientAreaNav();
   initStoreStatusBadge();
 }
 
@@ -1634,6 +1938,7 @@ window.addEventListener('load', loadProducts);
 window.addEventListener('load', initShopCart);
 window.addEventListener('load', loadStoreHours);
 window.addEventListener('load', updateMainAuthButton);
+window.addEventListener('load', updateClientAreaNav);
 window.addEventListener('load', initStoreStatusBadge);
 
 

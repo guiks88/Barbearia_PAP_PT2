@@ -1,12 +1,15 @@
 import { auth, database } from "./firebase-config.js"
 import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
+import { updateClientAreaNav } from "./utils.js"
 
 const logoutBtn = document.getElementById("clientPromotionsLogoutBtn")
 let promotionsListenerBound = false
 let bookingsListenerBound = false
 let promotionsCache = {}
 let clientCompletedCuts = 0
+
+updateClientAreaNav()
 
 function clearClientSession() {
   sessionStorage.removeItem("clientEmail")

@@ -164,6 +164,7 @@ async function ensureClientProfileForAuthenticatedUser(user, email) {
     email,
     phone: "",
     password: null,
+    isActive: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }
@@ -242,6 +243,13 @@ function saveRoleSession(role, uid, email, profile) {
   sessionStorage.setItem("isClient", "true")
 }
 
+function ensureActiveProfile(roleData) {
+  const profile = roleData?.profile
+  if (profile && profile.isActive === false) {
+    throw new Error("Conta desativada. Fale com a barbearia para reativar.")
+  }
+}
+
 function redirectByRole(role) {
   if (hasRoleRedirected) return
 
@@ -309,6 +317,8 @@ onAuthStateChanged(auth, async (user) => {
 
   const email = normalizeEmail(user.email)
   const roleData = await resolveRoleData(user, email)
+
+  ensureActiveProfile(roleData)
 
   if (await blockUnverifiedClient(user, roleData)) {
     showError("Confirme o seu email antes de entrar. Veja a caixa de entrada ou spam.")
@@ -386,6 +396,7 @@ async function loginWithGoogleAndRoute() {
   }
 
   const roleData = await resolveRoleData(user, email)
+  ensureActiveProfile(roleData)
   if (!roleData) {
     const recoveredProfile = await ensureClientProfileForAuthenticatedUser(user, email)
     saveRoleSession("client", user.uid, email, recoveredProfile)

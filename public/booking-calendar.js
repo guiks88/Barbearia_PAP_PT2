@@ -9,7 +9,7 @@ import {
   onAuthStateChanged,
   setPersistence,
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
-import { showSuccess, showError } from "./utils.js"
+import { showSuccess, showError, updateClientAreaNav } from "./utils.js"
 
 const isBarberSession = sessionStorage.getItem("isBarber") === "true"
 if (isBarberSession) {
@@ -23,6 +23,8 @@ const isCancelMode = currentMode === 'cancel'
 const pendingBarberSession = (sessionStorage.getItem('pendingBookingBarber') || '').trim()
 const preferredBarberParam = (urlParams.get('barber') || pendingBarberSession || '').trim()
 const REPORTS_ENABLED = false
+
+updateClientAreaNav()
 
 function buildLoginRedirectUrl() {
   const barberName = preferredBarberParam || ''
@@ -97,6 +99,7 @@ const bookingState = {
   barberEmail: '',
   barberPhone: '',
   barberSpecialty: '',
+  barberServices: [],
   barberWorkingHours: [],
   barberLunchBreak: { start: null, end: null },
   barberSpecialSchedules: { day: {}, week: {}, month: {} },
@@ -140,6 +143,47 @@ const SERVICE_CATALOG = {
   'corte-barba': { name: 'Corte + Barba', price: 22, duration: 45 },
   sobrancelha: { name: 'Sobrancelha', price: 5, duration: 10 },
   completo: { name: 'Pacote Completo', price: 35, duration: 60 },
+}
+
+const DEFAULT_SERVICES = Object.entries(SERVICE_CATALOG).map(([id, service]) => ({
+  id,
+  name: service.name,
+  price: Number(service.price || 0),
+  duration: Number(service.duration || 0),
+}))
+
+function normalizeServiceId(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+}
+
+function normalizeBarberServices(services) {
+  if (!Array.isArray(services) || !services.length) {
+    return DEFAULT_SERVICES.map((service) => ({ ...service }))
+  }
+
+  const normalized = services
+    .map((service, index) => {
+      const name = String(service?.name || '').trim()
+      const price = Number(service?.price || 0)
+      const duration = Number(service?.duration || 0)
+      const id = String(service?.id || normalizeServiceId(name) || `service_${index}`)
+      return { id, name, price, duration }
+    })
+    .filter((service) => service.name && service.price > 0 && service.duration > 0)
+
+  return normalized.length ? normalized : DEFAULT_SERVICES.map((service) => ({ ...service }))
+}
+
+function getAvailableServices() {
+  return Array.isArray(bookingState.barberServices) && bookingState.barberServices.length
+    ? bookingState.barberServices
+    : DEFAULT_SERVICES
 }
 
 const BARBER_PROFILES = {
@@ -238,19 +282,21 @@ function getBarberProfile(barberName, barberId, barberSpecialty) {
 }
 
 function getServiceConfigForBarber(serviceKey, barberName, barberId, barberSpecialty) {
-  const base = SERVICE_CATALOG[serviceKey]
-  if (!base) {
-    return { price: bookingState.servicePrice || 0, duration: bookingState.serviceDuration || 30, name: bookingState.serviceName || 'Serviço' }
+  const services = getAvailableServices()
+  const match = services.find((service) => service.id === serviceKey)
+
+  if (!match) {
+    return {
+      price: bookingState.servicePrice || 0,
+      duration: bookingState.serviceDuration || 30,
+      name: bookingState.serviceName || 'Serviço',
+    }
   }
 
-  const profile = getBarberProfile(barberName, barberId, barberSpecialty)
-  const price = roundPrice(base.price * profile.priceMultiplier)
-  const duration = roundDuration(base.duration * profile.durationMultiplier)
-
   return {
-    name: base.name,
-    price,
-    duration,
+    name: match.name,
+    price: Number(match.price || 0),
+    duration: Number(match.duration || 0),
   }
 }
 
@@ -275,21 +321,7 @@ function applyServicePricingForSelectedBarber() {
 }
 
 function updateServiceCardsForBarber(barberName) {
-  const serviceCards = document.querySelectorAll('.service-card')
-  serviceCards.forEach((card) => {
-    const service = card.dataset.service
-    if (!service) return
-
-    const config = getServiceConfigForBarber(service, barberName, bookingState.barber, bookingState.barberSpecialty)
-    card.dataset.price = String(config.price)
-    card.dataset.duration = String(config.duration)
-
-    const priceEl = card.querySelector('.price')
-    const durationEl = card.querySelector('p:not(.price)')
-
-    if (priceEl) priceEl.textContent = `${config.price}€`
-    if (durationEl) durationEl.textContent = `${config.duration} minutos`
-  })
+  renderServiceCards()
 }
 
 // Horários de trabalho padrão (9h às 19h) com intervalos de 10 minutos
@@ -1373,19 +1405,22 @@ function initServiceSelection() {
   
   serviceCards.forEach(card => {
     const selectBtn = card.querySelector('.select-service')
-    
+    if (!selectBtn || selectBtn.dataset.bound === 'true') return
+    selectBtn.dataset.bound = 'true'
+
     selectBtn.addEventListener('click', () => {
       const service = card.dataset.service
-      const serviceName = card.querySelector('h3').textContent
-      const baseConfig = SERVICE_CATALOG[service] || {
+      const serviceName = card.querySelector('h3')?.textContent || ''
+      const baseConfig = getServiceConfigForBarber(service) || {
         price: parseInt(card.dataset.price || '0', 10),
         duration: parseInt(card.dataset.duration || '30', 10),
+        name: serviceName || 'Serviço',
       }
       
       bookingState.service = service
-      bookingState.serviceName = serviceName
-      bookingState.servicePrice = baseConfig.price
-      bookingState.serviceDuration = baseConfig.duration
+      bookingState.serviceName = baseConfig.name || serviceName
+      bookingState.servicePrice = Number(baseConfig.price || 0)
+      bookingState.serviceDuration = Number(baseConfig.duration || 30)
       
       // Atualizar UI
       serviceCards.forEach(c => c.classList.remove('selected'))
@@ -1407,6 +1442,30 @@ function initServiceSelection() {
       }, 300)
     })
   })
+}
+
+function renderServiceCards() {
+  const grid = document.getElementById('servicesGrid')
+  if (!grid) return
+
+  const services = getAvailableServices()
+  if (!services.length) {
+    grid.innerHTML = '<div class="empty-state">Sem serviços disponíveis.</div>'
+    return
+  }
+
+  grid.innerHTML = services
+    .map((service) => `
+      <div class="service-card" data-service="${service.id}" data-price="${service.price}" data-duration="${service.duration}">
+        <h3>${service.name}</h3>
+        <p class="price">${Number(service.price || 0)}€</p>
+        <p style="color: var(--color-text-secondary); font-size: 0.875rem;">${Number(service.duration || 0)} minutos</p>
+        <button class="btn btn-primary btn-small select-service">Selecionar</button>
+      </div>
+    `)
+    .join('')
+
+  initServiceSelection()
 }
 
 // ===== STEP 2: BARBEIROS =====
@@ -1459,10 +1518,16 @@ async function loadBarbers() {
       const barbers = snapshot.val()
       barbersList.innerHTML = ''
 
-      const barberEntries = Object.entries(barbers).filter(([, barber]) => barber)
+      const allBarberEntries = Object.entries(barbers).filter(([, barber]) => barber)
+      const barberEntries = allBarberEntries.filter(([, barber]) => barber.isActive !== false)
 
       if (barberEntries.length === 0) {
-        barberEntries.push(...fallbackBarbers.map((barber) => [barber.id, barber]))
+        if (allBarberEntries.length === 0) {
+          barberEntries.push(...fallbackBarbers.map((barber) => [barber.id, barber]))
+        } else {
+          barbersList.innerHTML = '<p style="text-align: center; color: var(--color-text-secondary);">Nenhum barbeiro ativo neste momento.</p>'
+          return
+        }
       }
       
       barberEntries.forEach(([barberId, barber], index) => {
@@ -1474,8 +1539,8 @@ async function loadBarbers() {
         barberCard.dataset.barberId = barberId
         barberCard.dataset.barberName = barberName
         
-        // Obter imagem adequada ao género do barbeiro
-        const imageUrl = getBarberImage(barberName)
+        const customImage = barber.imageUrl || barber.photoUrl || barber.avatarUrl || ''
+        const imageUrl = customImage || getBarberImage(barberName)
         
         barberCard.innerHTML = `
           <img src="${imageUrl}" alt="${barberName}" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover;">
@@ -1553,8 +1618,11 @@ async function selectBarber(barberId, barberName, barberSpecialty = '') {
   bookingState.barber = barberId
   bookingState.barberName = barberName
   bookingState.barberSpecialty = barberSpecialty
-  updateServiceCardsForBarber(barberName)
-  applyServicePricingForSelectedBarber()
+  bookingState.service = null
+  bookingState.serviceName = ''
+  bookingState.servicePrice = 0
+  bookingState.serviceDuration = 30
+  bookingState.barberServices = []
 
   await loadStoreSettings()
   
@@ -1568,6 +1636,7 @@ async function selectBarber(barberId, barberName, barberSpecialty = '') {
       bookingState.barberSpecialty = barberData.specialty || barberData.especialidade || bookingState.barberSpecialty
       bookingState.barberEmail = barberData.email || ''
       bookingState.barberPhone = barberData.phone || ''
+      bookingState.barberServices = normalizeBarberServices(barberData.services)
       bookingState.barberSpecialSchedules = barberData.specialSchedules || { day: {}, week: {}, month: {} }
       const fallbackLunchStart = bookingState.storeSettings?.lunchBreak?.start || '13:00'
       const fallbackLunchEnd = bookingState.storeSettings?.lunchBreak?.end || '14:00'
@@ -1595,6 +1664,7 @@ async function selectBarber(barberId, barberName, barberSpecialty = '') {
     } else {
       bookingState.barberEmail = ''
       bookingState.barberPhone = ''
+      bookingState.barberServices = normalizeBarberServices([])
       const fallbackLunchStart = bookingState.storeSettings?.lunchBreak?.start || '13:00'
       const fallbackLunchEnd = bookingState.storeSettings?.lunchBreak?.end || '14:00'
       bookingState.barberWorkingHours = defaultWorkingHours
@@ -1615,6 +1685,7 @@ async function selectBarber(barberId, barberName, barberSpecialty = '') {
     bookingState.barberSpecialSchedules = { day: {}, week: {}, month: {} }
     bookingState.barberEmail = ''
     bookingState.barberPhone = ''
+    bookingState.barberServices = normalizeBarberServices([])
     const barberHoursEl = document.getElementById('selected-barber-hours')
     if (barberHoursEl) {
       barberHoursEl.textContent = '09:00 - 19:00'

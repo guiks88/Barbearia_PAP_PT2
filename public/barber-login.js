@@ -24,6 +24,12 @@ document.getElementById("barberLoginForm").addEventListener("submit", async (e) 
 
     const barberFound = snapshot.val()
 
+    if (barberFound.isActive === false) {
+      await signOut(auth)
+      showError("Conta de barbeiro desativada. Fale com a barbearia.")
+      return
+    }
+
     sessionStorage.setItem("barberId", uid)
     sessionStorage.setItem("barberName", barberFound.name)
     sessionStorage.setItem("barberEmail", email)

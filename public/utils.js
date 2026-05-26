@@ -98,6 +98,21 @@ export function installMojibakeAutoFix() {
   })
 }
 
+export function updateClientAreaNav() {
+  const links = document.querySelectorAll('[data-client-area-nav]')
+  if (!links.length) return
+
+  const isClient = sessionStorage.getItem('isClient') === 'true'
+  const label = isClient ? 'Voltar à Área de Cliente' : 'Login'
+  const href = isClient ? 'client-menu.html' : 'login.html'
+
+  links.forEach((link) => {
+    if (!(link instanceof HTMLAnchorElement)) return
+    link.textContent = label
+    link.href = href
+  })
+}
+
 export function showSuccess(message) {
   const div = document.createElement("div")
   div.className = "success-message"

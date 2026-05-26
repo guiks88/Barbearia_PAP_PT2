@@ -681,17 +681,20 @@ main {
 }
 
 .cart-note {
-  color: var(--color-text-secondary);
-  font-size: 0.85rem;
-}
-
-.product-card {
-  min-height: 240px;
-  background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  overflow: hidden;
-  display: flex;
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: #c62828;
+  color: #ffffff;
+  box-shadow: 0 0 0 2px var(--color-bg-card);
   flex-direction: column;
   box-shadow: var(--shadow-sm);
   transition: var(--transition);
@@ -1364,6 +1367,46 @@ main {
   padding: 1rem;
 }
 
+.phone-input-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.phone-prefix {
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg-secondary);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.phone-input-group input {
+  flex: 1;
+}
+
+.barber-services-list {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.barber-service-row {
+  display: grid;
+  grid-template-columns: 1.5fr 0.6fr 0.6fr auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.barber-service-row input {
+  width: 100%;
+}
+
+.barber-service-row .btn {
+  white-space: nowrap;
+}
+
 /* ===== SERVICES GRID ===== */
 .services-grid {
   display: grid;
@@ -1644,6 +1687,27 @@ main {
   overflow-x: visible;
 }
 
+.admin-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+  margin: -0.5rem 0 1.5rem;
+}
+
+.admin-shortcuts-label {
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+}
+
+.admin-shortcut-btn {
+  gap: 0.4rem;
+}
+
+.admin-shortcut-btn i {
+  font-size: 0.9rem;
+}
+
 .tab-btn {
   padding: 0.9rem 1.2rem;
   background: transparent;
@@ -1761,6 +1825,10 @@ body.modal-open {
 }
 
 .booking-item.is-inactive {
+  opacity: 0.55;
+}
+
+.barber-item.is-inactive {
   opacity: 0.55;
 }
 
@@ -3170,6 +3238,31 @@ body.barber-page {
   border-radius: 12px;
   background: var(--color-bg-secondary);
   padding: 1rem;
+}
+
+.order-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.order-card .order-items {
+  margin-top: 0.5rem;
+  color: var(--color-text-secondary);
+}
+
+.order-card .order-items p {
+  margin: 0.2rem 0;
+}
+
+.order-card .order-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-top: 0.75rem;
 }
 
 .client-booking-card.is-cancelled {

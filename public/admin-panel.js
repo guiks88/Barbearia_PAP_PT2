@@ -1,5 +1,5 @@
 ﻿import { auth, database, firebaseConfig, firestore, AUTH_ACTION_URL } from "./firebase-config.js"
-import { ref, set, onValue, remove, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
+import { ref, set, onValue, remove, get, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js"
 import { getAuth, createUserWithEmailAndPassword, onAuthStateChanged, sendEmailVerification, signOut, getIdToken } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
 import { doc, setDoc, serverTimestamp, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"
@@ -34,6 +34,13 @@ const SERVICE_NAMES = {
   completo: "Pacote Completo",
 }
 
+const DEFAULT_BARBER_SERVICES = Object.keys(SERVICE_NAMES).map((key) => ({
+  id: key,
+  name: SERVICE_NAMES[key],
+  price: Number(SERVICE_PRICES[key] || 0),
+  duration: Number(SERVICE_DURATION[key] || 30),
+}))
+
 const DAY_NAMES = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
 
 const state = {
@@ -52,6 +59,7 @@ let editingBarberId = null
 let barberModalEscBound = false
 let revenueViewMode = 'barber' // 'barber' or 'service'
 let syncingBarberStats = false
+let barberServicesDraft = []
 const DELETE_AUTH_USER_ENDPOINT = `https://europe-west1-${firebaseConfig.projectId}.cloudfunctions.net/deleteFirebaseAuthUser`
 
 installMojibakeAutoFix()
@@ -246,6 +254,100 @@ function setupBarberFormTimes(storeSettings = state.storeSettings) {
   lunchEndMinute.innerHTML = buildMinuteOptions(lunchEnd.minute)
 }
 
+function normalizeServiceId(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "")
+}
+
+function setBarberServicesDraft(services) {
+  barberServicesDraft = Array.isArray(services) && services.length
+    ? services.map((service) => ({
+        id: String(service.id || normalizeServiceId(service.name) || `service_${Date.now()}`),
+        name: String(service.name || "").trim(),
+        price: Number(service.price || 0),
+        duration: Number(service.duration || 0),
+      }))
+    : DEFAULT_BARBER_SERVICES.map((service) => ({ ...service }))
+  renderBarberServices()
+}
+
+function renderBarberServices() {
+  const container = document.getElementById("barberServicesList")
+  if (!container) return
+
+  if (!barberServicesDraft.length) {
+    container.innerHTML = '<div class="empty-state">Sem serviÃ§os definidos.</div>'
+    return
+  }
+
+  container.innerHTML = barberServicesDraft
+    .map((service, index) => `
+      <div class="barber-service-row" data-index="${index}">
+        <input type="text" data-field="name" placeholder="Nome" value="${service.name || ""}">
+        <input type="number" data-field="price" min="0" step="0.01" placeholder="PreÃ§o" value="${service.price || ""}">
+        <input type="number" data-field="duration" min="5" step="5" placeholder="Min" value="${service.duration || ""}">
+        <button type="button" class="btn btn-danger btn-small" data-action="remove-service">Remover</button>
+      </div>
+    `)
+    .join("")
+
+  container.querySelectorAll('[data-action="remove-service"]').forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const row = btn.closest(".barber-service-row")
+      const index = Number(row?.dataset.index || -1)
+      if (!Number.isFinite(index) || index < 0) return
+      barberServicesDraft.splice(index, 1)
+      renderBarberServices()
+    })
+  })
+
+  container.querySelectorAll('input[data-field]').forEach((input) => {
+    input.addEventListener("input", () => {
+      const row = input.closest(".barber-service-row")
+      const index = Number(row?.dataset.index || -1)
+      const field = input.getAttribute("data-field")
+      if (!Number.isFinite(index) || index < 0 || !field) return
+      barberServicesDraft[index] = {
+        ...barberServicesDraft[index],
+        [field]: field === "name" ? input.value : Number(input.value || 0),
+      }
+    })
+  })
+}
+
+function addBarberServiceRow() {
+  barberServicesDraft.push({
+    id: `service_${Date.now()}`,
+    name: "",
+    price: 0,
+    duration: 0,
+  })
+  renderBarberServices()
+}
+
+function getBarberServicesPayload() {
+  const services = barberServicesDraft
+    .map((service, index) => {
+      const name = String(service.name || "").trim()
+      const price = Number(service.price || 0)
+      const duration = Number(service.duration || 0)
+      const id = normalizeServiceId(name) || `service_${Date.now()}_${index}`
+      return { id, name, price, duration }
+    })
+    .filter((service) => service.name && service.price > 0 && service.duration > 0)
+
+  return services
+}
+
+function stripPhonePrefix(phoneValue) {
+  return String(phoneValue || "").replace(/^(\+351|351)/, "")
+}
+
 function setupTopTabs() {
   document.querySelectorAll(".tab-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -257,6 +359,23 @@ function setupTopTabs() {
       document.querySelectorAll(".tab-content").forEach((content) => content.classList.remove("active"))
       document.getElementById(`${tab}-tab`).classList.add("active")
       handleAdminTabActivation(tab)
+    })
+  })
+}
+
+function setupAdminShortcuts() {
+  const shortcutButtons = document.querySelectorAll(".admin-shortcut-btn[data-tab]")
+  if (!shortcutButtons.length) return
+
+  shortcutButtons.forEach((btn) => {
+    if (btn.dataset.bound === "true") return
+    btn.dataset.bound = "true"
+
+    btn.addEventListener("click", () => {
+      const tab = btn.dataset.tab
+      if (!tab) return
+      activateAdminTab(tab)
+      document.getElementById(`${tab}-tab`)?.scrollIntoView({ behavior: "smooth", block: "start" })
     })
   })
 }
@@ -468,6 +587,69 @@ function getOrderFilterValues() {
   }
 }
 
+async function restoreOrderStock(order) {
+  const items = Array.isArray(order?.items) ? order.items : []
+  const updates = []
+
+  for (const item of items) {
+    try {
+      const productSnap = await get(ref(database, `products/${item.productId}`))
+      const product = productSnap.exists() ? productSnap.val() : {}
+      const nextStock = Number(product.stock || 0) + Number(item.qty || 0)
+      updates.push(update(ref(database, `products/${item.productId}`), {
+        stock: nextStock,
+        updatedAt: new Date().toISOString(),
+      }))
+    } catch (error) {
+      console.warn("Erro ao restaurar stock:", item.productId, error)
+    }
+  }
+
+  await Promise.all(updates)
+}
+
+async function incrementOrderSales(order) {
+  const items = Array.isArray(order?.items) ? order.items : []
+  const updates = []
+
+  for (const item of items) {
+    try {
+      const productSnap = await get(ref(database, `products/${item.productId}`))
+      const product = productSnap.exists() ? productSnap.val() : {}
+      const nextSales = Number(product.salesCount || 0) + Number(item.qty || 0)
+      updates.push(update(ref(database, `products/${item.productId}`), {
+        salesCount: nextSales,
+        updatedAt: new Date().toISOString(),
+      }))
+    } catch (error) {
+      console.warn("Erro ao atualizar vendas:", item.productId, error)
+    }
+  }
+
+  await Promise.all(updates)
+}
+
+async function applyOrderStatusChange(orderId, order, nextStatus, extra = {}) {
+  if (!orderId || !order) return
+
+  if (nextStatus === "cancelled" && order.status !== "cancelled") {
+    await restoreOrderStock(order)
+  }
+
+  if (nextStatus === "completed" && order.status !== "completed") {
+    await incrementOrderSales(order)
+  }
+
+  await set(ref(database, `orders/${orderId}`), {
+    ...order,
+    ...extra,
+    status: nextStatus,
+    updatedAt: new Date().toISOString(),
+    completedAt: nextStatus === "completed" ? new Date().toISOString() : order.completedAt || null,
+    cancelledAt: nextStatus === "cancelled" ? new Date().toISOString() : order.cancelledAt || null,
+  })
+}
+
 function setupOrderEditModal() {
   const modal = document.getElementById("orderEditModal")
   const closeBtn = document.getElementById("orderEditCloseBtn")
@@ -490,13 +672,11 @@ function setupOrderEditModal() {
     const order = state.orders?.[id]
     if (!id || !order) return
     try {
-      await set(ref(database, `orders/${id}`), {
-        ...order,
+      const nextStatus = String(document.getElementById("orderEditStatus")?.value || "pending")
+      await applyOrderStatusChange(id, order, nextStatus, {
         clientName: String(document.getElementById("orderEditName")?.value || "").trim(),
         clientEmail: String(document.getElementById("orderEditEmail")?.value || "").trim(),
         clientPhone: String(document.getElementById("orderEditPhone")?.value || "").trim(),
-        status: String(document.getElementById("orderEditStatus")?.value || "pending"),
-        updatedAt: new Date().toISOString(),
       })
       closeModal()
       showSuccess("Pedido atualizado com sucesso.")
@@ -534,9 +714,10 @@ function setupBookingPeriodControls() {
   day.value = day.value || today
   week.value = week.value || currentWeek
   month.value = month.value || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+  period.value = "all"
 
   const refresh = () => {
-    const mode = period.value || "day"
+    const mode = period.value || "all"
     const isDay = mode === "day"
     const isWeek = mode === "week"
     const isMonth = mode === "month"
@@ -663,7 +844,7 @@ function renderOrders() {
                 <option value="cancelled" ${status === "cancelled" ? "selected" : ""}>Cancelado</option>
               </select>
               <button class="btn btn-primary btn-small" onclick="editOrder('${id}')">Editar</button>
-              <button class="btn btn-danger btn-small" onclick="deleteOrder('${id}')">Eliminar</button>
+              <button class="btn btn-danger btn-small" onclick="cancelOrder('${id}')">Cancelar</button>
             </div>
           </div>
         </div>
@@ -677,11 +858,7 @@ window.updateOrderStatus = async (id) => {
     const order = state.orders?.[id]
     if (!order) return
     const statusValue = document.getElementById(`orderStatus_${id}`)?.value || "pending"
-    await set(ref(database, `orders/${id}`), {
-      ...order,
-      status: statusValue,
-      updatedAt: new Date().toISOString(),
-    })
+    await applyOrderStatusChange(id, order, statusValue)
     showSuccess("Estado do pedido atualizado.")
   } catch (error) {
     showError("Erro ao atualizar estado do pedido: " + error.message)
@@ -703,13 +880,15 @@ window.editOrder = async (id) => {
   document.body.classList.add("modal-open")
 }
 
-window.deleteOrder = async (id) => {
+window.cancelOrder = async (id) => {
   try {
-    if (!confirm("Tem a certeza que quer eliminar este pedido?")) return
-    await remove(ref(database, `orders/${id}`))
-    showSuccess("Pedido eliminado com sucesso.")
+    if (!confirm("Tem a certeza que quer cancelar este pedido?")) return
+    const order = state.orders?.[id]
+    if (!order) return
+    await applyOrderStatusChange(id, order, "cancelled")
+    showSuccess("Pedido cancelado com sucesso.")
   } catch (error) {
-    showError("Erro ao eliminar pedido: " + error.message)
+    showError("Erro ao cancelar pedido: " + error.message)
   }
 }
 function setupRevenueControls() {
@@ -1046,8 +1225,9 @@ function renderBarbers() {
       const completedCuts = liveStats.completedCuts
       const ratingCount = liveStats.ratingCount
       const averageRating = liveStats.averageRating
+      const isActive = barber.isActive !== false
       return `
-        <div class="barber-item">
+        <div class="barber-item ${isActive ? "" : "is-inactive"}">
           <div class="barber-front">
             <h3>${barber.name || "Barbeiro"}</h3>
             <p><strong>Email:</strong> ${barber.email || "-"}</p>
@@ -1056,6 +1236,7 @@ function renderBarbers() {
             <p><strong>Horário:</strong> ${barber.workingHours?.start || "09:00"} - ${barber.workingHours?.end || "19:00"}</p>
             <p><strong>Almoço:</strong> ${barber.lunchBreak?.start || "13:00"} - ${barber.lunchBreak?.end || "14:00"}</p>
             <p><strong>Dias:</strong> ${days}</p>
+            <p><strong>Estado:</strong> <span class="status-pill ${isActive ? "is-active" : "is-cancelled"}">${isActive ? "Ativo" : "Inativo"}</span></p>
           </div>
           <div class="barber-back" style="margin-top: 8px;">
             <p><strong>Cortes concluídos:</strong> ${completedCuts}</p>
@@ -1063,6 +1244,7 @@ function renderBarbers() {
           </div>
           <div class="booking-actions">
             <button class="btn btn-secondary" data-action="edit-barber" data-barber-id="${id}">Editar</button>
+            <button class="btn btn-secondary" data-action="toggle-barber" data-barber-id="${id}">${isActive ? "Desativar" : "Ativar"}</button>
             <button class="btn btn-danger" data-action="delete-barber" data-barber-id="${id}">Eliminar</button>
           </div>
         </div>
@@ -1083,6 +1265,14 @@ function renderBarbers() {
       const id = button.getAttribute("data-barber-id")
       if (!id) return
       window.deleteBarber(id)
+    })
+  })
+
+  container.querySelectorAll('[data-action="toggle-barber"]').forEach((button) => {
+    button.addEventListener("click", () => {
+      const id = button.getAttribute("data-barber-id")
+      if (!id) return
+      window.toggleBarberActive(id)
     })
   })
 }
@@ -1174,19 +1364,24 @@ function renderClients() {
   }
 
   container.innerHTML = entries
-    .map(
-      ([id, client]) => `
-        <div class="barber-item">
+    .map(([id, client]) => {
+      const isActive = client.isActive !== false
+      return `
+        <div class="barber-item ${isActive ? "" : "is-inactive"}">
           <div>
             <h3>${client.name || "Cliente"}</h3>
             <p><strong>Email:</strong> ${client.email || "-"}</p>
             <p><strong>Telefone:</strong> ${client.phone || "-"}</p>
             <p><strong>Registado em:</strong> ${formatDate(String(client.createdAt || "").split("T")[0])}</p>
+            <p><strong>Estado:</strong> <span class="status-pill ${isActive ? "is-active" : "is-cancelled"}">${isActive ? "Ativo" : "Inativo"}</span></p>
           </div>
-          <button class="btn btn-danger" onclick="deleteClient('${id}')">Eliminar</button>
+          <div class="booking-actions">
+            <button class="btn btn-secondary btn-small" onclick="toggleClientActive('${id}')">${isActive ? "Desativar" : "Ativar"}</button>
+            <button class="btn btn-danger btn-small" onclick="deleteClient('${id}')">Eliminar</button>
+          </div>
         </div>
-      `,
-    )
+      `
+    })
     .join("")
 }
 
@@ -1253,29 +1448,12 @@ function resetProductForm() {
   const stock = document.getElementById("productStock")
   const promo = document.getElementById("productPromo")
   const active = document.getElementById("productActive")
-  const imageFile = document.getElementById("productImageFile")
-  const imageFileName = document.getElementById("productImageFileName")
   const saveBtn = document.getElementById("productSaveBtn")
 
   if (stock) stock.value = "0"
   if (promo) promo.value = "0"
   if (active) active.checked = true
-  if (imageFile) imageFile.value = ""
-  if (imageFileName) imageFileName.textContent = "Nenhum ficheiro selecionado."
   if (saveBtn) saveBtn.textContent = "Guardar produto"
-}
-
-function readImageFileAsDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    if (!file) {
-      resolve("")
-      return
-    }
-    const reader = new FileReader()
-    reader.onload = () => resolve(String(reader.result || ""))
-    reader.onerror = () => reject(new Error("Não foi possível ler a imagem selecionada."))
-    reader.readAsDataURL(file)
-  })
 }
 
 function renderProducts() {
@@ -1396,8 +1574,6 @@ function setupPromotionForm() {
 function setupProductForm() {
   const form = document.getElementById("productForm")
   const cancelBtn = document.getElementById("productCancelEditBtn")
-  const imageFileInput = document.getElementById("productImageFile")
-  const imageFileName = document.getElementById("productImageFileName")
   if (!form || !cancelBtn) return
 
   if (!form.dataset.bound) {
@@ -1408,7 +1584,6 @@ function setupProductForm() {
       const name = document.getElementById("productName")?.value?.trim() || ""
       const price = Number(document.getElementById("productPrice")?.value || 0)
       const imageUrlInput = document.getElementById("productImage")?.value?.trim() || ""
-      const imageFile = document.getElementById("productImageFile")?.files?.[0] || null
       const stock = Number(document.getElementById("productStock")?.value || 0)
       const promoPercent = Number(document.getElementById("productPromo")?.value || 0)
       const description = document.getElementById("productDescription")?.value?.trim() || ""
@@ -1422,8 +1597,7 @@ function setupProductForm() {
       const id = editingProductId || `product_${Date.now()}`
       const previous = state.products[id] || {}
 
-      const imageUrlFromFile = await readImageFileAsDataUrl(imageFile)
-      const imageUrl = imageUrlFromFile || imageUrlInput || previous.imageUrl || ""
+      const imageUrl = imageUrlInput || previous.imageUrl || ""
 
       const payload = {
         name,
@@ -1452,15 +1626,6 @@ function setupProductForm() {
     cancelBtn.dataset.bound = "true"
     cancelBtn.addEventListener("click", () => {
       resetProductForm()
-    })
-  }
-
-  if (imageFileInput && !imageFileInput.dataset.bound) {
-    imageFileInput.dataset.bound = "true"
-    imageFileInput.addEventListener("change", () => {
-      if (!imageFileName) return
-      const selected = imageFileInput.files?.[0]
-      imageFileName.textContent = selected ? selected.name : "Nenhum ficheiro selecionado."
     })
   }
 
@@ -2009,11 +2174,23 @@ function loadOrders() {
   })
 }
 
+function renderAboutSettings() {
+  const input = document.getElementById("aboutText")
+  if (!input) return
+
+  if (document.activeElement === input && input.dataset.userEdited === "true") return
+
+  const aboutText = state.storeSettings?.aboutText ?? state.storeSettings?.about ?? ""
+  input.value = String(aboutText || "")
+  input.dataset.userEdited = "false"
+}
+
 function loadStoreSettings() {
   onValue(ref(database, "storeSettings"), (snapshot) => {
     state.storeSettings = snapshot.exists() ? snapshot.val() : {}
     renderStoreSchedule()
     setupBarberFormTimes(state.storeSettings)
+    renderAboutSettings()
   })
 }
 
@@ -2032,11 +2209,15 @@ function resetBarberForm() {
   const submitBtn = document.getElementById("barberSubmitBtn")
   const passwordGroup = document.getElementById("barberPasswordGroup")
   const passwordInput = document.getElementById("barberPassword")
+  const imageInput = document.getElementById("barberImageUrl")
 
   if (title) title.textContent = "Adicionar Barbeiro"
   if (submitBtn) submitBtn.textContent = "Adicionar Barbeiro"
   if (passwordGroup) passwordGroup.classList.remove("hidden")
   if (passwordInput) passwordInput.required = true
+  if (imageInput) imageInput.value = ""
+
+  setBarberServicesDraft(DEFAULT_BARBER_SERVICES)
 }
 
 function openBarberForm(barber = null, barberId = null) {
@@ -2069,8 +2250,10 @@ function openBarberForm(barber = null, barberId = null) {
   setupBarberFormTimes(state.storeSettings)
   document.getElementById("barberName").value = barber.name || ""
   document.getElementById("barberEmail").value = barber.email || ""
-  document.getElementById("barberPhone").value = barber.phone || ""
+  document.getElementById("barberPhone").value = stripPhonePrefix(barber.phone || "")
   document.getElementById("barberSpecialty").value = barber.specialty || ""
+  const imageInput = document.getElementById("barberImageUrl")
+  if (imageInput) imageInput.value = barber.imageUrl || ""
 
   const start = parseTimeValue(barber.workingHours?.start || "09:00", "09", "00")
   const end = parseTimeValue(barber.workingHours?.end || "19:00", "19", "00")
@@ -2089,6 +2272,8 @@ function openBarberForm(barber = null, barberId = null) {
   document.querySelectorAll('#barberWorkingDays input[type="checkbox"]').forEach((checkbox) => {
     checkbox.checked = workingDays.includes(Number(checkbox.value))
   })
+
+  setBarberServicesDraft(barber.services)
 
   const title = document.getElementById("barberFormTitle")
   const submitBtn = document.getElementById("barberSubmitBtn")
@@ -2203,7 +2388,6 @@ window.editProduct = (id) => {
   const promo = document.getElementById("productPromo")
   const description = document.getElementById("productDescription")
   const active = document.getElementById("productActive")
-  const imageFileName = document.getElementById("productImageFileName")
   const saveBtn = document.getElementById("productSaveBtn")
 
   if (name) name.value = product.name || ""
@@ -2213,7 +2397,6 @@ window.editProduct = (id) => {
   if (promo) promo.value = product.promoPercent ?? 0
   if (description) description.value = product.description || ""
   if (active) active.checked = product.isActive !== false
-  if (imageFileName) imageFileName.textContent = "Nenhum ficheiro selecionado."
   if (saveBtn) saveBtn.textContent = "Atualizar produto"
 
   document.getElementById("products-tab")?.scrollIntoView({ behavior: "smooth", block: "start" })
@@ -2275,6 +2458,36 @@ window.deleteProduct = async (id) => {
   }
 }
 
+window.toggleBarberActive = async (id) => {
+  const barber = state.barbers?.[id]
+  if (!barber) return
+  const nextActive = barber.isActive === false
+  try {
+    await set(ref(database, `barbers/${id}`), {
+      ...barber,
+      isActive: nextActive,
+      updatedAt: new Date().toISOString(),
+    })
+
+    try {
+      await setDoc(
+        doc(firestore, "users", id),
+        {
+          isActive: nextActive,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      )
+    } catch (firestoreError) {
+      console.warn("Sem permissão para atualizar estado no Firestore:", firestoreError)
+    }
+
+    showSuccess(nextActive ? "Conta do barbeiro ativada." : "Conta do barbeiro desativada.")
+  } catch (error) {
+    showError("Erro ao atualizar estado do barbeiro: " + error.message)
+  }
+}
+
 window.deleteBarber = async (id) => {
   if (!confirm("Tem certeza que deseja eliminar este barbeiro?")) return
 
@@ -2326,6 +2539,36 @@ window.deleteClient = async (id) => {
     showSuccess("Cliente eliminado com sucesso!")
   } catch (error) {
     showError("Erro ao eliminar cliente: " + error.message)
+  }
+}
+
+window.toggleClientActive = async (id) => {
+  const client = state.clients?.[id]
+  if (!client) return
+  const nextActive = client.isActive === false
+  try {
+    await set(ref(database, `clients/${id}`), {
+      ...client,
+      isActive: nextActive,
+      updatedAt: new Date().toISOString(),
+    })
+
+    try {
+      await setDoc(
+        doc(firestore, "users", id),
+        {
+          isActive: nextActive,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      )
+    } catch (firestoreError) {
+      console.warn("Sem permissão para atualizar estado no Firestore:", firestoreError)
+    }
+
+    showSuccess(nextActive ? "Conta do cliente ativada." : "Conta do cliente desativada.")
+  } catch (error) {
+    showError("Erro ao atualizar estado do cliente: " + error.message)
   }
 }
 
@@ -2580,6 +2823,12 @@ if (barberEmailInput) {
   })
 }
 
+const addServiceBtn = document.getElementById("barberAddServiceBtn")
+if (addServiceBtn && addServiceBtn.dataset.bound !== "true") {
+  addServiceBtn.dataset.bound = "true"
+  addServiceBtn.addEventListener("click", addBarberServiceRow)
+}
+
 document.getElementById("barberForm").addEventListener("submit", async (e) => {
   e.preventDefault()
 
@@ -2622,11 +2871,6 @@ document.getElementById("barberForm").addEventListener("submit", async (e) => {
     return
   }
 
-  if (lunchEndMinutes - lunchStartMinutes !== 60) {
-    showError("A hora de almoÃ§o do barbeiro deve ter exatamente 1 hora.")
-    return
-  }
-
   if (lunchStartMinutes < workStartMinutes || lunchEndMinutes > workEndMinutes) {
     showError("A hora de almoÃ§o do barbeiro deve estar dentro do horÃ¡rio de trabalho.")
     return
@@ -2658,12 +2902,22 @@ document.getElementById("barberForm").addEventListener("submit", async (e) => {
     return
   }
 
+  const services = getBarberServicesPayload()
+  if (!services.length) {
+    showError("Adicione pelo menos um serviÃ§o vÃ¡lido (nome, preÃ§o e duraÃ§Ã£o).")
+    return
+  }
+
+  const imageUrl = String(document.getElementById("barberImageUrl")?.value || "").trim()
+
   try {
     const newBarber = {
       name: document.getElementById("barberName").value,
       email,
       phone: formatPhoneNumber(phone),
       specialty: document.getElementById("barberSpecialty").value,
+      imageUrl,
+      services,
       workingHours: {
         start: startTime,
         end: endTime,
@@ -2688,6 +2942,7 @@ document.getElementById("barberForm").addEventListener("submit", async (e) => {
       await set(ref(database, `barbers/${editingBarberId}`), {
         ...existing,
         ...newBarber,
+        isActive: existing.isActive !== false,
         createdAt: existing.createdAt || new Date().toISOString(),
       })
 
@@ -2718,7 +2973,10 @@ document.getElementById("barberForm").addEventListener("submit", async (e) => {
       handleCodeInApp: true,
     })
 
-    await set(ref(database, `barbers/${barberUid}`), newBarber)
+    await set(ref(database, `barbers/${barberUid}`), {
+      ...newBarber,
+      isActive: true,
+    })
 
     try {
       await setDoc(doc(firestore, "users", barberUid), {
@@ -2797,10 +3055,34 @@ document.getElementById("storeScheduleForm").addEventListener("submit", async (e
   }
 
   try {
-    await set(ref(database, "storeSettings"), payload)
+    await update(ref(database, "storeSettings"), payload)
     showSuccess("HorÃ¡rio da loja guardado com sucesso!")
   } catch (error) {
     showError("Erro ao guardar horÃ¡rio da loja: " + error.message)
+  }
+})
+
+const aboutTextInput = document.getElementById("aboutText")
+if (aboutTextInput && aboutTextInput.dataset.bound !== "true") {
+  aboutTextInput.dataset.bound = "true"
+  aboutTextInput.addEventListener("input", () => {
+    aboutTextInput.dataset.userEdited = "true"
+  })
+}
+
+document.getElementById("aboutForm")?.addEventListener("submit", async (e) => {
+  e.preventDefault()
+  const aboutText = String(document.getElementById("aboutText")?.value || "").trim()
+
+  try {
+    await update(ref(database, "storeSettings"), {
+      aboutText,
+      updatedAt: new Date().toISOString(),
+    })
+    renderAboutSettings()
+    showSuccess("Texto da secÃ§Ã£o Sobre nÃ³s guardado.")
+  } catch (error) {
+    showError("Erro ao guardar texto Sobre nÃ³s: " + error.message)
   }
 })
 
@@ -2813,11 +3095,13 @@ document.getElementById("bookingPriorityCancel")?.addEventListener("change", (ev
 
 // Inicializa controles visuais imediatamente para evitar UI sem aÃ§Ã£o
 setupTopTabs()
+setupAdminShortcuts()
 setupScheduleTabs()
 setupPromotionTabs()
 setupProductTabs()
 setupBarberFormMode()
 setupBarberFormTimes()
+setBarberServicesDraft(DEFAULT_BARBER_SERVICES)
 setupStoreScheduleTimes()
 setupBookingPeriodControls()
 setupFilters()
