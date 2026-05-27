@@ -25,6 +25,26 @@
                 
                 <button type="submit" class="btn btn-primary" style="width: 100%;">Entrar</button>
             </form>
+
+            <div style="margin-top: 1rem; text-align: center;">
+                <a href="#" id="barberForgotToggle" class="auth-inline-link">Esqueceu a senha?</a>
+            </div>
+
+            <form id="barberPasswordRequestForm" class="hidden" style="margin-top: 1rem;">
+                <div class="form-group">
+                    <label for="barberResetEmail">Email da conta</label>
+                    <input type="email" id="barberResetEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="barberResetPassword">Nova senha</label>
+                    <input type="password" id="barberResetPassword" minlength="6" required>
+                </div>
+                <div class="form-group">
+                    <label for="barberResetPasswordConfirm">Confirmar nova senha</label>
+                    <input type="password" id="barberResetPasswordConfirm" minlength="6" required>
+                </div>
+                <button type="submit" class="btn btn-secondary" style="width: 100%;">Solicitar alteração de senha ao admin</button>
+            </form>
             
             <div class="auth-footer">
                 <a href="index.html">← Voltar à página inicial</a>

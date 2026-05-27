@@ -408,8 +408,8 @@ async function loginWithGoogleAndRoute() {
 }
 
 const LOGIN_MESSAGES = {
-  wrongPassword: "A senha esta incorreta.",
-  missingAccount: "Essa conta nao existe. Cria uma conta.",
+  wrongPassword: "Senha/email incorretos.",
+  missingAccount: "Senha/email incorretos.",
 }
 
 async function checkIfAccountExists(email) {

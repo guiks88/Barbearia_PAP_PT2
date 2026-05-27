@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt">
 <head>
     <meta charset="UTF-8">
@@ -21,21 +21,6 @@
             </div>
         </div>
 
-        <div class="stats-grid">
-            <div class="stat-card clickable" data-view-mode="today" role="button" tabindex="0" aria-label="Ver cortes de hoje">
-                <h3 id="todayCount">0</h3>
-                <p>Marcações Hoje</p>
-            </div>
-            <div class="stat-card clickable" data-view-mode="week" role="button" tabindex="0" aria-label="Ver cortes desta semana">
-                <h3 id="weekCount">0</h3>
-                <p>Marcações esta Semana</p>
-            </div>
-            <div class="stat-card clickable" data-view-mode="month" role="button" tabindex="0" aria-label="Ver cortes deste mês">
-                <h3 id="monthCount">0</h3>
-                <p>Marcações este Mês</p>
-            </div>
-        </div>
-
         <div class="schedule-container">
             <div class="schedule-header">
                 <h2>Pedidos</h2>
@@ -48,6 +33,17 @@
                     </div>
 
                     <div class="filters-row">
+                        <div class="filter-group" id="bookingFilterPeriodWrap">
+                            <label for="bookingFilterPeriod">Período:</label>
+                            <select id="bookingFilterPeriod">
+                                <option value="all" selected>Todo o período</option>
+                                <option value="day">Dia</option>
+                                <option value="week">Semana</option>
+                                <option value="month">Mês</option>
+                                <option value="year">Ano</option>
+                                <option value="between-dates">Entre datas</option>
+                            </select>
+                        </div>
                         <div class="filter-group" id="clientNameFilterGroup">
                             <label for="clientSearchName">Nome:</label>
                             <input type="text" id="clientSearchName" placeholder="Nome do cliente">
@@ -67,9 +63,27 @@
                     </div>
 
                     <div class="filters-row">
-                        <div class="filter-group" id="dateFilterGroup">
+                        <div class="filter-group hidden" id="bookingDayWrap">
+                            <label for="bookingDay">Dia:</label>
+                            <input type="date" id="bookingDay">
+                        </div>
+                        <div class="filter-group hidden" id="bookingWeekWrap">
+                            <label for="bookingWeek">Semana:</label>
+                            <input type="week" id="bookingWeek">
+                        </div>
+                        <div class="filter-group hidden" id="bookingMonthWrap">
+                            <label for="bookingMonth">Mês:</label>
+                            <input type="month" id="bookingMonth">
+                        </div>
+                        <div class="filter-group hidden" id="bookingYearWrap">
+                            <label for="bookingYear">Ano:</label>
+                            <select id="bookingYear"></select>
+                        </div>
+                        <div class="filter-group hidden" id="bookingDateFromWrap">
                             <label for="dateFrom">Data de:</label>
                             <input type="date" id="dateFrom">
+                        </div>
+                        <div class="filter-group hidden" id="bookingDateToWrap">
                             <label for="dateTo">Data até:</label>
                             <input type="date" id="dateTo">
                         </div>
@@ -83,7 +97,7 @@
                 </div>
             </div>
 
-            <p class="view-mode-label" id="viewModeLabel">A mostrar: cortes deste mês</p>
+            <p class="view-mode-label" id="viewModeLabel">A mostrar: todo o período (mais próximas primeiro)</p>
 
             <div id="appointmentsContainer" class="appointments-grid">
                 <div class="loading">

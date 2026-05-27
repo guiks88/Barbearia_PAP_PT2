@@ -115,6 +115,7 @@ const bookingState = {
   currentYear: new Date().getFullYear(),
   availableSlots: {},
   bookings: [],
+  clientOverlapBookings: [],
   preferredBarberRaw: preferredBarberParam,
   preferredBarberKey: normalizeBarberKey(preferredBarberParam),
   preferredBarberApplied: false,
@@ -136,6 +137,7 @@ bookingState.storeSettings = {
 
 const SLOT_STEP_MINUTES = 10
 const MIN_ADVANCE_BOOKING_MINUTES = 60
+const BOOKING_LOCK_WINDOW_MINUTES = 60
 
 const SERVICE_CATALOG = {
   corte: { name: 'Corte de Cabelo', price: 15, duration: 30 },
@@ -489,13 +491,31 @@ function getBookingDurationMinutes(booking) {
   return 30
 }
 
+function isActiveBookingLifecycle(booking) {
+  if (!booking) return false
+  return booking.status !== 'cancelled' && booking.status !== 'expired'
+}
+
 function isSlotConflictWithBookings(dateStr, slotTime, durationMinutes, excludedBookingId = null) {
   const slotStart = timeToMinutes(slotTime)
-  return bookingState.bookings.some((booking) => {
+  const hasBarberOverlap = bookingState.bookings.some((booking) => {
     if (!booking) return false
     if (booking.date !== dateStr) return false
     if (excludedBookingId && booking.id === excludedBookingId) return false
-    if (booking.status === 'cancelled' || booking.status === 'expired') return false
+    if (!isActiveBookingLifecycle(booking)) return false
+
+    const bookingStart = timeToMinutes(booking.time)
+    const bookingDuration = getBookingDurationMinutes(booking)
+    return intervalOverlaps(slotStart, durationMinutes, bookingStart, bookingDuration)
+  })
+
+  if (hasBarberOverlap) return true
+
+  return bookingState.clientOverlapBookings.some((booking) => {
+    if (!booking) return false
+    if (booking.date !== dateStr) return false
+    if (excludedBookingId && booking.id === excludedBookingId) return false
+    if (!isActiveBookingLifecycle(booking)) return false
 
     const bookingStart = timeToMinutes(booking.time)
     const bookingDuration = getBookingDurationMinutes(booking)
@@ -601,6 +621,30 @@ function isPastTimeSlot(dateStr, timeStr) {
   const nowMinutes = now.getHours() * 60 + now.getMinutes() + MIN_ADVANCE_BOOKING_MINUTES
 
   return slotMinutes < nowMinutes
+}
+
+function getBookingStartDateTime(booking) {
+  if (!booking?.date || !booking?.time) return null
+  const dateTime = new Date(`${booking.date}T${booking.time}:00`)
+  if (Number.isNaN(dateTime.getTime())) return null
+  return dateTime
+}
+
+function getMinutesUntilBookingStart(booking) {
+  const bookingDateTime = getBookingStartDateTime(booking)
+  if (!bookingDateTime) return Number.POSITIVE_INFINITY
+  return Math.round((bookingDateTime.getTime() - Date.now()) / 60000)
+}
+
+function isBookingLockedForClientChanges(booking) {
+  const remainingMinutes = getMinutesUntilBookingStart(booking)
+  return remainingMinutes <= BOOKING_LOCK_WINDOW_MINUTES
+}
+
+function isPastClientBookingStart(booking) {
+  const bookingDateTime = getBookingStartDateTime(booking)
+  if (!bookingDateTime) return false
+  return bookingDateTime.getTime() < Date.now()
 }
 
 function showBookingSteps() {
@@ -887,6 +931,16 @@ async function refreshRescheduleTimeOptions(bookingId) {
   const booking = getBookingById(bookingId)
   if (!booking) return
 
+  if (isBookingLockedForClientChanges(booking)) {
+    showError('Não é possível adiar: falta 1 hora ou menos para a marcação.')
+    return
+  }
+
+  if (isBookingLockedForClientChanges(booking)) {
+    showError('Falta 1 hora ou menos para a marcação. Já não é possível adiar.')
+    return
+  }
+
   const dateInput = document.getElementById(`reschedule-date-${bookingId}`)
   const timeSelect = document.getElementById(`reschedule-time-${bookingId}`)
   if (!dateInput || !timeSelect) return
@@ -930,14 +984,8 @@ function isBookingExpiredForClient(booking) {
   const execution = booking.executionStatus || 'pending'
   if (execution !== 'pending') return false
 
-  if (isDateBeforeToday(booking.date)) return true
-
-  const todayStr = getDateString(new Date())
-  if (booking.date === todayStr && isPastTimeSlot(booking.date, booking.time)) {
-    return true
-  }
-
-  return false
+  if (isPastClientBookingStart(booking)) return true
+  return isDateBeforeToday(booking.date)
 }
 
 async function expirePastClientBookings(bookings) {
@@ -975,8 +1023,16 @@ async function hasBookingConflict(barberId, date, time, bookingIdToIgnore, durat
   const candidateStart = timeToMinutes(time)
   return Object.entries(allBookings).some(([id, booking]) => {
     if (!booking || id === bookingIdToIgnore) return false
-    if (booking.status === 'cancelled' || booking.status === 'expired') return false
-    if (booking.barberId !== barberId || booking.date !== date) return false
+    if (!isActiveBookingLifecycle(booking)) return false
+    if (booking.date !== date) return false
+
+    const sameBarber = booking.barberId === barberId
+    const sameClient = Boolean(
+      bookingState.clientUid &&
+      booking.clientUid &&
+      booking.clientUid === bookingState.clientUid,
+    )
+    if (!sameBarber && !sameClient) return false
 
     const bookingStart = timeToMinutes(booking.time)
     const bookingDuration = getBookingDurationMinutes(booking)
@@ -1124,6 +1180,7 @@ function renderClientBookings() {
           : 'Confirmada'
     const isCancelled = booking.status === 'cancelled' || booking.status === 'expired'
     const isLocked = isCancelled || isCompleted
+    const isChangeLockedByTime = !isLocked && isBookingLockedForClientChanges(booking)
     const ratingValue = Number(booking.rating || 0)
     const canRate = isCompleted && !isCancelled
     const safeDate = booking.date || ''
@@ -1137,7 +1194,7 @@ function renderClientBookings() {
           <p><strong>Hora:</strong> ${safeTime || '-'}</p>
           <p><strong>Estado:</strong> ${statusLabel}</p>
         </div>
-        ${isLocked ? '' : `
+        ${isLocked || isChangeLockedByTime ? '' : `
           <div class="client-booking-actions">
             ${isCancelMode ? '' : `<button type="button" class="btn btn-secondary manage-reschedule-btn" data-booking-id="${booking.id}">Adiar</button>`}
             <button type="button" class="btn btn-primary manage-cancel-btn" data-booking-id="${booking.id}">Anular</button>
@@ -1154,6 +1211,11 @@ function renderClientBookings() {
             <button type="button" class="btn btn-primary save-reschedule-btn" data-booking-id="${booking.id}">Guardar Nova Data</button>
           </div>
         `}
+        ${isChangeLockedByTime ? `
+          <div class="client-booking-rating is-disabled">
+            <p class="rating-hint">Falta 1 hora ou menos para esta marcação. Já não é possível adiar nem anular.</p>
+          </div>
+        ` : ''}
         ${canRate ? `
           <div class="client-booking-rating">
             <label>Avaliar barbeiro</label>
@@ -1302,6 +1364,11 @@ async function cancelBookingByClient(bookingId) {
   const booking = getBookingById(bookingId)
   if (!booking) {
     showError('Marcação não encontrada.')
+    return
+  }
+
+  if (isBookingLockedForClientChanges(booking)) {
+    showError('Falta 1 hora ou menos para a marcação. Já não é possível anular.')
     return
   }
 
@@ -1721,13 +1788,28 @@ async function loadExistingBookings(barberId) {
     const snapshot = await get(bookingsRef)
     
     bookingState.bookings = []
+    bookingState.clientOverlapBookings = []
     
     if (snapshot.exists()) {
       const allBookings = snapshot.val()
       
       Object.entries(allBookings).forEach(([bookingId, booking]) => {
-        if (booking.barberId === barberId && booking.status !== 'cancelled' && booking.status !== 'expired') {
+        if (!isActiveBookingLifecycle(booking)) return
+
+        if (booking.barberId === barberId) {
           bookingState.bookings.push({
+            id: bookingId,
+            date: booking.date,
+            time: booking.time,
+            status: booking.status,
+            service: booking.service,
+            serviceDuration: booking.serviceDuration,
+            actualDurationMinutes: booking.actualDurationMinutes,
+          })
+        }
+
+        if (bookingState.clientUid && booking.clientUid === bookingState.clientUid) {
+          bookingState.clientOverlapBookings.push({
             id: bookingId,
             date: booking.date,
             time: booking.time,

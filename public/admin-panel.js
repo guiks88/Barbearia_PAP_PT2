@@ -51,6 +51,7 @@ const state = {
   products: {},
   orders: {},
   storeSettings: {},
+  passwordRequests: {},
 }
 
 let editingPromotionId = null
@@ -2790,6 +2791,86 @@ window.setExecutionStatus = async (id, statusValue) => {
   }
 }
 
+function renderPasswordRequests() {
+  const container = document.getElementById("passwordRequestsList")
+  if (!container) return
+
+  const entries = Object.entries(state.passwordRequests || {})
+    .sort((a, b) => String(b[1]?.requestedAt || "").localeCompare(String(a[1]?.requestedAt || "")))
+
+  if (!entries.length) {
+    container.innerHTML = '<div class="empty-state">Sem pedidos.</div>'
+    return
+  }
+
+  container.innerHTML = entries
+    .map(([id, request]) => {
+      const status = String(request?.status || "pending")
+      const badgeClass = status === "approved" ? "is-active" : status === "rejected" ? "is-cancelled" : "is-warning"
+      const requestedAt = request?.requestedAt ? formatDate(request.requestedAt) : "Data não disponível"
+      const canReview = status === "pending"
+      return `
+        <div class="barber-item">
+          <div>
+            <h3>${request?.barberName || "Barbeiro"}</h3>
+            <p><strong>Email:</strong> ${request?.barberEmail || "-"}</p>
+            <p><strong>Pedido:</strong> alteração de senha</p>
+            <p><strong>Data:</strong> ${requestedAt}</p>
+            <p><strong>Estado:</strong> <span class="status-pill ${badgeClass}">${status}</span></p>
+          </div>
+          ${canReview ? `
+            <div class="booking-actions">
+              <button class="btn btn-primary btn-small" data-action="approve-password-request" data-request-id="${id}">Aprovar</button>
+              <button class="btn btn-danger btn-small" data-action="reject-password-request" data-request-id="${id}">Rejeitar</button>
+            </div>
+          ` : ""}
+        </div>
+      `
+    })
+    .join("")
+
+  container.querySelectorAll('[data-action="approve-password-request"]').forEach((button) => {
+    button.addEventListener("click", async () => {
+      const requestId = button.getAttribute("data-request-id")
+      if (!requestId) return
+      try {
+        await update(ref(database, `barberPasswordRequests/${requestId}`), {
+          status: "approved",
+          reviewedAt: new Date().toISOString(),
+          reviewedBy: sessionStorage.getItem("adminId") || "",
+        })
+        showSuccess("Pedido aprovado.")
+      } catch (error) {
+        showError("Erro ao aprovar pedido: " + error.message)
+      }
+    })
+  })
+
+  container.querySelectorAll('[data-action="reject-password-request"]').forEach((button) => {
+    button.addEventListener("click", async () => {
+      const requestId = button.getAttribute("data-request-id")
+      if (!requestId) return
+      try {
+        await update(ref(database, `barberPasswordRequests/${requestId}`), {
+          status: "rejected",
+          reviewedAt: new Date().toISOString(),
+          reviewedBy: sessionStorage.getItem("adminId") || "",
+        })
+        showSuccess("Pedido rejeitado.")
+      } catch (error) {
+        showError("Erro ao rejeitar pedido: " + error.message)
+      }
+    })
+  })
+}
+
+function loadPasswordRequests() {
+  onValue(ref(database, "barberPasswordRequests"), (snapshot) => {
+    state.passwordRequests = snapshot.exists() ? snapshot.val() : {}
+    renderPasswordRequests()
+  })
+}
+
 async function verifyAdminAccess(user) {
   try {
     const adminRef = ref(database, `admins/${user.uid}`)
@@ -3129,6 +3210,7 @@ onAuthStateChanged(auth, async (user) => {
   loadProducts()
   loadOrders()
   loadStoreSettings()
+  loadPasswordRequests()
 })
 
 document.getElementById("logoutBtn").addEventListener("click", () => {

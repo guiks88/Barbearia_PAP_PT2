@@ -1,4 +1,4 @@
-import { auth, database } from "./firebase-config.js"
+﻿import { auth, database } from "./firebase-config.js"
 import { ref, get, onValue, set, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
 import { showSuccess, showError } from "./utils.js"
@@ -7,7 +7,7 @@ let barberId = null
 let barberName = null
 let barberEmail = null
 let allBookings = []
-let currentViewMode = "today"
+let currentViewMode = "all"
 
 function clearBarberSession() {
   sessionStorage.removeItem("barberId")
@@ -16,7 +16,7 @@ function clearBarberSession() {
   sessionStorage.removeItem("isBarber")
 }
 
-// Verificar autenticação
+// Verificar autenticaÃ§Ã£o
 window.addEventListener("load", () => {
   barberId = sessionStorage.getItem("barberId")
   barberName = sessionStorage.getItem("barberName")
@@ -24,7 +24,7 @@ window.addEventListener("load", () => {
   const isBarber = sessionStorage.getItem("isBarber")
 
   if (!barberId || !isBarber) {
-    showError("Acesso negado. Por favor, faça login como barbeiro.")
+    showError("Acesso negado. Por favor, faÃ§a login como barbeiro.")
     setTimeout(() => {
       window.location.href = "barber-login.html"
     }, 2000)
@@ -34,14 +34,14 @@ window.addEventListener("load", () => {
   onAuthStateChanged(auth, (user) => {
     if (!user || user.uid !== barberId) {
       clearBarberSession()
-      showError("Sessão expirada. Faça login novamente.")
+      showError("SessÃ£o expirada. FaÃ§a login novamente.")
       setTimeout(() => {
         window.location.href = "barber-login.html"
       }, 1200)
       return
     }
 
-    // Exibir informações do barbeiro
+    // Exibir informaÃ§Ãµes do barbeiro
     document.getElementById("barberNameDisplay").textContent = barberName || "Barbeiro"
     document.getElementById("barberEmailDisplay").textContent = barberEmail || ""
 
@@ -68,7 +68,7 @@ document.getElementById("logoutBtn").addEventListener("click", async () => {
   }, 900)
 })
 
-// Carregar marcações em tempo real
+// Carregar marcaÃ§Ãµes em tempo real
 function loadBookings() {
   const bookingsRef = ref(database, "bookings")
   
@@ -141,19 +141,112 @@ function getTodayWeekMonthRanges() {
   return { now, todayStart, todayEnd, weekStart, weekEnd, monthStart, monthEnd }
 }
 
-function setDateRangeInputs(startDate, endDate) {
+function getWeekRangeFromInput(weekValue) {
+  const raw = String(weekValue || "").trim()
+  const match = raw.match(/^(\d{4})-W(\d{2})$/)
+  if (!match) return null
+
+  const year = Number(match[1])
+  const week = Number(match[2])
+  if (!Number.isFinite(year) || !Number.isFinite(week) || week < 1 || week > 53) return null
+
+  const jan4 = new Date(year, 0, 4)
+  const jan4Day = jan4.getDay() || 7
+  const mondayWeek1 = new Date(jan4)
+  mondayWeek1.setDate(jan4.getDate() - (jan4Day - 1))
+
+  const start = new Date(mondayWeek1)
+  start.setDate(mondayWeek1.getDate() + (week - 1) * 7)
+  start.setHours(0, 0, 0, 0)
+
+  const end = new Date(start)
+  end.setDate(start.getDate() + 6)
+  end.setHours(23, 59, 59, 999)
+  return { start, end }
+}
+
+function setupPeriodInputsUI() {
+  const period = String(document.getElementById("bookingFilterPeriod")?.value || "all")
+  const dayWrap = document.getElementById("bookingDayWrap")
+  const weekWrap = document.getElementById("bookingWeekWrap")
+  const monthWrap = document.getElementById("bookingMonthWrap")
+  const yearWrap = document.getElementById("bookingYearWrap")
+  const fromWrap = document.getElementById("bookingDateFromWrap")
+  const toWrap = document.getElementById("bookingDateToWrap")
+  const dayInput = document.getElementById("bookingDay")
+  const weekInput = document.getElementById("bookingWeek")
+  const monthInput = document.getElementById("bookingMonth")
+  const yearInput = document.getElementById("bookingYear")
   const fromInput = document.getElementById("dateFrom")
   const toInput = document.getElementById("dateTo")
-  if (!fromInput || !toInput) return
 
-  fromInput.value = toDateInputValue(startDate)
-  toInput.value = toDateInputValue(endDate)
+  const isDay = period === "day"
+  const isWeek = period === "week"
+  const isMonth = period === "month"
+  const isYear = period === "year"
+  const isRange = period === "between-dates"
+
+  dayWrap?.classList.toggle("hidden", !isDay)
+  weekWrap?.classList.toggle("hidden", !isWeek)
+  monthWrap?.classList.toggle("hidden", !isMonth)
+  yearWrap?.classList.toggle("hidden", !isYear)
+  fromWrap?.classList.toggle("hidden", !isRange)
+  toWrap?.classList.toggle("hidden", !isRange)
+
+  if (dayInput) dayInput.disabled = !isDay
+  if (weekInput) weekInput.disabled = !isWeek
+  if (monthInput) monthInput.disabled = !isMonth
+  if (yearInput) yearInput.disabled = !isYear
+  if (fromInput) fromInput.disabled = !isRange
+  if (toInput) toInput.disabled = !isRange
 }
 
 function initializeDateRangeControls() {
-  const { todayStart, todayEnd } = getTodayWeekMonthRanges()
-  setDateRangeInputs(todayStart, todayEnd)
-  setActiveStatCard("today")
+  const now = new Date()
+  const periodSelect = document.getElementById("bookingFilterPeriod")
+  const yearSelect = document.getElementById("bookingYear")
+  const dayInput = document.getElementById("bookingDay")
+  const weekInput = document.getElementById("bookingWeek")
+  const monthInput = document.getElementById("bookingMonth")
+  const fromInput = document.getElementById("dateFrom")
+  const toInput = document.getElementById("dateTo")
+
+  if (periodSelect && !periodSelect.value) {
+    periodSelect.value = "all"
+  }
+
+  if (yearSelect && !yearSelect.options.length) {
+    const baseYear = now.getFullYear()
+    for (let offset = -2; offset <= 2; offset += 1) {
+      const year = String(baseYear + offset)
+      const option = document.createElement("option")
+      option.value = year
+      option.textContent = year
+      yearSelect.appendChild(option)
+    }
+    yearSelect.value = String(baseYear)
+  }
+
+  if (dayInput && !dayInput.value) dayInput.value = toDateInputValue(now)
+  if (weekInput && !weekInput.value) {
+    const weekYear = now.getFullYear()
+    const jan4 = new Date(weekYear, 0, 4)
+    const jan4Day = jan4.getDay() || 7
+    const mondayWeek1 = new Date(jan4)
+    mondayWeek1.setDate(jan4.getDate() - (jan4Day - 1))
+    const diffDays = Math.floor((new Date(now.getFullYear(), now.getMonth(), now.getDate()) - mondayWeek1) / 86400000)
+    const weekNumber = Math.floor(diffDays / 7) + 1
+    weekInput.value = `${weekYear}-W${String(weekNumber).padStart(2, "0")}`
+  }
+  if (monthInput && !monthInput.value) {
+    monthInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+  }
+  if (fromInput) fromInput.value = ""
+  if (toInput) toInput.value = ""
+
+  currentViewMode = "all"
+  setActiveStatCard(null)
+  setupPeriodInputsUI()
   syncFilterControlsUI()
   updateViewModeLabel()
 }
@@ -176,28 +269,64 @@ function setDateRangeForMode(mode) {
 }
 
 function getDateRangeForFilter() {
+  const period = String(document.getElementById("bookingFilterPeriod")?.value || "all")
+  const dayInput = document.getElementById("bookingDay")
+  const weekInput = document.getElementById("bookingWeek")
+  const monthInput = document.getElementById("bookingMonth")
+  const yearInput = document.getElementById("bookingYear")
   const fromInput = document.getElementById("dateFrom")
   const toInput = document.getElementById("dateTo")
-  if (!fromInput || !toInput || (!fromInput.value && !toInput.value)) return null
 
-  const fallbackStart = fromInput.value || toInput.value
-  const fallbackEnd = toInput.value || fromInput.value
+  if (period === "all") return null
 
-  const start = getDateOnly(fallbackStart)
-  const end = getDateOnly(fallbackEnd)
-  end.setHours(23, 59, 59, 999)
-
-  if (start > end) {
-    const swappedStart = getDateOnly(toInput.value)
-    const swappedEnd = getDateOnly(fromInput.value)
-    swappedEnd.setHours(23, 59, 59, 999)
-    return {
-      start: swappedStart,
-      end: swappedEnd,
-    }
+  if (period === "day" && dayInput?.value) {
+    const start = getDateOnly(dayInput.value)
+    const end = getDateOnly(dayInput.value)
+    end.setHours(23, 59, 59, 999)
+    return { start, end }
   }
 
-  return { start, end }
+  if (period === "week" && weekInput?.value) {
+    return getWeekRangeFromInput(weekInput.value)
+  }
+
+  if (period === "month" && monthInput?.value) {
+    const [year, month] = monthInput.value.split("-").map(Number)
+    if (!Number.isFinite(year) || !Number.isFinite(month)) return null
+    const start = new Date(year, month - 1, 1)
+    start.setHours(0, 0, 0, 0)
+    const end = new Date(year, month, 0)
+    end.setHours(23, 59, 59, 999)
+    return { start, end }
+  }
+
+  if (period === "year" && yearInput?.value) {
+    const year = Number(yearInput.value)
+    if (!Number.isFinite(year)) return null
+    const start = new Date(year, 0, 1)
+    start.setHours(0, 0, 0, 0)
+    const end = new Date(year, 11, 31)
+    end.setHours(23, 59, 59, 999)
+    return { start, end }
+  }
+
+  if (period === "between-dates") {
+    if (!fromInput?.value && !toInput?.value) return null
+    const fallbackStart = fromInput?.value || toInput?.value
+    const fallbackEnd = toInput?.value || fromInput?.value
+    const start = getDateOnly(fallbackStart)
+    const end = getDateOnly(fallbackEnd)
+    end.setHours(23, 59, 59, 999)
+    if (start > end) {
+      return {
+        start: getDateOnly(fallbackEnd),
+        end: new Date(start.getTime() + 86399999),
+      }
+    }
+    return { start, end }
+  }
+
+  return null
 }
 
 function normalizeText(value) {
@@ -209,9 +338,9 @@ function normalizeText(value) {
 }
 
 function formatBookingDateLabel(dateValue) {
-  if (!dateValue) return "Data não definida"
+  if (!dateValue) return "Data nÃ£o definida"
   const dateObj = new Date(`${dateValue}T00:00:00`)
-  if (Number.isNaN(dateObj.getTime())) return "Data não definida"
+  if (Number.isNaN(dateObj.getTime())) return "Data nÃ£o definida"
   return new Intl.DateTimeFormat("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric" }).format(dateObj)
 }
 
@@ -245,7 +374,7 @@ function sortBookingsByClosestExecution(bookings) {
   })
 }
 
-// Exibir marcações filtradas por intervalo e pesquisa
+// Exibir marcaÃ§Ãµes filtradas por intervalo e pesquisa
 function displayBookings() {
   const container = document.getElementById("appointmentsContainer")
   const nameInput = document.getElementById("clientSearchName")
@@ -312,14 +441,14 @@ function displayBookings() {
   autoCancelExpiredBookings(filteredBookings)
 
   if (filteredBookings.length === 0) {
-    let emptyMessage = "Não há marcações com os filtros atuais"
+    let emptyMessage = "NÃ£o hÃ¡ marcaÃ§Ãµes com os filtros atuais"
 
     if (nameSearch || emailSearch || phoneSearch || serviceSearch) {
-      emptyMessage = "Nenhuma marcação encontrada para a pesquisa aplicada"
+      emptyMessage = "Nenhuma marcaÃ§Ã£o encontrada para a pesquisa aplicada"
     } else if (pendingOnly) {
-      emptyMessage = "Não há marcações por concluir para os filtros aplicados"
+      emptyMessage = "NÃ£o hÃ¡ marcaÃ§Ãµes por concluir para os filtros aplicados"
     } else if (dateRange) {
-      emptyMessage = "Não há marcações no intervalo selecionado"
+      emptyMessage = "NÃ£o hÃ¡ marcaÃ§Ãµes no intervalo selecionado"
     }
 
     container.innerHTML = `
@@ -338,9 +467,9 @@ function displayBookings() {
         <div class="appointment-date">${formatBookingDateLabel(booking.date)}</div>
       </div>
       <div class="appointment-details">
-        <h3>👤 ${booking.clientName}</h3>
-        <p>📧 ${booking.clientEmail || 'Email não disponível'}</p>
-        <p>📱 ${booking.clientPhone || 'Telefone não disponível'}</p>
+        <h3>ðŸ‘¤ ${booking.clientName}</h3>
+        <p>ðŸ“§ ${booking.clientEmail || 'Email nÃ£o disponÃ­vel'}</p>
+        <p>ðŸ“± ${booking.clientPhone || 'Telefone nÃ£o disponÃ­vel'}</p>
         <div class="status-badges">
           <span class="status-pill ${getExecutionClass(booking)}">${getExecutionLabel(booking)}</span>
           <span class="status-pill ${getLifecycleClass(booking)}">${getLifecycleLabel(booking)}</span>
@@ -358,9 +487,9 @@ function displayBookings() {
 
 function getExecutionLabel(booking) {
   const status = booking.executionStatus || "pending"
-  if (status === "in_progress") return "A ser concluída"
-  if (status === "completed") return "Concluída"
-  return "Não concluída"
+  if (status === "in_progress") return "A ser concluÃ­da"
+  if (status === "completed") return "ConcluÃ­da"
+  return "NÃ£o concluÃ­da"
 }
 
 function getExecutionClass(booking) {
@@ -386,15 +515,15 @@ function getLifecycleClass(booking) {
 
 function renderActions(booking) {
   if (booking.status === "expired") {
-    return `<button class="btn btn-secondary" disabled>Marcação expirada</button>`
+    return `<button class="btn btn-secondary" disabled>MarcaÃ§Ã£o expirada</button>`
   }
 
   if (booking.status === "cancelled") {
-    return `<button class="btn btn-secondary" disabled>Marcação anulada</button>`
+    return `<button class="btn btn-secondary" disabled>MarcaÃ§Ã£o anulada</button>`
   }
 
   if (booking.status === "cancel_requested") {
-    return `<button class="btn btn-secondary" disabled>A aguardar aprovação admin</button>`
+    return `<button class="btn btn-secondary" disabled>A aguardar aprovaÃ§Ã£o admin</button>`
   }
 
   const executionStatus = booking.executionStatus || "pending"
@@ -407,14 +536,14 @@ function renderActions(booking) {
     if (tooLate) {
       buttons.push(`<button class="btn btn-secondary" disabled>Prazo expirado (+1h)</button>`)
     } else if (tooEarly) {
-      buttons.push(`<button class="btn btn-secondary" disabled>Disponível até 2h antes</button>`)
+      buttons.push(`<button class="btn btn-secondary" disabled>DisponÃ­vel atÃ© 2h antes</button>`)
     } else {
       buttons.push(`<button class="btn btn-primary" onclick="startCut('${booking.id}')">Iniciar corte</button>`)
     }
   } else if (executionStatus === "in_progress") {
     buttons.push(`<button class="btn btn-primary" onclick="completeCut('${booking.id}')">Finalizar corte</button>`)
   } else {
-    buttons.push(`<button class="btn btn-secondary" disabled>Corte concluído</button>`)
+    buttons.push(`<button class="btn btn-secondary" disabled>Corte concluÃ­do</button>`)
   }
 
   if (executionStatus !== "completed") {
@@ -428,7 +557,7 @@ async function patchBooking(bookingId, partialData) {
   const snapshot = await get(bookingRef)
 
   if (!snapshot.exists()) {
-    throw new Error("Marcação não encontrada")
+    throw new Error("MarcaÃ§Ã£o nÃ£o encontrada")
   }
 
   const currentData = snapshot.val()
@@ -513,10 +642,10 @@ async function autoCancelExpiredBookings(bookings) {
       patchBooking(booking.id, {
         status: "expired",
         cancelledBy: "system",
-        cancellationReason: "Não iniciado até 1h após o horário marcado",
+        cancellationReason: "NÃ£o iniciado atÃ© 1h apÃ³s o horÃ¡rio marcado",
         cancelledAt: new Date().toISOString(),
       }).catch((error) => {
-        console.error("Erro no cancelamento automático:", error)
+        console.error("Erro no cancelamento automÃ¡tico:", error)
       }),
     ),
   )
@@ -526,22 +655,22 @@ window.startCut = async (bookingId) => {
   try {
     const booking = allBookings.find((item) => item.id === bookingId)
     if (!booking) {
-      showError("Marcação não encontrada.")
+      showError("MarcaÃ§Ã£o nÃ£o encontrada.")
       return
     }
 
     const minutesFromBooking = getMinutesFromBooking(booking)
     if (minutesFromBooking < -120) {
-      showError("Só pode iniciar até 2 horas antes da marcação.")
+      showError("SÃ³ pode iniciar atÃ© 2 horas antes da marcaÃ§Ã£o.")
       return
     }
 
     if (minutesFromBooking > 60) {
-      showError("A marcação passou mais de 1 hora e ficou expirada.")
+      showError("A marcaÃ§Ã£o passou mais de 1 hora e ficou expirada.")
       await patchBooking(bookingId, {
         status: "expired",
         cancelledBy: "system",
-        cancellationReason: "Não iniciado até 1h após o horário marcado",
+        cancellationReason: "NÃ£o iniciado atÃ© 1h apÃ³s o horÃ¡rio marcado",
         cancelledAt: new Date().toISOString(),
       })
       syncLocalBooking(bookingId, { status: "expired" })
@@ -561,7 +690,7 @@ window.startCut = async (bookingId) => {
     showSuccess("Corte iniciado.")
   } catch (error) {
     if (String(error?.message || "").toUpperCase().includes("PERMISSION_DENIED")) {
-      showError("Sem permissão no Firebase. É necessário publicar as regras atualizadas da base de dados.")
+      showError("Sem permissÃ£o no Firebase. Ã‰ necessÃ¡rio publicar as regras atualizadas da base de dados.")
       return
     }
     showError("Erro ao iniciar corte: " + error.message)
@@ -572,7 +701,7 @@ window.completeCut = async (bookingId) => {
   try {
     const booking = allBookings.find((item) => item.id === bookingId)
     if (!booking) {
-      showError("Marcação não encontrada.")
+      showError("MarcaÃ§Ã£o nÃ£o encontrada.")
       return
     }
 
@@ -593,7 +722,7 @@ window.completeCut = async (bookingId) => {
     try {
       await recalculateBarberStats(booking.barberId || barberId)
     } catch (statsError) {
-      console.warn("Sem permissão para atualizar agregados do barbeiro:", statsError)
+      console.warn("Sem permissÃ£o para atualizar agregados do barbeiro:", statsError)
       // Fallback: increment completed cuts locally on barber record
       try {
         const targetId = booking.barberId || barberId
@@ -607,7 +736,7 @@ window.completeCut = async (bookingId) => {
           })
         }
       } catch (fallbackError) {
-        console.warn("Sem permissão para incrementar cortes concluidos:", fallbackError)
+        console.warn("Sem permissÃ£o para incrementar cortes concluidos:", fallbackError)
       }
     }
     syncLocalBooking(bookingId, {
@@ -616,10 +745,10 @@ window.completeCut = async (bookingId) => {
       actualDurationMinutes,
     })
     displayBookings()
-    showSuccess("Corte concluído.")
+    showSuccess("Corte concluÃ­do.")
   } catch (error) {
     if (String(error?.message || "").toUpperCase().includes("PERMISSION_DENIED")) {
-      showError("Sem permissão no Firebase. É necessário publicar as regras atualizadas da base de dados.")
+      showError("Sem permissÃ£o no Firebase. Ã‰ necessÃ¡rio publicar as regras atualizadas da base de dados.")
       return
     }
     showError("Erro ao concluir corte: " + error.message)
@@ -629,10 +758,10 @@ window.completeCut = async (bookingId) => {
 window.requestCancel = async (bookingId) => {
   const booking = allBookings.find((item) => item.id === bookingId)
   if (booking?.executionStatus === "completed" || booking?.status === "expired" || booking?.status === "cancelled") {
-    showError("Não é possível cancelar uma marcação concluída ou expirada.")
+    showError("NÃ£o Ã© possÃ­vel cancelar uma marcaÃ§Ã£o concluÃ­da ou expirada.")
     return
   }
-  const shouldRequest = window.confirm("Pretende pedir cancelamento desta marcação? O administrador precisa aprovar.")
+  const shouldRequest = window.confirm("Pretende pedir cancelamento desta marcaÃ§Ã£o? O administrador precisa aprovar.")
   if (!shouldRequest) return
 
   try {
@@ -651,26 +780,31 @@ window.requestCancel = async (bookingId) => {
       },
     })
     displayBookings()
-    showSuccess("Pedido de cancelamento enviado para aprovação do administrador.")
+    showSuccess("Pedido de cancelamento enviado para aprovaÃ§Ã£o do administrador.")
   } catch (error) {
     if (String(error?.message || "").toUpperCase().includes("PERMISSION_DENIED")) {
-      showError("Sem permissão no Firebase. É necessário publicar as regras atualizadas da base de dados.")
+      showError("Sem permissÃ£o no Firebase. Ã‰ necessÃ¡rio publicar as regras atualizadas da base de dados.")
       return
     }
     showError("Erro ao pedir cancelamento: " + error.message)
   }
 }
 
-// Atualizar estatísticas
+// Atualizar estatÃ­sticas
 function updateStats() {
   const today = new Date()
   const todayStr = today.toISOString().split("T")[0]
+  const todayCountEl = document.getElementById("todayCount")
+  const weekCountEl = document.getElementById("weekCount")
+  const monthCountEl = document.getElementById("monthCount")
   
-  // Marcações de hoje
+  // MarcaÃ§Ãµes de hoje
   const todayBookings = allBookings.filter(b => b.date === todayStr)
-  document.getElementById("todayCount").textContent = todayBookings.length
+  if (todayCountEl) {
+    todayCountEl.textContent = todayBookings.length
+  }
 
-  // Marcações desta semana
+  // MarcaÃ§Ãµes desta semana
   const startOfWeek = new Date(today)
   startOfWeek.setDate(today.getDate() - today.getDay())
   const endOfWeek = new Date(startOfWeek)
@@ -680,15 +814,19 @@ function updateStats() {
     const bookingDate = new Date(b.date)
     return bookingDate >= startOfWeek && bookingDate <= endOfWeek
   })
-  document.getElementById("weekCount").textContent = weekBookings.length
+  if (weekCountEl) {
+    weekCountEl.textContent = weekBookings.length
+  }
 
-  // Marcações deste mês
+  // MarcaÃ§Ãµes deste mÃªs
   const monthBookings = allBookings.filter(b => {
     const bookingDate = new Date(b.date)
     return bookingDate.getMonth() === today.getMonth() && 
            bookingDate.getFullYear() === today.getFullYear()
   })
-  document.getElementById("monthCount").textContent = monthBookings.length
+  if (monthCountEl) {
+    monthCountEl.textContent = monthBookings.length
+  }
 }
 
 function setupStatsFilters() {
@@ -744,6 +882,11 @@ function setupSearchAndRangeFilters() {
     serviceSearchInput,
   } = getFilterElements()
   const pendingOnlyCheckbox = document.getElementById("pendingOnlyCheckbox")
+  const periodSelect = document.getElementById("bookingFilterPeriod")
+  const dayInput = document.getElementById("bookingDay")
+  const weekInput = document.getElementById("bookingWeek")
+  const monthInput = document.getElementById("bookingMonth")
+  const yearInput = document.getElementById("bookingYear")
   ;[
     clientSearchNameInput,
     clientSearchEmailInput,
@@ -760,9 +903,29 @@ function setupSearchAndRangeFilters() {
     })
   }
 
+  if (periodSelect) {
+    periodSelect.addEventListener("change", () => {
+      currentViewMode = periodSelect.value || "all"
+      setActiveStatCard(null)
+      setupPeriodInputsUI()
+      syncFilterControlsUI()
+      updateViewModeLabel()
+      displayBookings()
+    })
+  }
+
+  ;[dayInput, weekInput, monthInput, yearInput].forEach((input) => {
+    if (!input) return
+    input.addEventListener("change", () => {
+      currentViewMode = periodSelect?.value || "all"
+      updateViewModeLabel()
+      displayBookings()
+    })
+  })
+
   if (dateFromInput) {
     dateFromInput.addEventListener("change", () => {
-      currentViewMode = "range"
+      currentViewMode = periodSelect?.value || "between-dates"
       setActiveStatCard(null)
       syncFilterControlsUI()
       updateViewModeLabel()
@@ -772,7 +935,7 @@ function setupSearchAndRangeFilters() {
 
   if (dateToInput) {
     dateToInput.addEventListener("change", () => {
-      currentViewMode = "range"
+      currentViewMode = periodSelect?.value || "between-dates"
       setActiveStatCard(null)
       syncFilterControlsUI()
       updateViewModeLabel()
@@ -794,31 +957,30 @@ function updateViewModeLabel() {
   const label = document.getElementById("viewModeLabel")
   if (!label) return
 
-  const hasDateRange = Boolean(document.getElementById("dateFrom")?.value || document.getElementById("dateTo")?.value)
-  if (!hasDateRange) {
-    label.textContent = "A mostrar: todas as marcações (sem filtro de datas)"
+  const period = String(document.getElementById("bookingFilterPeriod")?.value || "all")
+  if (period === "all") {
+    label.textContent = "A mostrar: todo o período (mais próximas primeiro)"
     return
   }
-
-  if (currentViewMode === "today") {
-    label.textContent = "A mostrar: cortes de hoje"
+  if (period === "day") {
+    label.textContent = "A mostrar: período de dia"
     return
   }
-
-  if (currentViewMode === "week") {
-    label.textContent = "A mostrar: cortes desta semana"
+  if (period === "week") {
+    label.textContent = "A mostrar: período de semana"
     return
   }
-
-  if (currentViewMode === "month") {
-    label.textContent = "A mostrar: cortes deste mês"
+  if (period === "month") {
+    label.textContent = "A mostrar: período de mês"
     return
   }
-
-  label.textContent = "A mostrar: entre datas"
+  if (period === "year") {
+    label.textContent = "A mostrar: período de ano"
+    return
+  }
+  label.textContent = "A mostrar: período entre datas"
 }
-
-// Formatar nome do serviço
+// Formatar nome do serviÃ§o
 function formatServiceName(service) {
   const serviceNames = {
     'corte': 'Corte de Cabelo',
@@ -829,3 +991,4 @@ function formatServiceName(service) {
   }
   return serviceNames[service] || service
 }
+

@@ -711,6 +711,43 @@ main {
   margin-bottom: 0;
 }
 
+.section-title-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.admin-only {
+  display: none;
+}
+
+.admin-only.is-admin-visible {
+  display: inline-flex;
+}
+
+.admin-edit-link {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  transition: var(--transition);
+}
+
+.admin-edit-link:hover {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.admin-edit-link i {
+  font-size: 0.9rem;
+}
+
 .btn-ghost {
   background: transparent;
   border: 1px solid var(--color-border);
@@ -720,6 +757,16 @@ main {
 .btn-ghost:hover {
   color: var(--color-text-primary);
   border-color: var(--color-accent);
+}
+
+.products-grid {
+  align-items: stretch;
+}
+
+.product-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .product-card.is-out-of-stock {
@@ -802,11 +849,36 @@ main {
 }
 
 .product-add {
-  margin-top: auto;
+  margin-top: 0;
   width: 100%;
 }
 
 .product-add:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.product-actions-row {
+  margin-top: auto;
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 0.55rem;
+  align-items: stretch;
+}
+
+.product-qty-input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #111827;
+  padding: 0.55rem 0.45rem;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.product-qty-input:disabled {
   opacity: 0.65;
   cursor: not-allowed;
 }
@@ -864,14 +936,19 @@ main {
   padding-top: 1.25rem;
 }
 
-.team-member:hover .team-card-inner,
 .team-member.is-flipped .team-card-inner,
 .team-member:focus-within .team-card-inner {
   transform: rotateY(180deg);
 }
 
-.team-member:hover .team-card-face {
-  box-shadow: var(--shadow-md);
+@media (hover: hover) and (pointer: fine) {
+  .team-member:hover .team-card-inner {
+    transform: rotateY(180deg);
+  }
+
+  .team-member:hover .team-card-face {
+    box-shadow: var(--shadow-md);
+  }
 }
 
 .member-avatar {
@@ -1999,6 +2076,24 @@ body.modal-open {
 }
 
 @media (max-width: 768px) {
+  .barber-item,
+  .booking-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.85rem;
+  }
+
+  .barber-item .booking-actions,
+  .booking-item .booking-actions {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .barber-item .booking-actions .btn,
+  .booking-item .booking-actions .btn {
+    width: 100%;
+  }
+
   .admin-product-item {
     grid-template-columns: 74px minmax(0, 1fr);
     align-items: start;
@@ -2180,7 +2275,11 @@ body.barber-page {
 }
 
 .filters-row input[type="date"],
-.filters-row input[type="text"] {
+.filters-row input[type="text"],
+.filters-row input[type="week"],
+.filters-row input[type="month"],
+.filters-row input[type="time"],
+.filters-row select {
   min-height: 40px;
   padding: 0.5rem 0.8rem;
   border: 1px solid var(--color-border);

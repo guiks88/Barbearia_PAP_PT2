@@ -126,6 +126,7 @@ let storeHoursListenerBound = false
 let teamStatsListenerBound = false
 let teamStatsPollIntervalId = null
 let shopProductsCache = []
+let featuredProductsCache = []
 let cartState = {}
 let productsListenerBound = false
 let cartNoticeCount = 0
@@ -142,6 +143,17 @@ function getSafeStock(product) {
 
 function formatEuro(value) {
   return `${Number(value || 0).toFixed(2)}â‚¬`
+}
+
+function getCartQuantityForProduct(productId) {
+  if (!productId) return 0
+  return Math.max(0, Number(cartState?.[productId]?.qty || 0))
+}
+
+function getAvailableStockForProduct(product) {
+  const stock = getSafeStock(product)
+  const alreadyInCart = getCartQuantityForProduct(product?.id)
+  return Math.max(0, stock - alreadyInCart)
 }
 
 function getPendingShopProductId() {
@@ -569,13 +581,26 @@ function initTeamFlipCards() {
   const isTouchDevice = window.matchMedia('(hover: none)').matches
   if (!isTouchDevice) return
 
+  let activeMember = null
+
   teamMembers.forEach((member) => {
     if (member.dataset.flipBound === 'true') return
     member.dataset.flipBound = 'true'
 
     member.addEventListener('click', (e) => {
       if (e.target.closest('.team-book-btn')) return
-      member.classList.toggle('is-flipped')
+      if (activeMember && activeMember !== member) {
+        activeMember.classList.remove('is-flipped')
+      }
+
+      if (member.classList.contains('is-flipped')) {
+        member.classList.remove('is-flipped')
+        activeMember = null
+        return
+      }
+
+      member.classList.add('is-flipped')
+      activeMember = member
     })
   })
 }
@@ -1242,12 +1267,20 @@ function updateMainAuthButton() {
   const mainLogoutBtn = document.getElementById('mainLogoutBtn')
   if (!mainAuthCta) return
 
+  const setAdminUiVisibility = (isAdmin) => {
+    document.querySelectorAll('.admin-only').forEach((element) => {
+      element.classList.toggle('is-admin-visible', isAdmin)
+      element.setAttribute('aria-hidden', isAdmin ? 'false' : 'true')
+    })
+  }
+
   const setLoggedOut = () => {
     mainAuthCta.href = 'login.html'
     mainAuthCta.textContent = 'Login'
     if (mainLogoutBtn) {
       mainLogoutBtn.style.display = 'none'
     }
+    setAdminUiVisibility(false)
   }
 
   const setLoggedIn = () => {
@@ -1256,6 +1289,7 @@ function updateMainAuthButton() {
     if (mainLogoutBtn) {
       mainLogoutBtn.style.display = 'inline-flex'
     }
+    setAdminUiVisibility(false)
   }
 
   const setBarberLoggedIn = () => {
@@ -1264,6 +1298,16 @@ function updateMainAuthButton() {
     if (mainLogoutBtn) {
       mainLogoutBtn.style.display = 'inline-flex'
     }
+    setAdminUiVisibility(false)
+  }
+
+  const setAdminLoggedIn = () => {
+    mainAuthCta.href = 'admin-panel.html'
+    mainAuthCta.innerHTML = '<i class="bi bi-shield-lock" aria-hidden="true"></i> Area de Admin'
+    if (mainLogoutBtn) {
+      mainLogoutBtn.style.display = 'inline-flex'
+    }
+    setAdminUiVisibility(true)
   }
 
   if (mainLogoutBtn && mainLogoutBtn.dataset.bound !== 'true') {
@@ -1290,7 +1334,9 @@ function updateMainAuthButton() {
     })
   }
 
-  if (sessionStorage.getItem('isBarber') === 'true') {
+  if (sessionStorage.getItem('isAdmin') === 'true') {
+    setAdminLoggedIn()
+  } else if (sessionStorage.getItem('isBarber') === 'true') {
     setBarberLoggedIn()
   } else if (sessionStorage.getItem('isClient') === 'true') {
     setLoggedIn()
@@ -1299,6 +1345,13 @@ function updateMainAuthButton() {
   }
 
   onAuthStateChanged(auth, (user) => {
+    if (user && sessionStorage.getItem('isAdmin') === 'true') {
+      setAdminLoggedIn()
+      loadPromotions()
+      initTeamRatings()
+      return
+    }
+
     if (user && sessionStorage.getItem('isBarber') === 'true') {
       setBarberLoggedIn()
       loadPromotions()
@@ -1318,6 +1371,7 @@ function updateMainAuthButton() {
       initTeamRatings()
     } else {
       loadPromotions()
+      initTeamRatings()
     }
 
     setLoggedOut()
@@ -1336,9 +1390,10 @@ function renderProductCards(container, products) {
     .map((product) => {
       const { basePrice, finalPrice, promo } = getProductPrice(product)
       const badge = promo > 0 ? `<span class="product-badge">-${promo}%</span>` : ''
-      const stock = getSafeStock(product)
-      const outOfStock = stock <= 0
-      const stockLabel = outOfStock ? 'Esgotado' : `Stock: ${stock}`
+      const totalStock = getSafeStock(product)
+      const availableStock = getAvailableStockForProduct(product)
+      const outOfStock = availableStock <= 0
+      const stockLabel = outOfStock ? 'Esgotado' : `Stock disponível: ${availableStock}`
       const image = product.imageUrl
         ? `<img src="${product.imageUrl}" alt="${product.name || 'Produto'}" class="product-image">`
         : `<div class="product-image" style="background: var(--color-bg-secondary);"></div>`
@@ -1354,7 +1409,19 @@ function renderProductCards(container, products) {
             </div>
             <div class="product-old-price ${promo > 0 ? '' : 'is-hidden'}">${formatEuro(basePrice)}</div>
             <div class="product-stock ${outOfStock ? 'is-out' : ''}">${stockLabel}</div>
-            <button type="button" class="btn btn-primary btn-small product-add" data-product-id="${product.id}" ${outOfStock ? 'disabled' : ''}>${outOfStock ? 'Esgotado' : 'Ver na loja'}</button>
+            <div class="product-actions-row">
+              <input
+                type="number"
+                class="product-qty-input"
+                min="1"
+                max="${Math.max(1, availableStock)}"
+                value="${outOfStock ? 0 : 1}"
+                data-product-qty="${product.id}"
+                ${outOfStock ? 'disabled' : ''}
+                aria-label="Quantidade de ${product.name || 'produto'} para adicionar"
+              >
+              <button type="button" class="btn btn-primary btn-small product-add" data-product-id="${product.id}" data-product-stock="${totalStock}" ${outOfStock ? 'disabled' : ''}>${outOfStock ? 'Esgotado' : 'Adicionar ao carrinho'}</button>
+            </div>
           </div>
         </div>
       `
@@ -1370,7 +1437,51 @@ function renderProductCards(container, products) {
         showError('Para adicionar ao carrinho tem de ter sessÃ£o iniciada.')
         return
       }
-      window.location.href = `shop.html?product=${encodeURIComponent(productId)}`
+      const product = products.find((item) => item.id === productId)
+      if (!product) return
+      const card = button.closest('.product-card')
+      const qtyInput = card?.querySelector(`[data-product-qty="${productId}"]`)
+      const requestedQty = Math.max(1, Number.parseInt(qtyInput?.value || '1', 10) || 1)
+      const result = addToCart(product, requestedQty)
+      const remaining = getAvailableStockForProduct(product)
+      if (qtyInput) {
+        qtyInput.max = String(Math.max(1, remaining))
+        qtyInput.value = remaining > 0 ? '1' : '0'
+        qtyInput.disabled = remaining <= 0
+      }
+      if (result.added <= 0) {
+        showError('Sem stock disponível para esse produto.')
+        return
+      }
+      if (result.added < result.requested) {
+        showError(`Só foi possível adicionar ${result.added} unidade(s) devido ao stock disponível.`)
+      }
+    })
+  })
+}
+
+function initAdminEditLinks() {
+  const links = document.querySelectorAll('.admin-edit-link[data-admin-tab]')
+  if (!links.length) return
+
+  links.forEach((link) => {
+    if (link.dataset.bound === 'true') return
+    link.dataset.bound = 'true'
+
+    link.addEventListener('click', (event) => {
+      event.preventDefault()
+      if (sessionStorage.getItem('isAdmin') !== 'true') {
+        showError('Faça login como administrador para editar.')
+        return
+      }
+
+      const tab = link.dataset.adminTab
+      const focus = link.dataset.adminFocus || ''
+      const params = new URLSearchParams()
+      if (tab) params.set('tab', tab)
+      if (focus) params.set('focus', focus)
+      const query = params.toString()
+      window.location.href = query ? `admin-panel.html?${query}` : 'admin-panel.html'
     })
   })
 }
@@ -1380,6 +1491,12 @@ function getProductPrice(product) {
   const promo = Math.max(0, Number(product.promoPercent || 0))
   const finalPrice = promo > 0 ? basePrice * (1 - promo / 100) : basePrice
   return { basePrice, finalPrice, promo }
+}
+
+function renderFeaturedProductsFromCache() {
+  const container = document.getElementById('featuredProductsGrid')
+  if (!container) return
+  renderProductCards(container, featuredProductsCache)
 }
 
 function loadCartState() {
@@ -1400,6 +1517,7 @@ function initShopCart() {
   const cartToggleBtn = document.getElementById('cartToggleBtn')
   const cartCloseBtn = document.getElementById('cartCloseBtn')
   const cartPanel = document.getElementById('shopCartPanel')
+  const shopLogoutBtn = document.getElementById('shopLogoutBtn')
 
   const searchInput = document.getElementById('shopSearchInput')
   const sortSelect = document.getElementById('shopSortSelect')
@@ -1506,6 +1624,30 @@ function initShopCart() {
     })
   }
 
+  if (shopLogoutBtn && shopLogoutBtn.dataset.bound !== 'true') {
+    shopLogoutBtn.dataset.bound = 'true'
+    shopLogoutBtn.addEventListener('click', async () => {
+      try {
+        await signOut(auth)
+      } catch (error) {
+        console.error('Erro ao terminar sessão na loja:', error)
+      }
+
+      sessionStorage.removeItem('clientEmail')
+      sessionStorage.removeItem('clientName')
+      sessionStorage.removeItem('isClient')
+      sessionStorage.removeItem('barberId')
+      sessionStorage.removeItem('barberName')
+      sessionStorage.removeItem('barberEmail')
+      sessionStorage.removeItem('isBarber')
+      sessionStorage.removeItem('adminId')
+      sessionStorage.removeItem('adminName')
+      sessionStorage.removeItem('isAdmin')
+
+      window.location.href = 'index.html'
+    })
+  }
+
   if (cartToggleBtn && cartPanel && cartToggleBtn.dataset.bound !== 'true') {
     cartToggleBtn.dataset.bound = 'true'
     cartToggleBtn.addEventListener('click', () => {
@@ -1537,6 +1679,8 @@ function setCartState(nextState) {
   cartState = nextState
   saveCartState()
   renderCart()
+  renderFeaturedProductsFromCache()
+  renderShopProducts()
 }
 
 function addToCart(product, qty = 1) {
@@ -1548,8 +1692,12 @@ function addToCart(product, qty = 1) {
   if (getSafeStock(product) <= 0) return { added: 0, requested: qty }
   const requestedQty = Math.max(1, Number.parseInt(qty, 10) || 1)
   const current = cartState[product.id]
-  const acceptedQty = Math.min(requestedQty, getSafeStock(product))
-  const nextQty = Math.min((current?.qty || 0) + acceptedQty, getSafeStock(product))
+  const currentQty = Math.max(0, Number(current?.qty || 0))
+  const totalStock = getSafeStock(product)
+  const availableToAdd = Math.max(0, totalStock - currentQty)
+  const acceptedQty = Math.min(requestedQty, availableToAdd)
+  const nextQty = currentQty + acceptedQty
+  if (acceptedQty <= 0) return { added: 0, requested: requestedQty }
   setCartState({
     ...cartState,
     [product.id]: {
@@ -1559,7 +1707,7 @@ function addToCart(product, qty = 1) {
       price: getProductPrice(product).finalPrice,
       promoPercent: Number(product.promoPercent || 0),
       qty: nextQty,
-      stock: getSafeStock(product),
+      stock: totalStock,
     },
   })
   incrementCartNotice(acceptedQty)
@@ -1708,9 +1856,10 @@ function renderShopProducts() {
     .map((product) => {
       const { basePrice, finalPrice, promo } = getProductPrice(product)
       const badge = promo > 0 ? `<span class="product-badge">-${promo}%</span>` : ''
-      const stock = getSafeStock(product)
-      const outOfStock = stock <= 0
-      const stockLabel = outOfStock ? 'Esgotado' : `Stock: ${stock}`
+      const totalStock = getSafeStock(product)
+      const availableStock = getAvailableStockForProduct(product)
+      const outOfStock = availableStock <= 0
+      const stockLabel = outOfStock ? 'Esgotado' : `Stock disponível: ${availableStock}`
       const image = product.imageUrl
         ? `<img src="${product.imageUrl}" alt="${product.name || 'Produto'}" class="product-image">`
         : `<div class="product-image" style="background: var(--color-bg-secondary);"></div>`
@@ -1726,7 +1875,19 @@ function renderShopProducts() {
             </div>
             <div class="product-old-price ${promo > 0 ? '' : 'is-hidden'}">${formatEuro(basePrice)}</div>
             <div class="product-stock ${outOfStock ? 'is-out' : ''}">${stockLabel}</div>
-            <button type="button" class="btn btn-primary btn-small product-add" data-product-id="${product.id}" ${outOfStock ? 'disabled' : ''}>${outOfStock ? 'Esgotado' : 'Adicionar ao carrinho'}</button>
+            <div class="product-actions-row">
+              <input
+                type="number"
+                class="product-qty-input"
+                min="1"
+                max="${Math.max(1, availableStock)}"
+                value="${outOfStock ? 0 : 1}"
+                data-product-qty="${product.id}"
+                ${outOfStock ? 'disabled' : ''}
+                aria-label="Quantidade de ${product.name || 'produto'} para adicionar"
+              >
+              <button type="button" class="btn btn-primary btn-small product-add" data-product-id="${product.id}" data-product-stock="${totalStock}" ${outOfStock ? 'disabled' : ''}>${outOfStock ? 'Esgotado' : 'Adicionar ao carrinho'}</button>
+            </div>
           </div>
         </div>
       `
@@ -1743,10 +1904,22 @@ function renderShopProducts() {
         showError('Para adicionar ao carrinho tem de ter sessÃ£o iniciada.')
         return
       }
-      const result = addToCart(product)
+      const card = button.closest('.product-card')
+      const qtyInput = card?.querySelector(`[data-product-qty="${id}"]`)
+      const requestedQty = Math.max(1, Number.parseInt(qtyInput?.value || '1', 10) || 1)
+      const result = addToCart(product, requestedQty)
+      const remaining = getAvailableStockForProduct(product)
+      if (qtyInput) {
+        qtyInput.max = String(Math.max(1, remaining))
+        qtyInput.value = remaining > 0 ? '1' : '0'
+        qtyInput.disabled = remaining <= 0
+      }
       if (result.added <= 0) {
         showError('Sem stock disponÃ­vel para esse produto.')
         return
+      }
+      if (result.added < result.requested) {
+        showError(`Só foi possível adicionar ${result.added} unidade(s) devido ao stock disponível.`)
       }
     })
   })
@@ -1784,10 +1957,10 @@ function loadProducts() {
       })
     }
 
-    const featured = [...entries].sort((a, b) => b.salesCount - a.salesCount).slice(0, 4)
     shopProductsCache = [...entries]
+    featuredProductsCache = [...entries].sort((a, b) => b.salesCount - a.salesCount).slice(0, 4)
 
-    renderProductCards(featuredContainer, featured)
+    renderFeaturedProductsFromCache()
     renderShopProducts()
 
     const pendingProductId = getPendingShopProductId()
@@ -1902,6 +2075,7 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', updateMainAuthButton);
   document.addEventListener('DOMContentLoaded', updateClientAreaNav);
   document.addEventListener('DOMContentLoaded', initStoreStatusBadge);
+  document.addEventListener('DOMContentLoaded', initAdminEditLinks);
 } else {
   initTabs();
   initActionMenu();
@@ -1920,6 +2094,7 @@ if (document.readyState === 'loading') {
   updateMainAuthButton();
   updateClientAreaNav();
   initStoreStatusBadge();
+  initAdminEditLinks();
 }
 
 // Also initialize on load
@@ -1940,6 +2115,7 @@ window.addEventListener('load', loadStoreHours);
 window.addEventListener('load', updateMainAuthButton);
 window.addEventListener('load', updateClientAreaNav);
 window.addEventListener('load', initStoreStatusBadge);
+window.addEventListener('load', initAdminEditLinks);
 
 
 

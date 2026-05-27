@@ -21,7 +21,8 @@
 
     <main class="container">
         <div class="admin-tabs">
-            <button class="tab-btn active" data-tab="barbers">Barbeiros</button>
+            <button class="tab-btn active" data-tab="admin">Admin</button>
+            <button class="tab-btn" data-tab="barbers">Barbeiros</button>
             <button class="tab-btn" data-tab="schedules">Horários</button>
             <button class="tab-btn" data-tab="about">Sobre nós</button>
             <button class="tab-btn" data-tab="bookings">Marcações</button>
@@ -32,27 +33,73 @@
             <button class="tab-btn" data-tab="orders">Pedidos</button>
         </div>
 
-        <div class="admin-shortcuts">
-            <span class="admin-shortcuts-label">Atalhos rápidos:</span>
-            <button type="button" class="btn btn-secondary btn-small admin-shortcut-btn" data-tab="barbers">
-                <i class="bi bi-pencil" aria-hidden="true"></i>
-                Barbeiros
-            </button>
-            <button type="button" class="btn btn-secondary btn-small admin-shortcut-btn" data-tab="schedules">
-                <i class="bi bi-pencil" aria-hidden="true"></i>
-                Horários
-            </button>
-            <button type="button" class="btn btn-secondary btn-small admin-shortcut-btn" data-tab="about">
-                <i class="bi bi-pencil" aria-hidden="true"></i>
-                Sobre nós
-            </button>
-            <button type="button" class="btn btn-secondary btn-small admin-shortcut-btn" data-tab="products">
-                <i class="bi bi-pencil" aria-hidden="true"></i>
-                Produtos
-            </button>
-        </div>
+        <section id="admin-tab" class="tab-content active">
+            <div class="card">
+                <h2>Conta do administrador</h2>
+                <p style="color: var(--color-text-secondary); margin-bottom: 1rem;">Administrador mestre pode gerir permissões e credenciais.</p>
+                <form id="adminProfileForm">
+                    <div class="filter-grid">
+                        <div class="form-group">
+                            <label for="adminProfileName">Nome</label>
+                            <input type="text" id="adminProfileName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="adminProfileEmail">Email</label>
+                            <input type="email" id="adminProfileEmail" required>
+                        </div>
+                    </div>
+                    <div class="filter-grid">
+                        <div class="form-group">
+                            <label for="adminProfilePassword">Nova senha</label>
+                            <input type="password" id="adminProfilePassword" minlength="6" placeholder="Deixe vazio para manter">
+                        </div>
+                        <div class="form-group">
+                            <label for="adminProfilePasswordConfirm">Confirmar senha</label>
+                            <input type="password" id="adminProfilePasswordConfirm" minlength="6" placeholder="Confirme a nova senha">
+                        </div>
+                    </div>
+                    <div class="promotion-form-actions">
+                        <button type="submit" class="btn btn-primary" id="adminProfileSaveBtn">Guardar alterações</button>
+                    </div>
+                </form>
+            </div>
 
-        <section id="barbers-tab" class="tab-content active">
+            <div class="card" style="margin-top: 1.5rem;">
+                <h2>Administradores secundários</h2>
+                <form id="adminCreateForm">
+                    <div class="filter-grid">
+                        <div class="form-group">
+                            <label for="adminCreateName">Nome</label>
+                            <input type="text" id="adminCreateName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="adminCreateEmail">Email</label>
+                            <input type="email" id="adminCreateEmail" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="adminCreatePassword">Senha</label>
+                            <input type="password" id="adminCreatePassword" required minlength="6">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Permissões por aba</label>
+                        <div class="admin-permissions-grid" id="adminPermissionsGrid"></div>
+                    </div>
+                    <div class="promotion-form-actions">
+                        <button type="submit" class="btn btn-primary" id="adminCreateBtn">Adicionar admin</button>
+                    </div>
+                </form>
+
+                <div id="adminsList" style="margin-top: 1rem;"></div>
+            </div>
+
+            <div class="card" style="margin-top: 1.5rem;">
+                <h2>Pedidos de alteração de senha</h2>
+                <div id="passwordRequestsList" class="empty-state">Sem pedidos.</div>
+            </div>
+        </section>
+
+        <section id="barbers-tab" class="tab-content">
             <div class="admin-modal hidden" id="barberFormModal" aria-hidden="true">
                 <div class="admin-modal-backdrop" id="barberFormBackdrop"></div>
                 <div class="card admin-modal-card" id="barberCreateCard" role="dialog" aria-modal="true" aria-labelledby="barberFormTitle">

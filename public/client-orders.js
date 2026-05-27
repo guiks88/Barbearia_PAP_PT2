@@ -1,12 +1,42 @@
 ﻿import { auth, database } from "./firebase-config.js"
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
+import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
 import { ref, onValue, query, orderByChild, equalTo, get, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
 import { showSuccess, showError, installMojibakeAutoFix, updateClientAreaNav } from "./utils.js"
 
 const listEl = document.getElementById("clientOrdersList")
+const clientOrdersLogoutBtn = document.getElementById("clientOrdersLogoutBtn")
 
 installMojibakeAutoFix()
 updateClientAreaNav()
+
+function clearKnownSession() {
+  sessionStorage.removeItem("clientEmail")
+  sessionStorage.removeItem("clientName")
+  sessionStorage.removeItem("isClient")
+  sessionStorage.removeItem("barberId")
+  sessionStorage.removeItem("barberName")
+  sessionStorage.removeItem("barberEmail")
+  sessionStorage.removeItem("isBarber")
+  sessionStorage.removeItem("adminId")
+  sessionStorage.removeItem("adminName")
+  sessionStorage.removeItem("isAdmin")
+}
+
+if (clientOrdersLogoutBtn && clientOrdersLogoutBtn.dataset.bound !== "true") {
+  clientOrdersLogoutBtn.dataset.bound = "true"
+  clientOrdersLogoutBtn.addEventListener("click", async () => {
+    try {
+      await signOut(auth)
+    } catch (error) {
+      console.error("Erro ao terminar sessão nos pedidos:", error)
+    }
+    clearKnownSession()
+    showSuccess("Sessão terminada.")
+    setTimeout(() => {
+      window.location.href = "index.html"
+    }, 700)
+  })
+}
 
 function formatDateTime(value) {
   if (!value) return "-"
@@ -156,5 +186,4 @@ onAuthStateChanged(auth, (user) => {
     }
   })
 })
-
 

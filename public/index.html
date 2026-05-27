@@ -29,6 +29,11 @@
                     </div>
                     <div class="profile-actions">
                         <a href="login.html" id="mainAuthCta" class="btn btn-book">Login</a>
+                        <button type="button" class="btn btn-primary cart-toggle-btn" id="cartToggleBtn">
+                            <i class="bi bi-cart3" aria-hidden="true"></i>
+                            Carrinho
+                            <span class="cart-badge hidden" id="cartBadge">0</span>
+                        </button>
                         <button type="button" id="mainLogoutBtn" class="btn btn-danger" title="Terminar sessão" aria-label="Terminar sessão" style="display: none;">
                             <i class="bi bi-box-arrow-right" aria-hidden="true"></i> Sair
                         </button>
@@ -58,13 +63,46 @@
         <div class="container">
             <!-- Team Tab -->
             <div id="team" class="tab-content active">
-                <h2 class="section-title">Nossa Equipa</h2>
+                <div class="section-title-row">
+                    <h2 class="section-title">Nossa Equipa</h2>
+                    <div class="section-title-actions">
+                        <a href="admin-panel.html?tab=barbers" class="admin-edit-link admin-only" data-admin-tab="barbers" data-admin-focus="barberListCard" aria-label="Editar equipa">
+                            <i class="bi bi-pencil" aria-hidden="true"></i>
+                        </a>
+                    </div>
+                </div>
                 <div class="team-grid" id="teamGrid"></div>
 
                 <div class="section-title-row" style="margin-top: 2rem;">
                     <h2 class="section-title">Produtos em alta</h2>
-                    <a href="shop.html" class="btn btn-ghost">Ver tudo</a>
+                    <div class="section-title-actions">
+                        <a href="shop.html" class="btn btn-ghost">Ver tudo</a>
+                        <a href="admin-panel.html?tab=products" class="admin-edit-link admin-only" data-admin-tab="products" data-admin-focus="productFormPanel" aria-label="Editar loja">
+                            <i class="bi bi-pencil" aria-hidden="true"></i>
+                        </a>
+                    </div>
                 </div>
+                <section class="shop-cart-panel hidden" id="shopCartPanel" aria-label="Carrinho de compras">
+                    <div class="shop-cart-panel-header">
+                        <h3><i class="bi bi-cart3" aria-hidden="true"></i> O teu carrinho</h3>
+                        <button type="button" class="btn btn-secondary btn-small" id="cartCloseBtn">Fechar</button>
+                    </div>
+                    <div id="cartEmpty" class="cart-empty">Sem produtos no carrinho.</div>
+                    <div id="cartItems" class="cart-items"></div>
+                    <div class="cart-summary" id="cartSummary">
+                        <div class="cart-row">
+                            <span>Subtotal</span>
+                            <strong id="cartSubtotal">0.00</strong>
+                        </div>
+                        <div class="cart-row">
+                            <span>Total</span>
+                            <strong id="cartTotal">0.00</strong>
+                        </div>
+                        <p class="cart-note">Pagamento na loja.</p>
+                        <button type="button" class="btn btn-primary" id="cartCheckoutBtn">Finalizar pedido</button>
+                        <button type="button" class="btn btn-secondary" id="cartCancelBtn">Cancelar pedido</button>
+                    </div>
+                </section>
                 <div class="products-grid" id="featuredProductsGrid" aria-label="Produtos em alta"></div>
 
                 <h2 class="section-title" style="margin-top: 2rem;">Cortes de Cabelo</h2>
@@ -102,7 +140,14 @@
 
             <!-- About Tab -->
             <div id="about" class="tab-content">
-                <h2 class="section-title">Sobre Nós</h2>
+                <div class="section-title-row">
+                    <h2 class="section-title">Sobre Nós</h2>
+                    <div class="section-title-actions">
+                        <a href="admin-panel.html?tab=about" class="admin-edit-link admin-only" data-admin-tab="about" data-admin-focus="aboutText" aria-label="Editar sobre nós">
+                            <i class="bi bi-pencil" aria-hidden="true"></i>
+                        </a>
+                    </div>
+                </div>
                 <div class="about-section about-wide" id="aboutContent">
                     <p class="about-text">
                         <strong>Estilo e elegância em cada corte</strong>
@@ -118,7 +163,14 @@
 
             <!-- Prices Tab -->
             <div id="prices" class="tab-content">
-                <h2 class="section-title">Preços dos cabeleiros</h2>
+                <div class="section-title-row">
+                    <h2 class="section-title">Preços dos cabeleiros</h2>
+                    <div class="section-title-actions">
+                        <a href="admin-panel.html?tab=barbers" class="admin-edit-link admin-only" data-admin-tab="barbers" data-admin-focus="barberListCard" aria-label="Editar preços">
+                            <i class="bi bi-pencil" aria-hidden="true"></i>
+                        </a>
+                    </div>
+                </div>
                 <div class="about-section">
                     <h3 class="subsection-title">Preços por Barbeiro</h3>
                     <p class="about-text" style="margin-bottom: 1rem;">Cada barbeiro tem tabela própria conforme ritmo e nível de serviço.</p>
