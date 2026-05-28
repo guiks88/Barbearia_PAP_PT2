@@ -183,6 +183,17 @@ main {
   display: flex;
   gap: 0.75rem;
   align-items: center;
+  position: fixed;
+  top: 0.75rem;
+  right: max(1rem, calc((100vw - 1200px) / 2 + 1rem));
+  z-index: 160;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  padding: 0.35rem;
+  border-radius: 14px;
+  background: rgba(15, 17, 21, 0.88);
+  border: 1px solid rgba(35, 40, 56, 0.8);
+  backdrop-filter: blur(10px);
 }
 
 .profile-actions .btn-book {
@@ -566,6 +577,34 @@ main {
   margin-bottom: 0.75rem;
 }
 
+.shop-cart-panel {
+  position: fixed;
+  top: 5.5rem;
+  right: max(1rem, calc((100vw - 1200px) / 2 + 1rem));
+  width: min(360px, calc(100vw - 2rem));
+  max-height: calc(100vh - 7rem);
+  overflow: auto;
+  z-index: 180;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  padding: 1.1rem;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
+}
+
+.shop-cart-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.shop-cart-panel-header h3 {
+  font-size: 1.05rem;
+  margin: 0;
+}
+
 .cart-empty {
   color: var(--color-text-secondary);
   font-size: 0.9rem;
@@ -681,6 +720,15 @@ main {
 }
 
 .cart-note {
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}
+
+.cart-toggle-btn {
+  position: relative;
+}
+
+.cart-badge {
   position: absolute;
   top: -6px;
   right: -6px;
@@ -690,14 +738,14 @@ main {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  padding: 0 0.3rem;
   font-size: 0.7rem;
+  line-height: 1;
   font-weight: 700;
   background: #c62828;
   color: #ffffff;
   box-shadow: 0 0 0 2px var(--color-bg-card);
-  flex-direction: column;
-  box-shadow: var(--shadow-sm);
-  transition: var(--transition);
+  pointer-events: none;
 }
 
 .section-title-row {
@@ -860,9 +908,7 @@ main {
 
 .product-actions-row {
   margin-top: auto;
-  display: grid;
-  grid-template-columns: 84px minmax(0, 1fr);
-  gap: 0.55rem;
+  display: flex;
   align-items: stretch;
 }
 
@@ -1040,6 +1086,15 @@ main {
   .shop-cart {
     position: static;
     order: -1;
+  }
+
+  .shop-cart-panel {
+    top: auto;
+    right: 0.75rem;
+    bottom: 0.75rem;
+    width: calc(100vw - 1.5rem);
+    max-height: min(72vh, 560px);
+    padding: 0.95rem;
   }
 }
 
@@ -1369,6 +1424,17 @@ main {
   align-items: center;
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+.header .nav {
+  position: sticky;
+  top: 0.75rem;
+  z-index: 160;
+  padding: 0.35rem;
+  border-radius: 14px;
+  background: rgba(15, 17, 21, 0.88);
+  border: 1px solid rgba(35, 40, 56, 0.8);
+  backdrop-filter: blur(10px);
 }
 
 .nav .btn {
@@ -1806,6 +1872,44 @@ main {
 .tab-btn.active {
   color: var(--color-accent);
   border-bottom-color: var(--color-accent);
+}
+
+.admin-tab-badge {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 0.32rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #c62828;
+  color: #ffffff;
+  font-size: 0.68rem;
+  line-height: 1;
+  font-weight: 800;
+  box-shadow: 0 0 0 2px var(--color-bg-primary);
+}
+
+.new-item-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 0.45rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: #c62828;
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  vertical-align: middle;
+}
+
+.has-new-item {
+  border-color: rgba(198, 40, 40, 0.75) !important;
+  box-shadow: 0 0 0 1px rgba(198, 40, 40, 0.35), var(--shadow-sm);
 }
 
 .admin-subtabs {
@@ -2582,8 +2686,21 @@ body.barber-page {
   }
 
   .profile-actions {
-    width: 100%;
+    left: 0.75rem;
+    right: 0.75rem;
+    top: auto;
+    bottom: 0.75rem;
+    width: auto;
     justify-content: center;
+    box-shadow: 0 14px 35px rgba(0, 0, 0, 0.35);
+  }
+
+  .profile-actions .btn,
+  .profile-actions .btn-book {
+    flex: 1 1 120px;
+    min-width: 0;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
   }
 
   .tabs-nav .container {
@@ -2641,6 +2758,7 @@ body.barber-page {
   .nav {
     width: 100%;
     justify-content: flex-start;
+    gap: 0.5rem;
   }
 
   .nav .btn {
@@ -2670,6 +2788,28 @@ body.barber-page {
     padding: 0.625rem 1.25rem;
     font-size: 0.875rem;
     min-height: 42px;
+  }
+
+  .profile-actions {
+    gap: 0.4rem;
+    padding: 0.3rem;
+  }
+
+  .profile-actions .btn,
+  .profile-actions .btn-book {
+    flex-basis: 96px;
+    font-size: 0.78rem;
+  }
+
+  .header .nav {
+    gap: 0.35rem;
+  }
+
+  .nav .btn {
+    flex-basis: calc(50% - 0.35rem);
+    font-size: 0.78rem;
+    padding-left: 0.55rem;
+    padding-right: 0.55rem;
   }
 
   .tabs-nav .container {

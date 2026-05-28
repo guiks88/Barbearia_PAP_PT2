@@ -65,6 +65,102 @@ const DELETE_AUTH_USER_ENDPOINT = `https://europe-west1-${firebaseConfig.project
 
 installMojibakeAutoFix()
 
+const ADMIN_SEEN_KEY = "adminSeenNotifications"
+const NOTIFICATION_TYPES = {
+  bookings: { tab: "bookings", label: "Marcações", stateKey: "bookings", render: () => renderBookings() },
+  clients: { tab: "clients", label: "Clientes", stateKey: "clients", render: () => renderClients() },
+  orders: { tab: "orders", label: "Pedidos", stateKey: "orders", render: () => renderOrders() },
+}
+
+let adminSeenNotifications = loadAdminSeenNotifications()
+let notificationViewTimers = {}
+
+function loadAdminSeenNotifications() {
+  try {
+    return JSON.parse(localStorage.getItem(ADMIN_SEEN_KEY) || "{}") || {}
+  } catch (error) {
+    console.warn("Erro ao carregar notificações vistas:", error)
+    return {}
+  }
+}
+
+function saveAdminSeenNotifications() {
+  try {
+    localStorage.setItem(ADMIN_SEEN_KEY, JSON.stringify(adminSeenNotifications))
+  } catch (error) {
+    console.warn("Erro ao guardar notificações vistas:", error)
+  }
+}
+
+function getNotificationEntries(type) {
+  const config = NOTIFICATION_TYPES[type]
+  if (!config) return []
+  return Object.entries(state[config.stateKey] || {}).filter(([, value]) => Boolean(value))
+}
+
+function ensureSeenNotificationsInitialized(type) {
+  if (adminSeenNotifications[type]) return
+  adminSeenNotifications[type] = {}
+  getNotificationEntries(type).forEach(([id]) => {
+    adminSeenNotifications[type][id] = true
+  })
+  saveAdminSeenNotifications()
+}
+
+function isNewAdminItem(type, id) {
+  return Boolean(id && !adminSeenNotifications[type]?.[id])
+}
+
+function getNewAdminCount(type) {
+  return getNotificationEntries(type).filter(([id]) => isNewAdminItem(type, id)).length
+}
+
+function updateAdminNotificationBadges() {
+  Object.entries(NOTIFICATION_TYPES).forEach(([type, config]) => {
+    const button = document.querySelector(`.tab-btn[data-tab="${config.tab}"]`)
+    if (!button) return
+    let badge = button.querySelector(".admin-tab-badge")
+    const count = getNewAdminCount(type)
+    if (!badge) {
+      badge = document.createElement("span")
+      badge.className = "admin-tab-badge hidden"
+      button.appendChild(badge)
+    }
+    badge.textContent = String(count)
+    badge.classList.toggle("hidden", count <= 0)
+    button.classList.toggle("has-new-items", count > 0)
+  })
+}
+
+function markAdminTypeAsViewed(type) {
+  if (!NOTIFICATION_TYPES[type]) return
+  adminSeenNotifications[type] = adminSeenNotifications[type] || {}
+  getNotificationEntries(type).forEach(([id]) => {
+    adminSeenNotifications[type][id] = true
+  })
+  saveAdminSeenNotifications()
+  updateAdminNotificationBadges()
+  NOTIFICATION_TYPES[type].render()
+}
+
+function scheduleAdminTypeViewed(type) {
+  if (!NOTIFICATION_TYPES[type] || getNewAdminCount(type) <= 0) return
+  clearTimeout(notificationViewTimers[type])
+  notificationViewTimers[type] = setTimeout(() => markAdminTypeAsViewed(type), 900)
+}
+
+function getActiveAdminTab() {
+  return document.querySelector(".tab-btn.active")?.dataset?.tab || "admin"
+}
+
+function getNotificationTypeForTab(tab) {
+  return Object.entries(NOTIFICATION_TYPES).find(([, config]) => config.tab === tab)?.[0] || ""
+}
+
+function renderNewBadge(type, id) {
+  return isNewAdminItem(type, id) ? '<span class="new-item-badge">Novo</span>' : ""
+}
+
 function normalize(value) {
   return String(value || "").toLowerCase().trim()
 }
@@ -391,15 +487,47 @@ function activateAdminTab(tab) {
   handleAdminTabActivation(tab)
 }
 
+function applyAdminQueryParams() {
+  const params = new URLSearchParams(window.location.search)
+  const tab = params.get("tab")
+  const focus = params.get("focus")
+
+  if (tab && document.getElementById(`${tab}-tab`)) {
+    activateAdminTab(tab)
+  }
+
+  if (focus) {
+    setTimeout(() => {
+      const target = document.getElementById(focus)
+      if (!target) return
+      target.scrollIntoView({ behavior: "smooth", block: "center" })
+      if (typeof target.focus === "function") target.focus({ preventScroll: true })
+    }, 700)
+  }
+}
+
 function handleAdminTabActivation(tab) {
   if (tab === "bookings") {
     ensureBookingDefaults()
     renderBookings()
   }
 
+  if (tab === "clients") {
+    renderClients()
+  }
+
+  if (tab === "orders") {
+    renderOrders()
+  }
+
   if (tab === "revenue") {
     ensureRevenueDefaults()
     updateRevenue()
+  }
+
+  const notificationType = getNotificationTypeForTab(tab)
+  if (notificationType) {
+    scheduleAdminTypeViewed(notificationType)
   }
 }
 
@@ -822,11 +950,13 @@ function renderOrders() {
             ? "is-cancelled"
             : "is-warning"
 
+      const newBadge = renderNewBadge("orders", id)
+
       return `
-        <div class="barber-item">
+        <div class="barber-item ${newBadge ? "has-new-item" : ""}">
           <div style="display:flex; justify-content:space-between; gap:1rem; align-items:flex-start; flex-wrap:wrap;">
             <div style="min-width:260px; flex:1;">
-            <h3>Pedido ${id}</h3>
+            <h3>Pedido ${id} ${newBadge}</h3>
             <p><strong>Nome:</strong> ${order.clientName || "-"}</p>
             <p><strong>Email:</strong> ${order.clientEmail || "-"}</p>
             <p><strong>Telefone:</strong> ${order.clientPhone || order.phone || "-"}</p>
@@ -1316,10 +1446,12 @@ function renderBookings() {
       const canCancel = !isInactive && booking.status !== "cancel_requested" && booking.executionStatus !== "completed"
       const canReactivate = booking.status === "cancelled"
 
+      const newBadge = renderNewBadge("bookings", id)
+
       return `
-        <div class="booking-item booking-item-extended ${isInactive ? "is-inactive" : ""}">
+        <div class="booking-item booking-item-extended ${isInactive ? "is-inactive" : ""} ${newBadge ? "has-new-item" : ""}">
           <div>
-            <h3>${booking.clientName || "Cliente"}</h3>
+            <h3>${booking.clientName || "Cliente"} ${newBadge}</h3>
             <div class="booking-meta-grid">
               <p><strong>Email:</strong> ${booking.clientEmail || "-"}</p>
               <p><strong>Telefone:</strong> ${booking.clientPhone || booking.clientPhoneComplete || "-"}</p>
@@ -1367,10 +1499,12 @@ function renderClients() {
   container.innerHTML = entries
     .map(([id, client]) => {
       const isActive = client.isActive !== false
+      const newBadge = renderNewBadge("clients", id)
+
       return `
-        <div class="barber-item ${isActive ? "" : "is-inactive"}">
+        <div class="barber-item ${isActive ? "" : "is-inactive"} ${newBadge ? "has-new-item" : ""}">
           <div>
-            <h3>${client.name || "Cliente"}</h3>
+            <h3>${client.name || "Cliente"} ${newBadge}</h3>
             <p><strong>Email:</strong> ${client.email || "-"}</p>
             <p><strong>Telefone:</strong> ${client.phone || "-"}</p>
             <p><strong>Registado em:</strong> ${formatDate(String(client.createdAt || "").split("T")[0])}</p>
@@ -2140,8 +2274,11 @@ function loadBarbers() {
 function loadBookings() {
   onValue(ref(database, "bookings"), (snapshot) => {
     state.bookings = snapshot.exists() ? snapshot.val() : {}
+    ensureSeenNotificationsInitialized("bookings")
     renderBarbers()
     renderBookings()
+    updateAdminNotificationBadges()
+    if (getActiveAdminTab() === "bookings") scheduleAdminTypeViewed("bookings")
     updateRevenue()
     syncBarberStatsToDatabase()
   })
@@ -2150,7 +2287,10 @@ function loadBookings() {
 function loadClients() {
   onValue(ref(database, "clients"), (snapshot) => {
     state.clients = snapshot.exists() ? snapshot.val() : {}
+    ensureSeenNotificationsInitialized("clients")
     renderClients()
+    updateAdminNotificationBadges()
+    if (getActiveAdminTab() === "clients") scheduleAdminTypeViewed("clients")
   })
 }
 
@@ -2171,7 +2311,10 @@ function loadProducts() {
 function loadOrders() {
   onValue(ref(database, "orders"), (snapshot) => {
     state.orders = snapshot.exists() ? snapshot.val() : {}
+    ensureSeenNotificationsInitialized("orders")
     renderOrders()
+    updateAdminNotificationBadges()
+    if (getActiveAdminTab() === "orders") scheduleAdminTypeViewed("orders")
   })
 }
 
@@ -3176,6 +3319,7 @@ document.getElementById("bookingPriorityCancel")?.addEventListener("change", (ev
 
 // Inicializa controles visuais imediatamente para evitar UI sem aÃ§Ã£o
 setupTopTabs()
+applyAdminQueryParams()
 setupAdminShortcuts()
 setupScheduleTabs()
 setupPromotionTabs()

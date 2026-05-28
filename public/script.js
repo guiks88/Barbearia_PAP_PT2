@@ -129,7 +129,7 @@ let shopProductsCache = []
 let featuredProductsCache = []
 let cartState = {}
 let productsListenerBound = false
-let cartNoticeCount = 0
+let cartNoticeCount = loadCartNoticeCount()
 
 installMojibakeAutoFix()
 
@@ -174,17 +174,36 @@ function updateCartBadge() {
   badgeEl.classList.toggle('hidden', cartNoticeCount <= 0)
 }
 
+function loadCartNoticeCount() {
+  try {
+    return Math.max(0, Number(localStorage.getItem('cartNoticeCount') || 0))
+  } catch (error) {
+    console.warn('Erro ao carregar notificações do carrinho:', error)
+    return 0
+  }
+}
+
+function saveCartNoticeCount() {
+  try {
+    localStorage.setItem('cartNoticeCount', String(cartNoticeCount))
+  } catch (error) {
+    console.warn('Erro ao guardar notificações do carrinho:', error)
+  }
+}
+
 function incrementCartNotice(amount = 1) {
   const cartPanel = document.getElementById('shopCartPanel')
   if (cartPanel && !cartPanel.classList.contains('hidden')) {
     return
   }
   cartNoticeCount = Math.max(0, cartNoticeCount + Math.max(0, amount))
+  saveCartNoticeCount()
   updateCartBadge()
 }
 
 function clearCartNotice() {
   cartNoticeCount = 0
+  saveCartNoticeCount()
   updateCartBadge()
 }
 
@@ -1410,17 +1429,7 @@ function renderProductCards(container, products) {
             <div class="product-old-price ${promo > 0 ? '' : 'is-hidden'}">${formatEuro(basePrice)}</div>
             <div class="product-stock ${outOfStock ? 'is-out' : ''}">${stockLabel}</div>
             <div class="product-actions-row">
-              <input
-                type="number"
-                class="product-qty-input"
-                min="1"
-                max="${Math.max(1, availableStock)}"
-                value="${outOfStock ? 0 : 1}"
-                data-product-qty="${product.id}"
-                ${outOfStock ? 'disabled' : ''}
-                aria-label="Quantidade de ${product.name || 'produto'} para adicionar"
-              >
-              <button type="button" class="btn btn-primary btn-small product-add" data-product-id="${product.id}" data-product-stock="${totalStock}" ${outOfStock ? 'disabled' : ''}>${outOfStock ? 'Esgotado' : 'Adicionar ao carrinho'}</button>
+              <button type="button" class="btn btn-primary btn-small product-add" data-product-id="${product.id}" data-product-stock="${totalStock}" ${outOfStock ? 'disabled' : ''}>${outOfStock ? 'Esgotado' : 'Adicionar carrinho'}</button>
             </div>
           </div>
         </div>
@@ -1439,16 +1448,8 @@ function renderProductCards(container, products) {
       }
       const product = products.find((item) => item.id === productId)
       if (!product) return
-      const card = button.closest('.product-card')
-      const qtyInput = card?.querySelector(`[data-product-qty="${productId}"]`)
-      const requestedQty = Math.max(1, Number.parseInt(qtyInput?.value || '1', 10) || 1)
+      const requestedQty = 1
       const result = addToCart(product, requestedQty)
-      const remaining = getAvailableStockForProduct(product)
-      if (qtyInput) {
-        qtyInput.max = String(Math.max(1, remaining))
-        qtyInput.value = remaining > 0 ? '1' : '0'
-        qtyInput.disabled = remaining <= 0
-      }
       if (result.added <= 0) {
         showError('Sem stock disponível para esse produto.')
         return
