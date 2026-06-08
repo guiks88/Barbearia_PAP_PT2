@@ -22,6 +22,8 @@
     <main class="container">
         <div class="admin-tabs">
             <button class="tab-btn active" data-tab="admin">Admin</button>
+            <button class="tab-btn" data-tab="logo">Logo</button>
+            <button class="tab-btn" data-tab="haircuts">Corte cabelo</button>
             <button class="tab-btn" data-tab="barbers">Barbeiros</button>
             <button class="tab-btn" data-tab="schedules">Horários</button>
             <button class="tab-btn" data-tab="about">Sobre nós</button>
@@ -99,6 +101,59 @@
             </div>
         </section>
 
+        <section id="logo-tab" class="tab-content">
+            <div class="card">
+                <h2>Logo</h2>
+                <p style="color: var(--color-text-secondary); margin-bottom: 1rem;">Pode usar uma imagem por URL, escolher do PC ou deixar sem logo.</p>
+                <form id="logoForm">
+                    <div class="form-group">
+                        <label for="logoImageUrl">Imagem por URL</label>
+                        <input type="url" id="logoImageUrl" placeholder="https://...">
+                    </div>
+                    <div class="form-group">
+                        <label for="logoImageFile">Imagem do PC</label>
+                        <input type="file" id="logoImageFile" accept="image/*">
+                    </div>
+                    <label class="day-checkbox" style="margin-bottom: 1rem;"><input type="checkbox" id="logoHidden"> Sem logo</label>
+                    <div id="logoPreview" class="image-preview-box">Sem logo</div>
+                    <div class="promotion-form-actions">
+                        <button type="submit" class="btn btn-primary">Guardar logo</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <section id="haircuts-tab" class="tab-content">
+            <div class="card">
+                <h2>Cortes de cabelo</h2>
+                <form id="haircutForm">
+                    <div class="filter-grid">
+                        <div class="form-group">
+                            <label for="haircutTitle">Título *</label>
+                            <input type="text" id="haircutTitle" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="haircutImageUrl">Imagem por URL</label>
+                            <input type="url" id="haircutImageUrl" placeholder="https://...">
+                        </div>
+                        <div class="form-group">
+                            <label for="haircutImageFile">Imagem do PC</label>
+                            <input type="file" id="haircutImageFile" accept="image/*">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="haircutDescription">Descrição opcional</label>
+                        <textarea id="haircutDescription" rows="3"></textarea>
+                    </div>
+                    <div class="promotion-form-actions">
+                        <button type="submit" class="btn btn-primary" id="haircutSaveBtn">Guardar corte</button>
+                        <button type="button" class="btn btn-secondary" id="haircutCancelEditBtn">Limpar</button>
+                    </div>
+                </form>
+                <div id="haircutsListAdmin" style="margin-top: 1rem;"></div>
+            </div>
+        </section>
+
         <section id="barbers-tab" class="tab-content">
             <div class="admin-modal hidden" id="barberFormModal" aria-hidden="true">
                 <div class="admin-modal-backdrop" id="barberFormBackdrop"></div>
@@ -133,8 +188,12 @@
                         <input type="text" id="barberSpecialty">
                     </div>
                     <div class="form-group">
-                        <label for="barberImageUrl">Imagem (URL)</label>
+                        <label for="barberImageUrl">Imagem por URL</label>
                         <input type="url" id="barberImageUrl" placeholder="https://...">
+                    </div>
+                    <div class="form-group">
+                        <label for="barberImageFile">Imagem do PC</label>
+                        <input type="file" id="barberImageFile" accept="image/*">
                         <small style="color: var(--color-text-secondary); font-size: 0.85rem;">Opcional</small>
                     </div>
                     <div class="form-group">
@@ -189,6 +248,10 @@
                             <label class="day-checkbox"><input type="checkbox" value="0"> Dom</label>
                         </div>
                         <small style="color: var(--color-text-secondary); font-size: 0.85rem;">Selecione os dias em que o barbeiro trabalha</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Horário diferente por dia</label>
+                        <div id="barberDailySchedules" class="daily-schedule-grid"></div>
                     </div>
                     <div class="promotion-form-actions">
                         <button type="submit" class="btn btn-primary" id="barberSubmitBtn" style="flex: 1;">Adicionar Barbeiro</button>
@@ -363,6 +426,11 @@
                         <button type="submit" class="btn btn-primary">Guardar horário da loja</button>
                     </div>
                 </form>
+                <div class="scoped-schedule">
+                    <h4>Horário diferente por dia da semana</h4>
+                    <div id="storeDailySchedules" class="daily-schedule-grid"></div>
+                    <button type="button" class="btn btn-secondary btn-small" id="saveStoreDailySchedulesBtn">Guardar horários por dia</button>
+                </div>
             </div>
             </div>
 
@@ -527,6 +595,10 @@
                         <div class="form-group">
                             <label for="productImage">Imagem (URL)</label>
                             <input type="url" id="productImage" placeholder="https://...">
+                        </div>
+                        <div class="form-group">
+                            <label for="productImageFile">Imagem do PC</label>
+                            <input type="file" id="productImageFile" accept="image/*">
                         </div>
                         <div class="form-group">
                             <label for="productStock">Stock</label>

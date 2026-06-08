@@ -44,24 +44,44 @@ const DEFAULT_BARBER_SERVICES = Object.keys(SERVICE_NAMES).map((key) => ({
 const DAY_NAMES = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
 
 const state = {
+  admins: {},
   barbers: {},
   bookings: {},
   clients: {},
   promotions: {},
   products: {},
   orders: {},
+  haircuts: {},
   storeSettings: {},
   passwordRequests: {},
 }
 
 let editingPromotionId = null
 let editingProductId = null
+let editingHaircutId = null
 let editingBarberId = null
 let barberModalEscBound = false
 let revenueViewMode = 'barber' // 'barber' or 'service'
 let syncingBarberStats = false
 let barberServicesDraft = []
 const DELETE_AUTH_USER_ENDPOINT = `https://europe-west1-${firebaseConfig.projectId}.cloudfunctions.net/deleteFirebaseAuthUser`
+const UPDATE_AUTH_USER_ENDPOINT = `https://europe-west1-${firebaseConfig.projectId}.cloudfunctions.net/updateFirebaseAuthUser`
+const MASTER_ADMIN_EMAIL = "joaoguilhermesftc88@gmail.com"
+const ADMIN_TABS = [
+  { id: "admin", label: "Admin", needsApproval: true },
+  { id: "logo", label: "Logo" },
+  { id: "haircuts", label: "Cortes cabelo" },
+  { id: "barbers", label: "Barbeiros" },
+  { id: "schedules", label: "Horários" },
+  { id: "about", label: "Sobre nós" },
+  { id: "bookings", label: "Marcações", needsApproval: true },
+  { id: "revenue", label: "Faturamento" },
+  { id: "clients", label: "Clientes" },
+  { id: "promotions", label: "Promoções" },
+  { id: "products", label: "Produtos" },
+  { id: "orders", label: "Pedidos", needsApproval: true },
+]
+let currentAdmin = null
 
 installMojibakeAutoFix()
 
@@ -70,6 +90,7 @@ const NOTIFICATION_TYPES = {
   bookings: { tab: "bookings", label: "Marcações", stateKey: "bookings", render: () => renderBookings() },
   clients: { tab: "clients", label: "Clientes", stateKey: "clients", render: () => renderClients() },
   orders: { tab: "orders", label: "Pedidos", stateKey: "orders", render: () => renderOrders() },
+  passwordRequests: { tab: "admin", label: "Pedidos senha", stateKey: "passwordRequests", render: () => renderPasswordRequests() },
 }
 
 let adminSeenNotifications = loadAdminSeenNotifications()
@@ -159,6 +180,172 @@ function getNotificationTypeForTab(tab) {
 
 function renderNewBadge(type, id) {
   return isNewAdminItem(type, id) ? '<span class="new-item-badge">Novo</span>' : ""
+}
+
+function isMasterAdmin(admin = currentAdmin) {
+  return Boolean(admin?.isMaster || String(admin?.email || "").toLowerCase() === MASTER_ADMIN_EMAIL)
+}
+
+function getCurrentAdminPermissions() {
+  return currentAdmin?.permissions || {}
+}
+
+function canAccessTab(tab) {
+  if (isMasterAdmin()) return true
+  return Boolean(getCurrentAdminPermissions()?.[tab]?.view)
+}
+
+function canEditTab(tab) {
+  if (isMasterAdmin()) return true
+  const permission = getCurrentAdminPermissions()?.[tab]
+  return Boolean(permission?.edit)
+}
+
+function canDeleteTab(tab) {
+  if (isMasterAdmin()) return true
+  const permission = getCurrentAdminPermissions()?.[tab]
+  return Boolean(permission?.delete)
+}
+
+function canApproveTab(tab) {
+  if (isMasterAdmin()) return true
+  const permission = getCurrentAdminPermissions()?.[tab]
+  return Boolean(permission?.approve)
+}
+
+function guardPermission(tab, action = "edit") {
+  const allowed = action === "delete" ? canDeleteTab(tab) : action === "approve" ? canApproveTab(tab) : canEditTab(tab)
+  if (allowed) return true
+  showError("Sem permissão para fazer esta ação.")
+  return false
+}
+
+function applyPermissionUi() {
+  document.querySelectorAll(".tab-btn[data-tab]").forEach((button) => {
+    const tab = button.dataset.tab
+    button.classList.toggle("hidden", !canAccessTab(tab))
+  })
+
+  document.querySelectorAll(".tab-content[id$='-tab']").forEach((section) => {
+    const tab = section.id.replace(/-tab$/, "")
+    section.classList.toggle("hidden", !canAccessTab(tab))
+  })
+
+  const activeTab = getActiveAdminTab()
+  if (!canAccessTab(activeTab)) {
+    const firstAllowed = ADMIN_TABS.find((tab) => canAccessTab(tab.id))?.id || "admin"
+    activateAdminTab(firstAllowed)
+  }
+}
+
+function getPermissionsPayload(prefix = "adminPerm") {
+  const permissions = {}
+  ADMIN_TABS.forEach((tab) => {
+    if (tab.id === "admin") return
+    const view = document.getElementById(`${prefix}_${tab.id}_view`)?.checked === true
+    const edit = document.getElementById(`${prefix}_${tab.id}_edit`)?.checked === true
+    const del = document.getElementById(`${prefix}_${tab.id}_delete`)?.checked === true
+    const approve = document.getElementById(`${prefix}_${tab.id}_approve`)?.checked === true
+    if (view || edit || del || approve) {
+      permissions[tab.id] = { view, edit, delete: del, approve }
+    }
+  })
+  return permissions
+}
+
+function renderPermissionsGrid(containerId, prefix = "adminPerm", permissions = {}) {
+  const container = document.getElementById(containerId)
+  if (!container) return
+  container.innerHTML = ADMIN_TABS
+    .filter((tab) => tab.id !== "admin")
+    .map((tab) => {
+      const permission = permissions[tab.id] || {}
+      return `
+        <div class="permission-row">
+          <strong>${tab.label}</strong>
+          <label><input type="checkbox" id="${prefix}_${tab.id}_view" ${permission.view ? "checked" : ""}> Ver aba</label>
+          <label><input type="checkbox" id="${prefix}_${tab.id}_edit" ${permission.edit ? "checked" : ""}> Editar</label>
+          <label><input type="checkbox" id="${prefix}_${tab.id}_delete" ${permission.delete ? "checked" : ""}> Eliminar</label>
+          ${tab.needsApproval ? `<label><input type="checkbox" id="${prefix}_${tab.id}_approve" ${permission.approve ? "checked" : ""}> Aprovar pedidos</label>` : ""}
+        </div>
+      `
+    })
+    .join("")
+}
+
+async function requestFirebaseAuthUserUpdate(uid, changes) {
+  const currentUser = auth.currentUser
+  if (!currentUser) throw new Error("Sessão de administrador inválida.")
+  const token = await getIdToken(currentUser, true)
+  const response = await fetch(UPDATE_AUTH_USER_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ uid, ...changes }),
+  })
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}))
+    throw new Error(payload?.message || "Falha ao atualizar utilizador no Auth.")
+  }
+}
+
+function renderAdmins() {
+  const container = document.getElementById("adminsList")
+  if (!container) return
+  const entries = Object.entries(state.admins || {}).filter(([id, admin]) => id !== auth.currentUser?.uid && !isMasterAdmin(admin))
+  if (!entries.length) {
+    container.innerHTML = '<div class="empty-state">Sem admins secundários.</div>'
+    return
+  }
+  container.innerHTML = entries.map(([id, admin]) => `
+    <div class="barber-item">
+      <div>
+        <h3>${admin.name || "Admin secundário"}</h3>
+        <p><strong>Email:</strong> ${admin.email || "-"}</p>
+        <p><strong>Estado:</strong> <span class="status-pill ${admin.isActive === false ? "is-cancelled" : "is-active"}">${admin.isActive === false ? "Inativo" : "Ativo"}</span></p>
+      </div>
+      <div class="booking-actions">
+        <button class="btn btn-secondary btn-small" data-action="edit-admin-perms" data-admin-id="${id}">Editar permissões</button>
+        <button class="btn btn-secondary btn-small" data-action="toggle-admin" data-admin-id="${id}">${admin.isActive === false ? "Ativar" : "Desativar"}</button>
+        <button class="btn btn-danger btn-small" data-action="delete-admin" data-admin-id="${id}">Eliminar</button>
+      </div>
+    </div>
+  `).join("")
+
+  container.querySelectorAll("[data-action='edit-admin-perms']").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const id = button.getAttribute("data-admin-id")
+      const admin = state.admins[id]
+      if (!id || !admin) return
+      renderPermissionsGrid("adminPermissionsGrid", "adminPerm", admin.permissions || {})
+      document.getElementById("adminCreateName").value = admin.name || ""
+      document.getElementById("adminCreateEmail").value = admin.email || ""
+      document.getElementById("adminCreatePassword").value = ""
+      document.getElementById("adminCreatePassword").required = false
+      document.getElementById("adminCreateForm").dataset.editingAdminId = id
+      document.getElementById("adminCreateBtn").textContent = "Atualizar admin"
+    })
+  })
+
+  container.querySelectorAll("[data-action='toggle-admin']").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const id = button.getAttribute("data-admin-id")
+      const admin = state.admins[id]
+      if (!id || !admin) return
+      await update(ref(database, `admins/${id}`), { isActive: admin.isActive === false, updatedAt: new Date().toISOString() })
+    })
+  })
+
+  container.querySelectorAll("[data-action='delete-admin']").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const id = button.getAttribute("data-admin-id")
+      if (!id || !confirm("Eliminar este admin secundário?")) return
+      await remove(ref(database, `admins/${id}`))
+      await requestFirebaseAuthUserDeletion(id).catch((error) => console.warn("Auth admin delete falhou:", error))
+    })
+  })
 }
 
 function normalize(value) {
@@ -443,6 +630,58 @@ function getBarberServicesPayload() {
 
 function stripPhonePrefix(phoneValue) {
   return String(phoneValue || "").replace(/^(\+351|351)/, "")
+}
+
+function readFileAsDataUrl(inputId) {
+  const file = document.getElementById(inputId)?.files?.[0]
+  if (!file) return Promise.resolve("")
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ""))
+    reader.onerror = () => reject(reader.error || new Error("Erro ao ler imagem."))
+    reader.readAsDataURL(file)
+  })
+}
+
+async function getImageValue(urlInputId, fileInputId, previousValue = "") {
+  const fileData = await readFileAsDataUrl(fileInputId)
+  if (fileData) return fileData
+  const url = String(document.getElementById(urlInputId)?.value || "").trim()
+  return url || previousValue || ""
+}
+
+function renderDailyScheduleControls(containerId, schedules = {}) {
+  const container = document.getElementById(containerId)
+  if (!container) return
+  container.innerHTML = DAY_NAMES.map((label, day) => {
+    const schedule = schedules?.[day] || {}
+    return `
+      <div class="daily-schedule-row" data-day="${day}">
+        <strong>${label}</strong>
+        <label><input type="checkbox" data-field="enabled" ${schedule.enabled ? "checked" : ""}> diferente</label>
+        <input type="time" data-field="start" value="${schedule.start || "09:00"}">
+        <input type="time" data-field="end" value="${schedule.end || "19:00"}">
+        <input type="time" data-field="lunchStart" value="${schedule.lunchStart || "13:00"}">
+        <input type="time" data-field="lunchEnd" value="${schedule.lunchEnd || "14:00"}">
+      </div>
+    `
+  }).join("")
+}
+
+function getDailySchedulePayload(containerId) {
+  const payload = {}
+  document.querySelectorAll(`#${containerId} .daily-schedule-row`).forEach((row) => {
+    const day = row.getAttribute("data-day")
+    if (row.querySelector('[data-field="enabled"]')?.checked !== true) return
+    payload[day] = {
+      enabled: true,
+      start: row.querySelector('[data-field="start"]')?.value || "09:00",
+      end: row.querySelector('[data-field="end"]')?.value || "19:00",
+      lunchStart: row.querySelector('[data-field="lunchStart"]')?.value || "13:00",
+      lunchEnd: row.querySelector('[data-field="lunchEnd"]')?.value || "14:00",
+    }
+  })
+  return payload
 }
 
 function setupTopTabs() {
@@ -2284,6 +2523,128 @@ function loadBookings() {
   })
 }
 
+function resetHaircutForm() {
+  const form = document.getElementById("haircutForm")
+  if (!form) return
+  form.reset()
+  editingHaircutId = null
+  const saveBtn = document.getElementById("haircutSaveBtn")
+  if (saveBtn) saveBtn.textContent = "Guardar corte"
+}
+
+function renderHaircuts() {
+  const container = document.getElementById("haircutsListAdmin")
+  if (!container) return
+  const entries = Object.entries(state.haircuts || {}).sort((a, b) => String(b[1]?.createdAt || "").localeCompare(String(a[1]?.createdAt || "")))
+  if (!entries.length) {
+    container.innerHTML = '<div class="empty-state">Sem cortes registados</div>'
+    return
+  }
+  container.innerHTML = entries.map(([id, haircut]) => `
+    <div class="barber-item admin-product-item">
+      <div class="admin-product-media">
+        ${haircut.imageUrl ? `<img src="${haircut.imageUrl}" alt="${haircut.title || "Corte"}" class="admin-product-image">` : `<div class="admin-product-image admin-product-image-placeholder">Sem imagem</div>`}
+      </div>
+      <div>
+        <h3>${haircut.title || "Corte"}</h3>
+        <p><strong>Descrição:</strong> ${haircut.description || "-"}</p>
+      </div>
+      <div class="booking-actions">
+        ${canEditTab("haircuts") ? `<button class="btn btn-secondary btn-small" data-action="edit-haircut" data-haircut-id="${id}">Editar</button>` : ""}
+        ${canDeleteTab("haircuts") ? `<button class="btn btn-danger btn-small" data-action="delete-haircut" data-haircut-id="${id}">Eliminar</button>` : ""}
+      </div>
+    </div>
+  `).join("")
+
+  container.querySelectorAll('[data-action="edit-haircut"]').forEach((button) => {
+    button.addEventListener("click", () => {
+      const id = button.getAttribute("data-haircut-id")
+      const haircut = state.haircuts[id]
+      if (!id || !haircut) return
+      editingHaircutId = id
+      document.getElementById("haircutTitle").value = haircut.title || ""
+      document.getElementById("haircutImageUrl").value = haircut.imageUrl && !haircut.imageUrl.startsWith("data:") ? haircut.imageUrl : ""
+      document.getElementById("haircutDescription").value = haircut.description || ""
+      document.getElementById("haircutSaveBtn").textContent = "Atualizar corte"
+    })
+  })
+
+  container.querySelectorAll('[data-action="delete-haircut"]').forEach((button) => {
+    button.addEventListener("click", async () => {
+      const id = button.getAttribute("data-haircut-id")
+      if (!id || !confirm("Eliminar este corte?")) return
+      if (!guardPermission("haircuts", "delete")) return
+      await remove(ref(database, `haircuts/${id}`))
+      showSuccess("Corte eliminado.")
+    })
+  })
+}
+
+function setupHaircutForm() {
+  const form = document.getElementById("haircutForm")
+  const cancelBtn = document.getElementById("haircutCancelEditBtn")
+  if (!form || !cancelBtn) return
+  if (form.dataset.bound !== "true") {
+    form.dataset.bound = "true"
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault()
+      if (!guardPermission("haircuts", "edit")) return
+      const title = document.getElementById("haircutTitle")?.value?.trim() || ""
+      if (!title) {
+        showError("Indique o título do corte.")
+        return
+      }
+      const id = editingHaircutId || `haircut_${Date.now()}`
+      const previous = state.haircuts[id] || {}
+      const imageUrl = await getImageValue("haircutImageUrl", "haircutImageFile", previous.imageUrl || "")
+      await set(ref(database, `haircuts/${id}`), {
+        title,
+        imageUrl,
+        description: document.getElementById("haircutDescription")?.value?.trim() || "",
+        isActive: true,
+        createdAt: previous.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      })
+      resetHaircutForm()
+      showSuccess("Corte guardado.")
+    })
+  }
+  if (cancelBtn.dataset.bound !== "true") {
+    cancelBtn.dataset.bound = "true"
+    cancelBtn.addEventListener("click", resetHaircutForm)
+  }
+}
+
+function renderLogoSettings() {
+  const logo = state.storeSettings?.logo || {}
+  const input = document.getElementById("logoImageUrl")
+  const hidden = document.getElementById("logoHidden")
+  const preview = document.getElementById("logoPreview")
+  if (input) input.value = logo.imageUrl && !logo.imageUrl.startsWith("data:") ? logo.imageUrl : ""
+  if (hidden) hidden.checked = logo.hidden === true
+  if (preview) {
+    preview.innerHTML = logo.hidden || !logo.imageUrl ? "Sem logo" : `<img src="${logo.imageUrl}" alt="Logo" class="admin-product-image">`
+  }
+}
+
+function setupLogoForm() {
+  const form = document.getElementById("logoForm")
+  if (!form || form.dataset.bound === "true") return
+  form.dataset.bound = "true"
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault()
+    if (!guardPermission("logo", "edit")) return
+    const previous = state.storeSettings?.logo || {}
+    const hidden = document.getElementById("logoHidden")?.checked === true
+    const imageUrl = hidden ? "" : await getImageValue("logoImageUrl", "logoImageFile", previous.imageUrl || "")
+    await update(ref(database, "storeSettings"), {
+      logo: { hidden, imageUrl, updatedAt: new Date().toISOString() },
+      updatedAt: new Date().toISOString(),
+    })
+    showSuccess("Logo guardada.")
+  })
+}
+
 function loadClients() {
   onValue(ref(database, "clients"), (snapshot) => {
     state.clients = snapshot.exists() ? snapshot.val() : {}
@@ -3010,7 +3371,17 @@ function renderPasswordRequests() {
 function loadPasswordRequests() {
   onValue(ref(database, "barberPasswordRequests"), (snapshot) => {
     state.passwordRequests = snapshot.exists() ? snapshot.val() : {}
+    ensureSeenNotificationsInitialized("passwordRequests")
     renderPasswordRequests()
+    updateAdminNotificationBadges()
+    if (getActiveAdminTab() === "admin") scheduleAdminTypeViewed("passwordRequests")
+  })
+}
+
+function loadAdmins() {
+  onValue(ref(database, "admins"), (snapshot) => {
+    state.admins = snapshot.exists() ? snapshot.val() : {}
+    renderAdmins()
   })
 }
 
@@ -3027,10 +3398,31 @@ async function verifyAdminAccess(user) {
     }
 
     const adminData = snapshot.val()
+    if (adminData.isActive === false) {
+      await signOut(auth)
+      sessionStorage.clear()
+      window.location.href = "admin-login.html"
+      return false
+    }
+    currentAdmin = {
+      ...adminData,
+      id: user.uid,
+      email: adminData.email || user.email || "",
+      isMaster: adminData.isMaster === true || String(adminData.email || user.email || "").toLowerCase() === MASTER_ADMIN_EMAIL,
+    }
     sessionStorage.setItem("adminId", user.uid)
     sessionStorage.setItem("adminName", adminData.name)
+    sessionStorage.setItem("adminEmail", currentAdmin.email)
+    sessionStorage.setItem("isMasterAdmin", currentAdmin.isMaster ? "true" : "false")
+    sessionStorage.setItem("adminPermissions", JSON.stringify(currentAdmin.permissions || {}))
     sessionStorage.setItem("isAdmin", "true")
     document.getElementById("adminNameDisplay").textContent = `OlÃ¡, ${adminData.name}`
+    document.getElementById("adminProfileName").value = adminData.name || ""
+    document.getElementById("adminProfileEmail").value = currentAdmin.email || ""
+    document.querySelectorAll("#admin-tab .card").forEach((card, index) => {
+      if (index > 0) card.classList.toggle("hidden", !currentAdmin.isMaster)
+    })
+    applyPermissionUi()
 
     return true
   } catch (error) {
@@ -3052,6 +3444,89 @@ if (addServiceBtn && addServiceBtn.dataset.bound !== "true") {
   addServiceBtn.dataset.bound = "true"
   addServiceBtn.addEventListener("click", addBarberServiceRow)
 }
+
+renderPermissionsGrid("adminPermissionsGrid")
+
+document.getElementById("adminCreateForm")?.addEventListener("submit", async (event) => {
+  event.preventDefault()
+  if (!isMasterAdmin()) {
+    showError("Só o admin mestre pode gerir admins secundários.")
+    return
+  }
+
+  const form = event.currentTarget
+  const editingId = form.dataset.editingAdminId || ""
+  const name = document.getElementById("adminCreateName")?.value?.trim() || ""
+  const email = document.getElementById("adminCreateEmail")?.value?.trim().toLowerCase() || ""
+  const password = document.getElementById("adminCreatePassword")?.value || ""
+  const permissions = getPermissionsPayload()
+
+  if (!Object.keys(permissions).length) {
+    showError("Escolha pelo menos uma aba para o admin secundário.")
+    return
+  }
+
+  try {
+    if (editingId) {
+      await update(ref(database, `admins/${editingId}`), { name, email, permissions, updatedAt: new Date().toISOString() })
+      showSuccess("Permissões do admin atualizadas.")
+    } else {
+      if (!password || password.length < 6) {
+        showError("A senha deve ter pelo menos 6 caracteres.")
+        return
+      }
+      const credential = await createUserWithEmailAndPassword(secondaryAuth, email, password)
+      await set(ref(database, `admins/${credential.user.uid}`), {
+        name,
+        email,
+        isMaster: false,
+        isActive: true,
+        permissions,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      })
+      await signOut(secondaryAuth)
+      showSuccess("Admin secundário criado.")
+    }
+    form.reset()
+    delete form.dataset.editingAdminId
+    document.getElementById("adminCreatePassword").required = true
+    document.getElementById("adminCreateBtn").textContent = "Adicionar admin"
+    renderPermissionsGrid("adminPermissionsGrid")
+  } catch (error) {
+    showError("Erro ao guardar admin: " + error.message)
+  }
+})
+
+document.getElementById("adminProfileForm")?.addEventListener("submit", async (event) => {
+  event.preventDefault()
+  if (!isMasterAdmin()) {
+    showError("Só o admin mestre pode alterar esta conta.")
+    return
+  }
+  const name = document.getElementById("adminProfileName")?.value?.trim() || ""
+  const email = document.getElementById("adminProfileEmail")?.value?.trim().toLowerCase() || ""
+  const password = document.getElementById("adminProfilePassword")?.value || ""
+  const confirm = document.getElementById("adminProfilePasswordConfirm")?.value || ""
+  if (password && password !== confirm) {
+    showError("As senhas não coincidem.")
+    return
+  }
+  try {
+    const changes = { email }
+    if (password) changes.password = password
+    await requestFirebaseAuthUserUpdate(auth.currentUser.uid, changes)
+    await update(ref(database, `admins/${auth.currentUser.uid}`), {
+      name,
+      email,
+      isMaster: true,
+      updatedAt: new Date().toISOString(),
+    })
+    showSuccess("Admin mestre atualizado.")
+  } catch (error) {
+    showError("Erro ao atualizar admin mestre: " + error.message)
+  }
+})
 
 document.getElementById("barberForm").addEventListener("submit", async (e) => {
   e.preventDefault()
@@ -3347,6 +3822,7 @@ onAuthStateChanged(auth, async (user) => {
   const ok = await verifyAdminAccess(user)
   if (!ok) return
 
+  loadAdmins()
   loadBarbers()
   loadBookings()
   loadClients()

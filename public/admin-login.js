@@ -23,9 +23,17 @@ document.getElementById("adminLoginForm").addEventListener("submit", async (e) =
     }
 
     const adminFound = snapshot.val()
+    if (adminFound.isActive === false) {
+      await signOut(auth)
+      showError("Esta conta de admin está desativada.")
+      return
+    }
 
     sessionStorage.setItem("adminId", uid)
     sessionStorage.setItem("adminName", adminFound.name)
+    sessionStorage.setItem("adminEmail", adminFound.email || email)
+    sessionStorage.setItem("isMasterAdmin", adminFound.isMaster === true || String(adminFound.email || email).toLowerCase() === "joaoguilhermesftc88@gmail.com" ? "true" : "false")
+    sessionStorage.setItem("adminPermissions", JSON.stringify(adminFound.permissions || {}))
     sessionStorage.setItem("isAdmin", "true")
 
     showSuccess("Login efetuado com sucesso!")

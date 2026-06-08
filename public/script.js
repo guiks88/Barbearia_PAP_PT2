@@ -124,6 +124,8 @@ let teamSchedulesListenerBound = false
 let promotionsListenerBound = false
 let storeHoursListenerBound = false
 let teamStatsListenerBound = false
+let haircutsListenerBound = false
+let logoListenerBound = false
 let teamStatsPollIntervalId = null
 let shopProductsCache = []
 let featuredProductsCache = []
@@ -1287,9 +1289,18 @@ function updateMainAuthButton() {
   if (!mainAuthCta) return
 
   const setAdminUiVisibility = (isAdmin) => {
+    let permissions = {}
+    try {
+      permissions = JSON.parse(sessionStorage.getItem('adminPermissions') || '{}') || {}
+    } catch {
+      permissions = {}
+    }
+    const isMaster = sessionStorage.getItem('isMasterAdmin') === 'true'
     document.querySelectorAll('.admin-only').forEach((element) => {
-      element.classList.toggle('is-admin-visible', isAdmin)
-      element.setAttribute('aria-hidden', isAdmin ? 'false' : 'true')
+      const tab = element.getAttribute('data-admin-tab') || ''
+      const canEdit = isAdmin && (isMaster || permissions?.[tab]?.edit)
+      element.classList.toggle('is-admin-visible', canEdit)
+      element.setAttribute('aria-hidden', canEdit ? 'false' : 'true')
     })
   }
 
@@ -1394,6 +1405,47 @@ function updateMainAuthButton() {
     }
 
     setLoggedOut()
+  })
+}
+
+function loadPublicLogo() {
+  if (logoListenerBound) return
+  logoListenerBound = true
+  onValue(ref(database, 'storeSettings/logo'), (snapshot) => {
+    const logo = snapshot.exists() ? snapshot.val() : {}
+    const avatar = document.querySelector('.profile-avatar')
+    const image = avatar?.querySelector('img')
+    if (!avatar || !image) return
+    avatar.classList.toggle('hidden', logo.hidden === true)
+    if (logo.hidden === true) return
+    if (logo.imageUrl) image.src = logo.imageUrl
+  })
+}
+
+function loadPublicHaircuts() {
+  const container = document.getElementById('haircutsGrid')
+  if (!container || haircutsListenerBound) return
+  haircutsListenerBound = true
+  onValue(ref(database, 'haircuts'), (snapshot) => {
+    const entries = Object.entries(snapshot.exists() ? snapshot.val() : {})
+      .filter(([, haircut]) => haircut && haircut.isActive !== false)
+      .sort((a, b) => String(a[1]?.createdAt || '').localeCompare(String(b[1]?.createdAt || '')))
+
+    if (!entries.length) {
+      container.innerHTML = '<div class="empty-state">Sem cortes publicados.</div>'
+      return
+    }
+
+    container.innerHTML = entries.map(([id, haircut]) => `
+      <div class="cut-card" data-cut-category="hair" data-cut-title="${escapeHtml(haircut.title || 'Corte')}" role="button" tabindex="0" aria-label="Ver ${escapeHtml(haircut.title || 'corte')}">
+        ${haircut.imageUrl ? `<img src="${escapeHtml(haircut.imageUrl)}" alt="${escapeHtml(haircut.title || 'Corte')}">` : '<div class="cut-image-placeholder">Sem imagem</div>'}
+        <div class="cut-info">
+          <h3>${escapeHtml(haircut.title || 'Corte')}</h3>
+          <p>${escapeHtml(haircut.description || '')}</p>
+        </div>
+      </div>
+    `).join('')
+    initCutsGallery()
   })
 }
 
@@ -2071,6 +2123,8 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', setupTeamSchedulesListener);
   document.addEventListener('DOMContentLoaded', loadPromotions);
   document.addEventListener('DOMContentLoaded', loadProducts);
+  document.addEventListener('DOMContentLoaded', loadPublicHaircuts);
+  document.addEventListener('DOMContentLoaded', loadPublicLogo);
   document.addEventListener('DOMContentLoaded', initShopCart);
   document.addEventListener('DOMContentLoaded', loadStoreHours);
   document.addEventListener('DOMContentLoaded', updateMainAuthButton);
@@ -2090,6 +2144,8 @@ if (document.readyState === 'loading') {
   setupTeamSchedulesListener();
   loadPromotions();
   loadProducts();
+  loadPublicHaircuts();
+  loadPublicLogo();
   initShopCart();
   loadStoreHours();
   updateMainAuthButton();
@@ -2111,6 +2167,8 @@ window.addEventListener('load', initTeamRatings);
 window.addEventListener('load', setupTeamSchedulesListener);
 window.addEventListener('load', loadPromotions);
 window.addEventListener('load', loadProducts);
+window.addEventListener('load', loadPublicHaircuts);
+window.addEventListener('load', loadPublicLogo);
 window.addEventListener('load', initShopCart);
 window.addEventListener('load', loadStoreHours);
 window.addEventListener('load', updateMainAuthButton);

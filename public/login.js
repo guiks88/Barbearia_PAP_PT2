@@ -226,6 +226,9 @@ function saveRoleSession(role, uid, email, profile) {
   if (role === "admin") {
     sessionStorage.setItem("adminId", uid)
     sessionStorage.setItem("adminName", profile?.name || "Administrador")
+    sessionStorage.setItem("adminEmail", profile?.email || email)
+    sessionStorage.setItem("isMasterAdmin", profile?.isMaster === true || normalizeEmail(profile?.email || email) === "joaoguilhermesftc88@gmail.com" ? "true" : "false")
+    sessionStorage.setItem("adminPermissions", JSON.stringify(profile?.permissions || {}))
     sessionStorage.setItem("isAdmin", "true")
     return
   }
@@ -408,8 +411,8 @@ async function loginWithGoogleAndRoute() {
 }
 
 const LOGIN_MESSAGES = {
-  wrongPassword: "Senha/email incorretos.",
-  missingAccount: "Senha/email incorretos.",
+  wrongPassword: "Senha incorreta.",
+  missingAccount: "Este email não está registado. Crie uma conta.",
 }
 
 async function checkIfAccountExists(email) {
