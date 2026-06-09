@@ -258,6 +258,26 @@ main {
   background: var(--color-bg-secondary);
 }
 
+.login-inline-message {
+  margin: -0.35rem 0 0.85rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.login-inline-message.is-error {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.38);
+  color: #fecaca;
+}
+
+.login-inline-message.is-success {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.38);
+  color: #bbf7d0;
+}
+
 .google-auth-btn {
   display: inline-flex;
   align-items: center;
@@ -794,6 +814,10 @@ main {
 
 .admin-edit-link i {
   font-size: 0.9rem;
+}
+
+.admin-only.admin-edit-link:not(.is-admin-visible) {
+  display: none;
 }
 
 .btn-ghost {

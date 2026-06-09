@@ -128,6 +128,7 @@ if (requestForm) {
         barberId: barberMatch.barberId,
         barberName: barberMatch.barber?.name || "Barbeiro",
         barberEmail: email,
+        requestedPassword: proposedPassword,
         status: "pending",
         requestedAt: new Date().toISOString(),
       })

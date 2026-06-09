@@ -23,6 +23,7 @@
         <div class="admin-tabs">
             <button class="tab-btn active" data-tab="admin">Admin</button>
             <button class="tab-btn" data-tab="logo">Logo</button>
+            <button class="tab-btn" data-tab="contacts">Contacto</button>
             <button class="tab-btn" data-tab="haircuts">Corte cabelo</button>
             <button class="tab-btn" data-tab="barbers">Barbeiros</button>
             <button class="tab-btn" data-tab="schedules">Horários</button>
@@ -120,6 +121,33 @@
                         <button type="submit" class="btn btn-primary">Guardar logo</button>
                     </div>
                 </form>
+            </div>
+        </section>
+
+        <section id="contacts-tab" class="tab-content">
+            <div class="card">
+                <h2>Contactos</h2>
+                <p style="color: var(--color-text-secondary); margin-bottom: 1rem;">Edite telefone, email e redes sociais que aparecem no ícone de telefone da página principal.</p>
+                <form id="contactsForm">
+                    <div class="filter-grid">
+                        <div class="form-group">
+                            <label for="contactLabel">Nome</label>
+                            <input type="text" id="contactLabel" placeholder="Telefone, Instagram, Facebook..." required>
+                        </div>
+                        <div class="form-group">
+                            <label for="contactValue">Valor a copiar</label>
+                            <input type="text" id="contactValue" placeholder="+351..., @perfil, email..." required>
+                        </div>
+                        <div class="form-group">
+                            <label for="contactHref">Link opcional</label>
+                            <input type="text" id="contactHref" placeholder="tel:+351..., mailto:..., https://...">
+                        </div>
+                    </div>
+                    <div class="promotion-form-actions">
+                        <button type="submit" class="btn btn-primary">Adicionar contacto</button>
+                    </div>
+                </form>
+                <div id="contactsListAdmin" style="margin-top: 1rem;"></div>
             </div>
         </section>
 

@@ -1,5 +1,5 @@
 import { auth, database, AUTH_ACTION_URL } from "./firebase-config.js"
-import { ref, get, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
+import { ref, get, set, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
 import {
   browserSessionPersistence,
   GoogleAuthProvider,
@@ -12,19 +12,40 @@ import {
   signInWithPopup,
   signOut,
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
-import { showSuccess, showError } from "./utils.js"
+import { showSuccess as toastSuccess, showError as toastError } from "./utils.js"
 
 const form = document.getElementById("unifiedLoginForm")
 const submitBtn = document.getElementById("unifiedLoginBtn")
 const forgotPasswordLink = document.getElementById("forgotPasswordLink")
 const googleLoginBtn = document.getElementById("googleLoginBtn")
 const googleLoginBtnLabel = document.getElementById("googleLoginBtnLabel")
+const loginInlineMessage = document.getElementById("loginInlineMessage")
 
 let authPersistencePromise = null
 let hasRoleRedirected = false
 
 if (!form || !submitBtn || !forgotPasswordLink || !googleLoginBtn || !googleLoginBtnLabel) {
   throw new Error("Elementos do login não encontrados.")
+}
+
+function showLoginMessage(message, type = "error") {
+  if (!loginInlineMessage) {
+    if (type === "success") toastSuccess(message)
+    else toastError(message)
+    return
+  }
+
+  loginInlineMessage.textContent = message
+  loginInlineMessage.classList.remove("hidden", "is-error", "is-success")
+  loginInlineMessage.classList.add(type === "success" ? "is-success" : "is-error")
+}
+
+function showError(message) {
+  showLoginMessage(message, "error")
+}
+
+function showSuccess(message) {
+  showLoginMessage(message, "success")
 }
 
 function normalizeEmail(email) {
@@ -96,6 +117,11 @@ async function isEmailRegistered(email) {
     findByEmail(barbersSnapshot, normalized) ||
     findByEmail(clientsSnapshot, normalized),
   )
+}
+
+async function findBarberByEmail(email) {
+  const barbersSnapshot = await get(ref(database, "barbers"))
+  return findByEmail(barbersSnapshot, email)
 }
 
 async function migrateProfileToUidIfNeeded(role, uid, foundProfile) {
@@ -226,10 +252,10 @@ function saveRoleSession(role, uid, email, profile) {
   if (role === "admin") {
     sessionStorage.setItem("adminId", uid)
     sessionStorage.setItem("adminName", profile?.name || "Administrador")
-    sessionStorage.setItem("adminEmail", profile?.email || email)
-    sessionStorage.setItem("isMasterAdmin", profile?.isMaster === true || normalizeEmail(profile?.email || email) === "joaoguilhermesftc88@gmail.com" ? "true" : "false")
-    sessionStorage.setItem("adminPermissions", JSON.stringify(profile?.permissions || {}))
+    sessionStorage.setItem("adminEmail", email)
     sessionStorage.setItem("isAdmin", "true")
+    sessionStorage.setItem("isMasterAdmin", profile?.isMaster ? "true" : "false")
+    sessionStorage.setItem("adminPermissions", JSON.stringify(profile?.permissions || {}))
     return
   }
 
@@ -489,6 +515,33 @@ forgotPasswordLink.addEventListener("click", async (event) => {
   }
 
   try {
+    const barberMatch = await findBarberByEmail(email)
+    if (barberMatch) {
+      const requestedPassword = window.prompt("Indique a nova senha que quer pedir ao admin (mínimo 6 caracteres):")
+      if (!requestedPassword || requestedPassword.length < 6) {
+        showError("A nova senha deve ter pelo menos 6 caracteres.")
+        return
+      }
+
+      const confirmPassword = window.prompt("Confirme a nova senha:")
+      if (requestedPassword !== confirmPassword) {
+        showError("As senhas não coincidem.")
+        return
+      }
+
+      const requestRef = push(ref(database, "barberPasswordRequests"))
+      await set(requestRef, {
+        barberId: barberMatch.id,
+        barberName: barberMatch.profile?.name || "Barbeiro",
+        barberEmail: email,
+        requestedPassword,
+        status: "pending",
+        requestedAt: new Date().toISOString(),
+      })
+      showSuccess("Pedido enviado ao admin. Aguarde aprovação da nova senha.")
+      return
+    }
+
     await sendPasswordResetEmail(auth, email, {
       url: AUTH_ACTION_URL,
       handleCodeInApp: true,

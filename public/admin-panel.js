@@ -70,6 +70,7 @@ const MASTER_ADMIN_EMAIL = "joaoguilhermesftc88@gmail.com"
 const ADMIN_TABS = [
   { id: "admin", label: "Admin", needsApproval: true },
   { id: "logo", label: "Logo" },
+  { id: "contacts", label: "Contacto" },
   { id: "haircuts", label: "Cortes cabelo" },
   { id: "barbers", label: "Barbeiros" },
   { id: "schedules", label: "Horários" },
@@ -2694,6 +2695,7 @@ function loadStoreSettings() {
   onValue(ref(database, "storeSettings"), (snapshot) => {
     state.storeSettings = snapshot.exists() ? snapshot.val() : {}
     renderStoreSchedule()
+    renderLogoSettings()
     setupBarberFormTimes(state.storeSettings)
     renderAboutSettings()
   })
@@ -3313,17 +3315,20 @@ function renderPasswordRequests() {
       const badgeClass = status === "approved" ? "is-active" : status === "rejected" ? "is-cancelled" : "is-warning"
       const requestedAt = request?.requestedAt ? formatDate(request.requestedAt) : "Data não disponível"
       const canReview = status === "pending"
+      const requestedPassword = String(request?.requestedPassword || "")
       return `
         <div class="barber-item">
           <div>
             <h3>${request?.barberName || "Barbeiro"}</h3>
             <p><strong>Email:</strong> ${request?.barberEmail || "-"}</p>
             <p><strong>Pedido:</strong> alteração de senha</p>
+            <p><strong>Senha pedida:</strong> ${requestedPassword ? escapeHtml(requestedPassword) : "-"}</p>
             <p><strong>Data:</strong> ${requestedAt}</p>
             <p><strong>Estado:</strong> <span class="status-pill ${badgeClass}">${status}</span></p>
           </div>
           ${canReview ? `
             <div class="booking-actions">
+              <input type="password" id="passwordRequestValue_${id}" class="inline-input" value="${escapeHtml(requestedPassword)}" minlength="6" placeholder="Senha a aplicar">
               <button class="btn btn-primary btn-small" data-action="approve-password-request" data-request-id="${id}">Aprovar</button>
               <button class="btn btn-danger btn-small" data-action="reject-password-request" data-request-id="${id}">Rejeitar</button>
             </div>
@@ -3338,8 +3343,21 @@ function renderPasswordRequests() {
       const requestId = button.getAttribute("data-request-id")
       if (!requestId) return
       try {
+        const request = state.passwordRequests?.[requestId]
+        const passwordValue = document.getElementById(`passwordRequestValue_${requestId}`)?.value || request?.requestedPassword || ""
+        if (!request?.barberId) {
+          showError("Pedido inválido: barbeiro não encontrado.")
+          return
+        }
+        if (passwordValue.length < 6) {
+          showError("A senha a aplicar deve ter pelo menos 6 caracteres.")
+          return
+        }
+
+        await requestFirebaseAuthUserUpdate(request.barberId, { password: passwordValue })
         await update(ref(database, `barberPasswordRequests/${requestId}`), {
           status: "approved",
+          appliedPassword: passwordValue,
           reviewedAt: new Date().toISOString(),
           reviewedBy: sessionStorage.getItem("adminId") || "",
         })
@@ -3375,6 +3393,13 @@ function loadPasswordRequests() {
     renderPasswordRequests()
     updateAdminNotificationBadges()
     if (getActiveAdminTab() === "admin") scheduleAdminTypeViewed("passwordRequests")
+  })
+}
+
+function loadHaircuts() {
+  onValue(ref(database, "haircuts"), (snapshot) => {
+    state.haircuts = snapshot.exists() ? snapshot.val() : {}
+    renderHaircuts()
   })
 }
 
@@ -3808,6 +3833,8 @@ setupFilters()
 setupRevenueControls()
 setupPromotionForm()
 setupProductForm()
+setupLogoForm()
+setupHaircutForm()
 setupSpecialScheduleManager()
 setupOrderEditModal()
 renderOrders()
@@ -3828,6 +3855,7 @@ onAuthStateChanged(auth, async (user) => {
   loadClients()
   loadPromotions()
   loadProducts()
+  loadHaircuts()
   loadOrders()
   loadStoreSettings()
   loadPasswordRequests()

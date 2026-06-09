@@ -16,6 +16,9 @@
                     <div class="profile-avatar">
                         <img src="logo-barbearia.png" alt="Logo da Barbearia João Castro">
                     </div>
+                    <a href="admin-panel.html?tab=logo" class="admin-edit-link admin-only" data-admin-tab="logo" data-admin-focus="logoForm" aria-label="Editar logo">
+                        <i class="bi bi-pencil" aria-hidden="true"></i>
+                    </a>
                     <div class="profile-info">
                         <h1 class="profile-name">Barbearia João Castro</h1>
                         <div class="profile-meta">
@@ -105,7 +108,14 @@
                 </section>
                 <div class="products-grid" id="featuredProductsGrid" aria-label="Produtos em alta"></div>
 
-                <h2 class="section-title" style="margin-top: 2rem;">Cortes de Cabelo</h2>
+                <div class="section-title-row" style="margin-top: 2rem;">
+                    <h2 class="section-title">Cortes de Cabelo</h2>
+                    <div class="section-title-actions">
+                        <a href="admin-panel.html?tab=haircuts" class="admin-edit-link admin-only" data-admin-tab="haircuts" data-admin-focus="haircutForm" aria-label="Editar cortes de cabelo">
+                            <i class="bi bi-pencil" aria-hidden="true"></i>
+                        </a>
+                    </div>
+                </div>
                 <div class="cuts-grid hidden" id="legacyCutsGrid">
                     <div class="cut-card" data-cut-category="hair" data-cut-title="Corte Clássico" role="button" tabindex="0" aria-label="Ver exemplos de Corte Clássico">
                         <img src="https://images.pexels.com/photos/1453005/pexels-photo-1453005.jpeg?auto=compress&cs=tinysrgb&w=800" alt="Corte Clássico">
@@ -182,6 +192,11 @@
             <!-- Location Tab -->
             <div id="location" class="tab-content">
                 <h2 class="section-title">Localização</h2>
+                <div class="section-title-actions" style="margin-top: -0.75rem; margin-bottom: 1rem;">
+                    <a href="admin-panel.html?tab=schedules" class="admin-edit-link admin-only" data-admin-tab="schedules" data-admin-focus="storeScheduleForm" aria-label="Editar horÃ¡rios">
+                        <i class="bi bi-pencil" aria-hidden="true"></i>
+                    </a>
+                </div>
                 <div class="location-section">
                     <div class="map-container">
                         <iframe 
@@ -209,9 +224,12 @@
         <div class="action-sheet-panel" role="document">
             <div class="action-sheet-header">
                 <h3>Barbearia João Castro</h3>
+                <a href="admin-panel.html?tab=contacts" class="admin-edit-link admin-only" data-admin-tab="contacts" data-admin-focus="contactsForm" aria-label="Editar contactos">
+                    <i class="bi bi-pencil" aria-hidden="true"></i>
+                </a>
                 <a href="#" class="action-sheet-close" id="actionSheetClose" aria-label="Fechar">x</a>
             </div>
-            <div class="action-sheet-actions">
+            <div class="action-sheet-actions" id="actionSheetContacts">
                 <a href="tel:+351937277447" class="action-sheet-item" data-copy-text="+351937277447" data-copy-label="Telefone">Copiar telefone 937277447</a>
                 <a href="mailto:joaoguilhermesftc88@gmail.com" class="action-sheet-item" data-copy-text="joaoguilhermesftc88@gmail.com" data-copy-label="Email">Copiar email joaoguilhermesftc88@gmail.com</a>
             </div>

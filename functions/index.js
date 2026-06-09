@@ -253,3 +253,64 @@ exports.deleteFirebaseAuthUser = onRequest({
     res.status(500).json({ success: false, message: "Erro interno ao eliminar utilizador no Auth." })
   }
 })
+
+exports.updateFirebaseAuthUser = onRequest({
+  region: "europe-west1",
+  timeoutSeconds: 60,
+  memory: "256MiB",
+}, async (req, res) => {
+  res.set("Access-Control-Allow-Origin", "*")
+  res.set("Access-Control-Allow-Methods", "POST, OPTIONS")
+  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+  if (req.method === "OPTIONS") {
+    res.status(204).send("")
+    return
+  }
+
+  if (req.method !== "POST") {
+    res.status(405).json({ success: false, message: "MÃ©todo nÃ£o permitido." })
+    return
+  }
+
+  try {
+    const authHeader = String(req.headers.authorization || "")
+    if (!authHeader.startsWith("Bearer ")) {
+      res.status(401).json({ success: false, message: "Token de autenticaÃ§Ã£o em falta." })
+      return
+    }
+
+    const idToken = authHeader.slice("Bearer ".length).trim()
+    const decoded = await admin.auth().verifyIdToken(idToken)
+    const callerUid = decoded?.uid
+    if (!callerUid) {
+      res.status(401).json({ success: false, message: "Token invÃ¡lido." })
+      return
+    }
+
+    const adminSnapshot = await admin.database().ref(`admins/${callerUid}`).get()
+    if (!adminSnapshot.exists()) {
+      res.status(403).json({ success: false, message: "Apenas administradores podem atualizar utilizadores." })
+      return
+    }
+
+    const uid = String(req.body?.uid || "").trim()
+    const email = String(req.body?.email || "").trim().toLowerCase()
+    const password = String(req.body?.password || "")
+    const updates = {}
+
+    if (email) updates.email = email
+    if (password) updates.password = password
+
+    if (!uid || !Object.keys(updates).length) {
+      res.status(400).json({ success: false, message: "Dados invÃ¡lidos para atualizar utilizador." })
+      return
+    }
+
+    await admin.auth().updateUser(uid, updates)
+    res.status(200).json({ success: true })
+  } catch (error) {
+    logger.error("Erro ao atualizar utilizador no Firebase Auth", error)
+    res.status(500).json({ success: false, message: "Erro interno ao atualizar utilizador no Auth." })
+  }
+})
