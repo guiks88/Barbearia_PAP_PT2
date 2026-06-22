@@ -118,7 +118,7 @@ export function showSuccess(message) {
   div.className = "success-message"
   div.textContent = message
   div.style.cssText =
-    "position: fixed; top: 20px; right: 20px; background: #10b981; color: white; padding: 1.25rem 2rem; border-radius: 12px; z-index: 10000; font-size: 1.1rem; font-weight: 600; box-shadow: 0 10px 40px rgba(16, 185, 129, 0.3); animation: slideIn 0.3s ease-out;"
+    "position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); width: min(92vw, 560px); background: #10b981; color: white; padding: 1rem 1.25rem; border-radius: 12px; z-index: 10000; font-size: 1rem; font-weight: 600; box-shadow: 0 10px 40px rgba(16, 185, 129, 0.3); animation: slideIn 0.3s ease-out;"
   document.body.appendChild(div)
 
   setTimeout(() => {
@@ -132,7 +132,7 @@ export function showError(message) {
   div.className = "error-message"
   div.textContent = message
   div.style.cssText =
-    "position: fixed; top: 20px; right: 20px; background: #ef4444; color: white; padding: 1.25rem 2rem; border-radius: 12px; z-index: 10000; font-size: 1.1rem; font-weight: 600; box-shadow: 0 10px 40px rgba(239, 68, 68, 0.3); animation: slideIn 0.3s ease-out;"
+    "position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); width: min(92vw, 560px); background: #ef4444; color: white; padding: 1rem 1.25rem; border-radius: 12px; z-index: 10000; font-size: 1rem; font-weight: 600; box-shadow: 0 10px 40px rgba(239, 68, 68, 0.3); animation: slideIn 0.3s ease-out;"
   document.body.appendChild(div)
 
   setTimeout(() => {
@@ -145,3 +145,4 @@ export function formatDate(dateString) {
   const date = new Date(dateString + "T00:00:00")
   return date.toLocaleDateString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric" })
 }
+

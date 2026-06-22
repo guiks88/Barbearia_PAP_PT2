@@ -566,7 +566,7 @@ function renderBarberServices() {
   if (!container) return
 
   if (!barberServicesDraft.length) {
-    container.innerHTML = '<div class="empty-state">Sem serviÃ§os definidos.</div>'
+    container.innerHTML = '<div class="empty-state">Sem serviços definidos.</div>'
     return
   }
 
@@ -574,7 +574,7 @@ function renderBarberServices() {
     .map((service, index) => `
       <div class="barber-service-row" data-index="${index}">
         <input type="text" data-field="name" placeholder="Nome" value="${service.name || ""}">
-        <input type="number" data-field="price" min="0" step="0.01" placeholder="PreÃ§o" value="${service.price || ""}">
+        <input type="number" data-field="price" min="0" step="0.01" placeholder="Preço" value="${service.price || ""}">
         <input type="number" data-field="duration" min="5" step="5" placeholder="Min" value="${service.duration || ""}">
         <button type="button" class="btn btn-danger btn-small" data-action="remove-service">Remover</button>
       </div>
@@ -1773,7 +1773,7 @@ function resetPromotionForm() {
 
   editingPromotionId = null
   const saveBtn = document.getElementById("promotionSaveBtn")
-  if (saveBtn) saveBtn.textContent = "Guardar promoÃ§Ã£o"
+  if (saveBtn) saveBtn.textContent = "Guardar promoção"
 }
 
 function renderPromotions() {
@@ -1787,7 +1787,7 @@ function renderPromotions() {
   })
 
   if (!entries.length) {
-    container.innerHTML = '<div class="empty-state">Sem promoÃ§Ãµes registadas</div>'
+    container.innerHTML = '<div class="empty-state">Sem promoções registadas</div>'
     return
   }
 
@@ -1797,10 +1797,10 @@ function renderPromotions() {
       return `
         <div class="barber-item promotion-item-admin">
           <div>
-            <h3>${promo.title || "PromoÃ§Ã£o"}</h3>
-            <p><strong>DescriÃ§Ã£o:</strong> ${promo.description || "-"}</p>
-            <p><strong>CondiÃ§Ã£o:</strong> ${promo.minCompletedCuts || 10} cortes concluÃ­dos</p>
-            <p><strong>PrÃ©mio:</strong> ${promo.rewardText || "-"}</p>
+            <h3>${promo.title || "Promoção"}</h3>
+            <p><strong>Descrição:</strong> ${promo.description || "-"}</p>
+            <p><strong>Condição:</strong> ${promo.minCompletedCuts || 10} cortes concluídos</p>
+            <p><strong>Prémio:</strong> ${promo.rewardText || "-"}</p>
             <p><strong>Estado:</strong> <span class="status-pill ${isActive ? "is-active" : "is-cancelled"}">${isActive ? "Ativa" : "Inativa"}</span></p>
           </div>
           <div class="booking-actions">
@@ -1909,7 +1909,7 @@ function setupPromotionForm() {
       const isActive = String(document.getElementById("promotionActive")?.value || "true") === "true"
 
       if (!title || !rewardText || !minCompletedCuts || minCompletedCuts < 1) {
-        showError("Preencha os campos da promoÃ§Ã£o corretamente.")
+        showError("Preencha os campos da promoção corretamente.")
         return
       }
 
@@ -1928,10 +1928,10 @@ function setupPromotionForm() {
 
       try {
         await set(ref(database, `promotions/${id}`), payload)
-        showSuccess(editingPromotionId ? "PromoÃ§Ã£o atualizada com sucesso!" : "PromoÃ§Ã£o criada com sucesso!")
+        showSuccess(editingPromotionId ? "Promoção atualizada com sucesso!" : "Promoção criada com sucesso!")
         resetPromotionForm()
       } catch (error) {
-        showError("Erro ao guardar promoÃ§Ã£o: " + error.message)
+        showError("Erro ao guardar promoção: " + error.message)
       }
     })
   }
@@ -1965,7 +1965,7 @@ function setupProductForm() {
       const isActive = document.getElementById("productActive")?.checked !== false
 
       if (!name || !Number.isFinite(price) || price <= 0) {
-        showError("Preencha nome e preÃ§o do produto.")
+        showError("Preencha nome e preço do produto.")
         return
       }
 
@@ -2053,7 +2053,7 @@ function normalizeSpecialSchedules(value) {
 function formatSpecialPeriodLabel(period, key) {
   if (period === "day") return `Dia ${key}`
   if (period === "week") return `Semana ${key}`
-  return `MÃªs ${key}`
+  return `Mês ${key}`
 }
 
 function getSpecialScheduleDefaults(targetValue, barberIdValue) {
@@ -2118,7 +2118,7 @@ function populateSpecialScheduleBarberSelect() {
 
   const entries = Object.entries(state.barbers || {})
   if (!entries.length) {
-    select.innerHTML = "<option value=''>Sem barbeiros disponÃ­veis</option>"
+    select.innerHTML = "<option value=''>Sem barbeiros disponíveis</option>"
     return
   }
 
@@ -2178,7 +2178,7 @@ function renderSpecialSchedulesList() {
   rows.sort((a, b) => `${a.period}-${a.key}`.localeCompare(`${b.period}-${b.key}`))
 
   if (!rows.length) {
-    container.innerHTML = `<div class="empty-state">Sem exceÃ§Ãµes definidas para ${source.title}.</div>`
+    container.innerHTML = `<div class="empty-state">Sem exceções definidas para ${source.title}.</div>`
     return
   }
 
@@ -2188,9 +2188,9 @@ function renderSpecialSchedulesList() {
       <div class="barber-item">
         <div>
           <h3>${source.title}</h3>
-          <p><strong>PerÃ­odo:</strong> ${formatSpecialPeriodLabel(row.period, row.key)}</p>
-          <p><strong>HorÃ¡rio:</strong> ${row.start} - ${row.end}</p>
-          ${row.lunchStart && row.lunchEnd ? `<p><strong>AlmoÃ§o:</strong> ${row.lunchStart} - ${row.lunchEnd}</p>` : ""}
+          <p><strong>Período:</strong> ${formatSpecialPeriodLabel(row.period, row.key)}</p>
+          <p><strong>Horário:</strong> ${row.start} - ${row.end}</p>
+          ${row.lunchStart && row.lunchEnd ? `<p><strong>Almoço:</strong> ${row.lunchStart} - ${row.lunchEnd}</p>` : ""}
         </div>
         <div class="booking-actions">
           <button class="btn btn-danger btn-small" data-action="delete-special-schedule" data-target="${source.target}" data-barber-id="${source.barberId || ""}" data-period="${row.period}" data-key="${row.key}">Remover</button>
@@ -2215,9 +2215,9 @@ function renderSpecialSchedulesList() {
 
       try {
         await remove(ref(database, path))
-        showSuccess("ExceÃ§Ã£o removida com sucesso!")
+        showSuccess("Exceção removida com sucesso!")
       } catch (error) {
-        showError("Erro ao remover exceÃ§Ã£o: " + error.message)
+        showError("Erro ao remover exceção: " + error.message)
       }
     })
   })
@@ -2266,25 +2266,25 @@ function setupSpecialScheduleManager() {
       const lunchEnd = getSelectTime("specialScheduleLunchEndHour", "specialScheduleLunchEndMinute")
 
       if (!selectedReference) {
-        showError("Indique a referÃªncia da exceÃ§Ã£o (dia/semana/mÃªs).")
+        showError("Indique a referência da exceção (dia/semana/mês).")
         return
       }
       if (selectedPeriod === "day") {
         const selectedDate = dateOnly(selectedReference)
         const today = dateOnly(new Date())
         if (!selectedDate || !today || selectedDate < today) {
-          showError("NÃ£o Ã© permitido alterar horÃ¡rio de um dia que jÃ¡ passou.")
+          showError("Não é permitido alterar horário de um dia que já passou.")
           return
         }
       }
 
       if (timeToMinutes(start) >= timeToMinutes(end)) {
-        showError("O horÃ¡rio de inÃ­cio da exceÃ§Ã£o deve ser anterior ao fim.")
+        showError("O horário de início da exceção deve ser anterior ao fim.")
         return
       }
 
       if (selectedTarget === "barber" && !selectedBarberId) {
-        showError("Selecione um barbeiro para aplicar a exceÃ§Ã£o.")
+        showError("Selecione um barbeiro para aplicar a exceção.")
         return
       }
 
@@ -2305,10 +2305,10 @@ function setupSpecialScheduleManager() {
 
       try {
         await set(ref(database, path), payload)
-        showSuccess("ExceÃ§Ã£o de horÃ¡rio guardada com sucesso!")
+        showSuccess("Exceção de horário guardada com sucesso!")
         reference.value = ""
       } catch (error) {
-        showError("Erro ao guardar exceÃ§Ã£o de horÃ¡rio: " + error.message)
+        showError("Erro ao guardar exceção de horário: " + error.message)
       }
     })
   }
@@ -2496,7 +2496,7 @@ function loadBarbers() {
           start: fallbackLunch.start,
           end: fallbackLunch.end,
         }).catch((error) => {
-          console.error(`Erro ao gravar hora de almoÃ§o para barbeiro ${id}:`, error)
+          console.error(`Erro ao gravar hora de almoço para barbeiro ${id}:`, error)
         })
       })
     }
@@ -2788,7 +2788,7 @@ function openBarberForm(barber = null, barberId = null) {
   const passwordInput = document.getElementById("barberPassword")
 
   if (title) title.textContent = "Editar Barbeiro"
-  if (submitBtn) submitBtn.textContent = "Guardar AlteraÃ§Ãµes"
+  if (submitBtn) submitBtn.textContent = "Guardar Alterações"
   if (passwordGroup) passwordGroup.classList.add("hidden")
   if (passwordInput) {
     passwordInput.required = false
@@ -2817,7 +2817,7 @@ function closeBarberForm() {
 window.editBarber = (id) => {
   const barber = state.barbers[id]
   if (!barber) {
-    showError("Barbeiro nÃ£o encontrado.")
+    showError("Barbeiro não encontrado.")
     return
   }
 
@@ -2830,7 +2830,7 @@ window.editBarber = (id) => {
 window.editPromotion = (id) => {
   const promo = state.promotions[id]
   if (!promo) {
-    showError("PromoÃ§Ã£o nÃ£o encontrada.")
+    showError("Promoção não encontrada.")
     return
   }
 
@@ -2847,7 +2847,7 @@ window.editPromotion = (id) => {
   if (rewardText) rewardText.value = promo.rewardText || ""
   if (description) description.value = promo.description || ""
   if (active) active.value = promo.isActive === false ? "false" : "true"
-  if (saveBtn) saveBtn.textContent = "Atualizar promoÃ§Ã£o"
+  if (saveBtn) saveBtn.textContent = "Atualizar promoção"
 
   activateAdminTab("promotions")
   const formBtn = document.getElementById("promotionFormTabBtn")
@@ -2869,7 +2869,7 @@ window.editPromotion = (id) => {
 window.editProduct = (id) => {
   const product = state.products[id]
   if (!product) {
-    showError("Produto nÃ£o encontrado.")
+    showError("Produto não encontrado.")
     return
   }
 
@@ -2938,16 +2938,16 @@ async function requestFirebaseAuthUserDeletion(uid) {
 }
 
 window.deletePromotion = async (id) => {
-  if (!confirm("Tem certeza que deseja eliminar esta promoÃ§Ã£o?")) return
+  if (!confirm("Tem certeza que deseja eliminar esta promoção?")) return
 
   try {
     await remove(ref(database, `promotions/${id}`))
     if (editingPromotionId === id) {
       resetPromotionForm()
     }
-    showSuccess("PromoÃ§Ã£o eliminada com sucesso!")
+    showSuccess("Promoção eliminada com sucesso!")
   } catch (error) {
-    showError("Erro ao eliminar promoÃ§Ã£o: " + error.message)
+    showError("Erro ao eliminar promoção: " + error.message)
   }
 }
 
@@ -3010,7 +3010,7 @@ window.deleteBarber = async (id) => {
     try {
       await deleteDoc(doc(firestore, "users", id))
     } catch (firestoreError) {
-      console.warn("Sem permissÃ£o para eliminar user no Firestore:", firestoreError)
+      console.warn("Sem permissão para eliminar user no Firestore:", firestoreError)
     }
     if (authDeleteError) {
       showError(`Barbeiro removido do sistema, mas não foi possível eliminar no Auth: ${authDeleteError.message}`)
@@ -3023,7 +3023,7 @@ window.deleteBarber = async (id) => {
 }
 
 window.deleteClient = async (id) => {
-  if (!confirm("Tem certeza que deseja eliminar este cliente? As marcaÃ§Ãµes associadas serÃ£o mantidas.")) return
+  if (!confirm("Tem certeza que deseja eliminar este cliente? As marcações associadas serão mantidas.")) return
 
   try {
     await remove(ref(database, `clients/${id}`))
@@ -3037,7 +3037,7 @@ window.deleteClient = async (id) => {
     try {
       await deleteDoc(doc(firestore, "users", id))
     } catch (firestoreError) {
-      console.warn("Sem permissÃ£o para eliminar user no Firestore:", firestoreError)
+      console.warn("Sem permissão para eliminar user no Firestore:", firestoreError)
     }
     if (authDeleteError) {
       showError(`Cliente removido do sistema, mas não foi possível eliminar no Auth: ${authDeleteError.message}`)
@@ -3080,19 +3080,19 @@ window.toggleClientActive = async (id) => {
 }
 
 window.deleteBooking = async (id) => {
-  if (!confirm("Tem certeza que deseja cancelar esta marcaÃ§Ã£o?")) return
+  if (!confirm("Tem certeza que deseja cancelar esta marcação?")) return
 
   try {
     const bookingRef = ref(database, `bookings/${id}`)
     const snapshot = await get(bookingRef)
     if (!snapshot.exists()) {
-      showError("MarcaÃ§Ã£o nÃ£o encontrada.")
+      showError("Marcação não encontrada.")
       return
     }
 
     const booking = snapshot.val()
     if (booking.executionStatus === "completed" || booking.status === "expired") {
-      showError("NÃ£o Ã© possÃ­vel cancelar uma marcaÃ§Ã£o concluÃ­da ou expirada.")
+      showError("Não é possível cancelar uma marcação concluída ou expirada.")
       return
     }
     await set(bookingRef, {
@@ -3103,9 +3103,9 @@ window.deleteBooking = async (id) => {
       updatedAt: new Date().toISOString(),
     })
 
-    showSuccess("MarcaÃ§Ã£o cancelada com sucesso!")
+    showSuccess("Marcação cancelada com sucesso!")
   } catch (error) {
-    showError("Erro ao cancelar marcaÃ§Ã£o: " + error.message)
+    showError("Erro ao cancelar marcação: " + error.message)
   }
 }
 
@@ -3114,7 +3114,7 @@ window.approveCancellation = async (id) => {
     const bookingRef = ref(database, `bookings/${id}`)
     const snapshot = await get(bookingRef)
     if (!snapshot.exists()) {
-      showError("MarcaÃ§Ã£o nÃ£o encontrada.")
+      showError("Marcação não encontrada.")
       return
     }
 
@@ -3141,7 +3141,7 @@ window.rejectCancellation = async (id) => {
     const bookingRef = ref(database, `bookings/${id}`)
     const snapshot = await get(bookingRef)
     if (!snapshot.exists()) {
-      showError("MarcaÃ§Ã£o nÃ£o encontrada.")
+      showError("Marcação não encontrada.")
       return
     }
 
@@ -3170,7 +3170,7 @@ window.reactivateBooking = async (id) => {
     const bookingRef = ref(database, `bookings/${id}`)
     const snapshot = await get(bookingRef)
     if (!snapshot.exists()) {
-      showError("MarcaÃ§Ã£o nÃ£o encontrada.")
+      showError("Marcação não encontrada.")
       return
     }
 
@@ -3180,12 +3180,12 @@ window.reactivateBooking = async (id) => {
         ...booking,
         status: "expired",
         cancelledBy: "system",
-        cancellationReason: "Data da marcaÃ§Ã£o jÃ¡ passou",
+        cancellationReason: "Data da marcação já passou",
         cancelledAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         updatedBy: "admin",
       })
-      showError("A marcaÃ§Ã£o jÃ¡ passou e foi marcada como expirada.")
+      showError("A marcação já passou e foi marcada como expirada.")
       return
     }
 
@@ -3202,9 +3202,9 @@ window.reactivateBooking = async (id) => {
       updatedBy: "admin",
     })
 
-    showSuccess("MarcaÃ§Ã£o reativada com sucesso!")
+    showSuccess("Marcação reativada com sucesso!")
   } catch (error) {
-    showError("Erro ao reativar marcaÃ§Ã£o: " + error.message)
+    showError("Erro ao reativar marcação: " + error.message)
   }
 }
 
@@ -3214,40 +3214,40 @@ window.editBooking = async (id) => {
     const snapshot = await get(bookingRef)
 
     if (!snapshot.exists()) {
-      showError("MarcaÃ§Ã£o nÃ£o encontrada.")
+      showError("Marcação não encontrada.")
       return
     }
 
     const booking = snapshot.val()
     if (booking.status === "cancelled") {
-      showError("NÃ£o Ã© possÃ­vel editar uma marcaÃ§Ã£o anulada.")
+      showError("Não é possível editar uma marcação anulada.")
       return
     }
 
     const newDate = window.prompt("Nova data (AAAA-MM-DD)", booking.date || "")
     if (!newDate) return
 
-    const newTime = window.prompt("Novo horÃ¡rio (HH:MM)", booking.time || "")
+    const newTime = window.prompt("Novo horário (HH:MM)", booking.time || "")
     if (!newTime) return
 
     if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
-      showError("Data invÃ¡lida. Use o formato AAAA-MM-DD.")
+      showError("Data inválida. Use o formato AAAA-MM-DD.")
       return
     }
 
     if (!/^\d{2}:\d{2}$/.test(newTime)) {
-      showError("HorÃ¡rio invÃ¡lido. Use o formato HH:MM.")
+      showError("Horário inválido. Use o formato HH:MM.")
       return
     }
 
     const newDateTime = new Date(`${newDate}T${newTime}:00`)
     if (Number.isNaN(newDateTime.getTime())) {
-      showError("Data ou horÃ¡rio invÃ¡lidos.")
+      showError("Data ou horário inválidos.")
       return
     }
 
     if (newDateTime < new Date()) {
-      showError("NÃ£o Ã© possÃ­vel mover para uma data no passado.")
+      showError("Não é possível mover para uma data no passado.")
       return
     }
 
@@ -3259,9 +3259,9 @@ window.editBooking = async (id) => {
       updatedBy: "admin",
     })
 
-    showSuccess("MarcaÃ§Ã£o editada com sucesso!")
+    showSuccess("Marcação editada com sucesso!")
   } catch (error) {
-    showError("Erro ao editar marcaÃ§Ã£o: " + error.message)
+    showError("Erro ao editar marcação: " + error.message)
   }
 }
 
@@ -3270,7 +3270,7 @@ window.setExecutionStatus = async (id, statusValue) => {
     const bookingRef = ref(database, `bookings/${id}`)
     const snapshot = await get(bookingRef)
     if (!snapshot.exists()) {
-      showError("MarcaÃ§Ã£o nÃ£o encontrada.")
+      showError("Marcação não encontrada.")
       return
     }
 
@@ -3291,9 +3291,9 @@ window.setExecutionStatus = async (id, statusValue) => {
     }
 
     await set(bookingRef, update)
-    showSuccess("Estado da marcaÃ§Ã£o atualizado!")
+    showSuccess("Estado da marcação atualizado!")
   } catch (error) {
-    showError("Erro ao atualizar estado da marcaÃ§Ã£o: " + error.message)
+    showError("Erro ao atualizar estado da marcação: " + error.message)
   }
 }
 
@@ -3441,7 +3441,7 @@ async function verifyAdminAccess(user) {
     sessionStorage.setItem("isMasterAdmin", currentAdmin.isMaster ? "true" : "false")
     sessionStorage.setItem("adminPermissions", JSON.stringify(currentAdmin.permissions || {}))
     sessionStorage.setItem("isAdmin", "true")
-    document.getElementById("adminNameDisplay").textContent = `OlÃ¡, ${adminData.name}`
+    document.getElementById("adminNameDisplay").textContent = `Olá, ${adminData.name}`
     document.getElementById("adminProfileName").value = adminData.name || ""
     document.getElementById("adminProfileEmail").value = currentAdmin.email || ""
     document.querySelectorAll("#admin-tab .card").forEach((card, index) => {
@@ -3561,12 +3561,12 @@ document.getElementById("barberForm").addEventListener("submit", async (e) => {
   const phone = document.getElementById("barberPhone").value
   const password = document.getElementById("barberPassword").value
   if (!email) {
-    showError("Email invÃ¡lido. Use apenas o nome antes de @barberia.pt.")
+    showError("Email inválido. Use apenas o nome antes de @barberia.pt.")
     return
   }
 
   if (!validatePhoneNumber(phone)) {
-    showError("NÃºmero de telefone invÃ¡lido. Use 9 dÃ­gitos comeÃ§ando com 9.")
+    showError("Número de telefone inválido. Use 9 dígitos começando com 9.")
     return
   }
 
@@ -3586,17 +3586,17 @@ document.getElementById("barberForm").addEventListener("submit", async (e) => {
   const lunchEndMinutes = timeToMinutes(lunchEndTime)
 
   if (workStartMinutes >= workEndMinutes) {
-    showError("O horÃ¡rio de inÃ­cio deve ser anterior ao horÃ¡rio de fim.")
+    showError("O horário de início deve ser anterior ao horário de fim.")
     return
   }
 
   if (lunchStartMinutes >= lunchEndMinutes) {
-    showError("O inÃ­cio do almoÃ§o deve ser anterior ao fim do almoÃ§o.")
+    showError("O início do almoço deve ser anterior ao fim do almoço.")
     return
   }
 
   if (lunchStartMinutes < workStartMinutes || lunchEndMinutes > workEndMinutes) {
-    showError("A hora de almoÃ§o do barbeiro deve estar dentro do horÃ¡rio de trabalho.")
+    showError("A hora de almoço do barbeiro deve estar dentro do horário de trabalho.")
     return
   }
 
@@ -3606,7 +3606,7 @@ document.getElementById("barberForm").addEventListener("submit", async (e) => {
   const storeEndMinutes = timeToMinutes(storeOpenEnd)
 
   if (workStartMinutes < storeStartMinutes || workEndMinutes > storeEndMinutes) {
-    showError("O horÃ¡rio do barbeiro deve respeitar o horÃ¡rio da loja.")
+    showError("O horário do barbeiro deve respeitar o horário da loja.")
     return
   }
 
@@ -3628,7 +3628,7 @@ document.getElementById("barberForm").addEventListener("submit", async (e) => {
 
   const services = getBarberServicesPayload()
   if (!services.length) {
-    showError("Adicione pelo menos um serviÃ§o vÃ¡lido (nome, preÃ§o e duraÃ§Ã£o).")
+    showError("Adicione pelo menos um serviço válido (nome, preço e duração).")
     return
   }
 
@@ -3658,7 +3658,7 @@ document.getElementById("barberForm").addEventListener("submit", async (e) => {
     if (editingBarberId) {
       const existingSnapshot = await get(ref(database, `barbers/${editingBarberId}`))
       if (!existingSnapshot.exists()) {
-        showError("Barbeiro nÃ£o encontrado para ediÃ§Ã£o.")
+        showError("Barbeiro não encontrado para edição.")
         return
       }
 
@@ -3681,7 +3681,7 @@ document.getElementById("barberForm").addEventListener("submit", async (e) => {
           { merge: true },
         )
       } catch (firestoreError) {
-        console.warn("Sem permissÃ£o para atualizar Firestore users do barbeiro:", firestoreError)
+        console.warn("Sem permissão para atualizar Firestore users do barbeiro:", firestoreError)
       }
 
       closeBarberForm()
@@ -3716,7 +3716,7 @@ document.getElementById("barberForm").addEventListener("submit", async (e) => {
         updatedAt: serverTimestamp(),
       })
     } catch (firestoreError) {
-      console.warn("Sem permissÃ£o para criar user no Firestore. Barbeiro criado no Realtime DB/Auth:", firestoreError)
+      console.warn("Sem permissão para criar user no Firestore. Barbeiro criado no Realtime DB/Auth:", firestoreError)
     }
 
     await signOut(secondaryAuth)
@@ -3724,7 +3724,7 @@ document.getElementById("barberForm").addEventListener("submit", async (e) => {
     showSuccess("Barbeiro adicionado com sucesso!")
   } catch (error) {
     if (error.code === "auth/email-already-in-use") {
-      showError("Este email jÃ¡ estÃ¡ registado no Firebase Auth.")
+      showError("Este email já está registado no Firebase Auth.")
     } else {
       showError("Erro ao adicionar barbeiro: " + error.message)
     }
@@ -3736,7 +3736,7 @@ document.getElementById("storeScheduleForm").addEventListener("submit", async (e
 
   const openDays = Array.from(document.querySelectorAll('#storeOpenDays input[type="checkbox"]:checked')).map((cb) => Number(cb.value))
   if (!openDays.length) {
-    showError("Selecione pelo menos um dia em que a loja estÃ¡ aberta.")
+    showError("Selecione pelo menos um dia em que a loja está aberta.")
     return
   }
 
@@ -3751,17 +3751,17 @@ document.getElementById("storeScheduleForm").addEventListener("submit", async (e
   const storeLunchEndMinutes = timeToMinutes(storeLunchEndTime)
 
   if (storeStartMinutes >= storeEndMinutes) {
-    showError("O horÃ¡rio de abertura da loja deve ser anterior ao fecho.")
+    showError("O horário de abertura da loja deve ser anterior ao fecho.")
     return
   }
 
   if (storeLunchStartMinutes >= storeLunchEndMinutes) {
-    showError("O inÃ­cio do almoÃ§o da loja deve ser anterior ao fim do almoÃ§o.")
+    showError("O início do almoço da loja deve ser anterior ao fim do almoço.")
     return
   }
 
   if (storeLunchStartMinutes < storeStartMinutes || storeLunchEndMinutes > storeEndMinutes) {
-    showError("A pausa de almoÃ§o da loja deve estar dentro do horÃ¡rio de abertura.")
+    showError("A pausa de almoço da loja deve estar dentro do horário de abertura.")
     return
   }
 
@@ -3780,9 +3780,9 @@ document.getElementById("storeScheduleForm").addEventListener("submit", async (e
 
   try {
     await update(ref(database, "storeSettings"), payload)
-    showSuccess("HorÃ¡rio da loja guardado com sucesso!")
+    showSuccess("Horário da loja guardado com sucesso!")
   } catch (error) {
-    showError("Erro ao guardar horÃ¡rio da loja: " + error.message)
+    showError("Erro ao guardar horário da loja: " + error.message)
   }
 })
 
@@ -3804,9 +3804,9 @@ document.getElementById("aboutForm")?.addEventListener("submit", async (e) => {
       updatedAt: new Date().toISOString(),
     })
     renderAboutSettings()
-    showSuccess("Texto da secÃ§Ã£o Sobre nÃ³s guardado.")
+    showSuccess("Texto da secção Sobre nós guardado.")
   } catch (error) {
-    showError("Erro ao guardar texto Sobre nÃ³s: " + error.message)
+    showError("Erro ao guardar texto Sobre nós: " + error.message)
   }
 })
 
@@ -3817,7 +3817,7 @@ document.getElementById("bookingPriorityCancel")?.addEventListener("change", (ev
   renderBookings()
 })
 
-// Inicializa controles visuais imediatamente para evitar UI sem aÃ§Ã£o
+// Inicializa controles visuais imediatamente para evitar UI sem ação
 setupTopTabs()
 applyAdminQueryParams()
 setupAdminShortcuts()

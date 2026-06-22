@@ -88,7 +88,7 @@ async function isClientEmailRegistered(email) {
   })
 }
 
-// Estado da marcaÃ§Ã£o
+// Estado da marcação
 const bookingState = {
   service: null,
   serviceName: '',
@@ -208,7 +208,7 @@ const BARBER_PROFILES = {
 }
 
 const BARBER_PROFILE_ALIASES = {
-  joao_pedro: ['joao pedro', 'joÃ£o pedro', 'joao', 'pedro', 'joao-pedro', 'joÃ£o-pedro'],
+  joao_pedro: ['joao pedro', 'joão pedro', 'joao', 'pedro', 'joao-pedro', 'joão-pedro'],
   ana: ['ana'],
   manuel: ['manuel'],
 }
@@ -292,7 +292,7 @@ function getServiceConfigForBarber(serviceKey, barberName, barberId, barberSpeci
     return {
       price: bookingState.servicePrice || 0,
       duration: bookingState.serviceDuration || 30,
-      name: bookingState.serviceName || 'ServiÃ§o',
+      name: bookingState.serviceName || 'Serviço',
     }
   }
 
@@ -327,7 +327,7 @@ function updateServiceCardsForBarber(barberName) {
   renderServiceCards()
 }
 
-// HorÃ¡rios de trabalho padrÃ£o (9h Ã s 19h) com intervalos de 10 minutos
+// Horários de trabalho padrão (9h às 19h) com intervalos de 10 minutos
 const defaultWorkingHours = (() => {
   const slots = []
   let current = timeToMinutes('09:00')
@@ -343,7 +343,7 @@ const defaultWorkingHours = (() => {
   return slots
 })()
 
-// FunÃ§Ã£o para gerar horÃ¡rios do barbeiro
+// Função para gerar horários do barbeiro
 function generateWorkingHours(startTime, endTime, stepMinutes = SLOT_STEP_MINUTES) {
   const slots = []
   const [startHour, startMinute] = String(startTime || '09:00').split(':').map(Number)
@@ -643,7 +643,7 @@ function isBookingLockedForClientChanges(booking) {
 }
 
 function getCancellationLimitText() {
-  return `SÃ³ pode adiar ou anular atÃ© ${BOOKING_LOCK_WINDOW_HOURS} horas antes da marcaÃ§Ã£o.`
+  return `Só pode adiar ou anular até ${BOOKING_LOCK_WINDOW_HOURS} horas antes da marcação.`
 }
 
 function isPastClientBookingStart(booking) {
@@ -694,8 +694,8 @@ function initPageMode() {
   const authDescription = document.getElementById('authStepDescription')
   if (authDescription) {
     authDescription.textContent = isCancelMode
-      ? 'Entre na sua conta para cancelar marcaÃ§Ãµes existentes.'
-      : 'Entre na sua conta para ver as suas marcaÃ§Ãµes e poder adiar ou anular.'
+      ? 'Entre na sua conta para cancelar marcações existentes.'
+      : 'Entre na sua conta para ver as suas marcações e poder adiar ou anular.'
   }
 
   const openRegisterLink = document.getElementById('openRegisterLink')
@@ -711,7 +711,7 @@ function initPageMode() {
 
   if (!isManageMode && bookingState.preferredBarberRaw) {
     if (authDescription) {
-      authDescription.textContent = `FaÃ§a login para continuar a marcaÃ§Ã£o com ${bookingState.preferredBarberRaw}. Depois pode confirmar ou alterar.`
+      authDescription.textContent = `Faça login para continuar a marcação com ${bookingState.preferredBarberRaw}. Depois pode confirmar ou alterar.`
     }
   }
 }
@@ -756,7 +756,7 @@ function initAutoClientSession() {
         handlePostAuthSuccess()
         resolve(true)
       } catch (error) {
-        console.error('Erro ao validar sessÃ£o de cliente:', error)
+        console.error('Erro ao validar sessão de cliente:', error)
         resolve(false)
       }
     })
@@ -814,12 +814,12 @@ function initClientAuth() {
     const password = document.getElementById('clientLoginPassword').value
 
     if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
-      showError('Indique um email vÃ¡lido.')
+      showError('Indique um email válido.')
       return
     }
 
     if (!password || password.length < 6) {
-      showError('Indique uma senha vÃ¡lida (mÃ­nimo 6 caracteres).')
+      showError('Indique uma senha válida (mínimo 6 caracteres).')
       return
     }
 
@@ -846,12 +846,12 @@ function initClientAuth() {
       if (code === 'auth/wrong-password') {
         showError('Senha incorreta.')
       } else if (code === 'auth/user-not-found') {
-        showError('Esse email nÃ£o estÃ¡ registrado. Cria uma conta.')
+        showError('Esse email não está registrado. Cria uma conta.')
       } else if (code === 'auth/invalid-credential' || code === 'auth/invalid-login-credentials') {
         const registered = await isClientEmailRegistered(email)
-        showError(registered ? 'Senha incorreta.' : 'Esse email nÃ£o estÃ¡ registrado. Cria uma conta.')
+        showError(registered ? 'Senha incorreta.' : 'Esse email não está registrado. Cria uma conta.')
       } else {
-        showError('NÃ£o foi possÃ­vel fazer login.')
+        showError('Não foi possível fazer login.')
       }
     }
   })
@@ -869,7 +869,7 @@ function initClientAuth() {
     }
 
     if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
-      showError('Indique um email vÃ¡lido.')
+      showError('Indique um email válido.')
       return
     }
 
@@ -915,11 +915,11 @@ function initClientAuth() {
       handlePostAuthSuccess()
     } catch (error) {
       if (error?.code === 'auth/email-already-in-use') {
-        showError('Este email jÃ¡ estÃ¡ registado. FaÃ§a login.')
+        showError('Este email já está registado. Faça login.')
         return
       }
 
-      showError(`NÃ£o foi possÃ­vel criar a conta: ${error.message || 'tente novamente.'}`)
+      showError(`Não foi possível criar a conta: ${error.message || 'tente novamente.'}`)
     }
   })
 }
@@ -1159,20 +1159,20 @@ function renderClientBookings() {
 
   if (bookingState.clientBookings.length === 0) {
     listEl.innerHTML = ''
-    setManageBookingsStatus('NÃ£o existem marcaÃ§Ãµes associadas a esta conta.', 'muted')
+    setManageBookingsStatus('Não existem marcações associadas a esta conta.', 'muted')
     return
   }
 
   const filteredBookings = getFilteredClientBookings()
   if (filteredBookings.length === 0) {
     listEl.innerHTML = ''
-    setManageBookingsStatus('Nenhuma marcaÃ§Ã£o encontrada para os filtros escolhidos.', 'muted')
+    setManageBookingsStatus('Nenhuma marcação encontrada para os filtros escolhidos.', 'muted')
     return
   }
 
-  setManageBookingsStatus('Selecione uma marcaÃ§Ã£o para adiar ou anular.', 'success')
+  setManageBookingsStatus('Selecione uma marcação para adiar ou anular.', 'success')
   if (isCancelMode) {
-    setManageBookingsStatus('Selecione uma marcaÃ§Ã£o para anular.', 'success')
+    setManageBookingsStatus('Selecione uma marcação para anular.', 'success')
   }
   listEl.innerHTML = filteredBookings.map((booking) => {
     const isCompleted = booking.executionStatus === 'completed'
@@ -1181,7 +1181,7 @@ function renderClientBookings() {
       : booking.status === 'cancelled'
         ? 'Anulada'
         : isCompleted
-          ? 'ConcluÃ­da'
+          ? 'Concluída'
           : 'Confirmada'
     const isCancelled = booking.status === 'cancelled' || booking.status === 'expired'
     const isLocked = isCancelled || isCompleted
@@ -1193,7 +1193,7 @@ function renderClientBookings() {
     return `
       <div class="client-booking-card ${isCancelled ? 'is-cancelled' : ''}" data-booking-id="${booking.id}">
         <div class="client-booking-main">
-          <h3>${booking.serviceName || 'ServiÃ§o'}</h3>
+          <h3>${booking.serviceName || 'Serviço'}</h3>
           <p><strong>Barbeiro:</strong> ${booking.barberName || '-'}</p>
           <p><strong>Data:</strong> ${formatDateForDisplay(safeDate)}</p>
           <p><strong>Hora:</strong> ${safeTime || '-'}</p>
@@ -1227,11 +1227,11 @@ function renderClientBookings() {
             <div class="client-rating-controls">
               ${renderStarRatingControl(booking.id, ratingValue)}
             </div>
-            <p class="rating-hint">${ratingValue > 0 ? `AvaliaÃ§Ã£o atual: ${normalizeRatingValue(ratingValue).toFixed(1)}/5` : 'Deixe a sua avaliaÃ§Ã£o ao barbeiro (aceita meia estrela).'}</p>
+            <p class="rating-hint">${ratingValue > 0 ? `Avaliação atual: ${normalizeRatingValue(ratingValue).toFixed(1)}/5` : 'Deixe a sua avaliação ao barbeiro (aceita meia estrela).'}</p>
           </div>
         ` : isCancelled ? '' : `
           <div class="client-booking-rating is-disabled">
-            <p class="rating-hint">A avaliaÃ§Ã£o fica disponÃ­vel apÃ³s a conclusÃ£o do corte.</p>
+            <p class="rating-hint">A avaliação fica disponível após a conclusão do corte.</p>
           </div>
         `}
       </div>
@@ -1282,12 +1282,12 @@ function renderClientBookings() {
 
 async function loadClientBookings() {
   if (!auth.currentUser) {
-    showError('FaÃ§a login para gerir as suas marcaÃ§Ãµes.')
+    showError('Faça login para gerir as suas marcações.')
     showAuthStep()
     return
   }
 
-  setManageBookingsStatus('A carregar marcaÃ§Ãµes...', 'muted')
+  setManageBookingsStatus('A carregar marcações...', 'muted')
   bookingState.clientBookings = []
 
   try {
@@ -1309,15 +1309,15 @@ async function loadClientBookings() {
     bookingState.clientBookings = await expirePastClientBookings(bookingState.clientBookings)
     renderClientBookings()
   } catch (error) {
-    setManageBookingsStatus('Erro ao carregar as suas marcaÃ§Ãµes.', 'error')
-    showError('NÃ£o foi possÃ­vel carregar as marcaÃ§Ãµes da sua conta.')
+    setManageBookingsStatus('Erro ao carregar as suas marcações.', 'error')
+    showError('Não foi possível carregar as marcações da sua conta.')
   }
 }
 
 async function rescheduleBooking(bookingId) {
   const booking = getBookingById(bookingId)
   if (!booking) {
-    showError('MarcaÃ§Ã£o nÃ£o encontrada.')
+    showError('Marcação não encontrada.')
     return
   }
 
@@ -1329,12 +1329,12 @@ async function rescheduleBooking(bookingId) {
   const newTime = timeSelect.value
 
   if (!newDate || !newTime) {
-    showError('Escolha nova data e hora para adiar a marcaÃ§Ã£o.')
+    showError('Escolha nova data e hora para adiar a marcação.')
     return
   }
 
   if (isDateBeforeToday(newDate) || isPastTimeSlot(newDate, newTime)) {
-    showError('Escolha um horÃ¡rio futuro para o adiamento.')
+    showError('Escolha um horário futuro para o adiamento.')
     return
   }
 
@@ -1342,13 +1342,13 @@ async function rescheduleBooking(bookingId) {
     const currentDuration = getBookingDurationMinutes(booking)
 
     if (!canFitSlotInSchedule(newDate, newTime, currentDuration)) {
-      showError('Esse horÃ¡rio nÃ£o cabe no perÃ­odo disponÃ­vel do barbeiro/loja.')
+      showError('Esse horário não cabe no período disponível do barbeiro/loja.')
       return
     }
 
     const conflict = await hasBookingConflict(booking.barberId, newDate, newTime, bookingId, currentDuration)
     if (conflict) {
-      showError('Esse horÃ¡rio jÃ¡ estÃ¡ ocupado. Escolha outro horÃ¡rio.')
+      showError('Esse horário já está ocupado. Escolha outro horário.')
       return
     }
 
@@ -1358,17 +1358,17 @@ async function rescheduleBooking(bookingId) {
       updatedAt: new Date().toISOString()
     })
 
-    showSuccess('MarcaÃ§Ã£o adiada com sucesso.')
+    showSuccess('Marcação adiada com sucesso.')
     await loadClientBookings()
   } catch (error) {
-    showError('NÃ£o foi possÃ­vel adiar a marcaÃ§Ã£o.')
+    showError('Não foi possível adiar a marcação.')
   }
 }
 
 async function cancelBookingByClient(bookingId) {
   const booking = getBookingById(bookingId)
   if (!booking) {
-    showError('MarcaÃ§Ã£o nÃ£o encontrada.')
+    showError('Marcação não encontrada.')
     return
   }
 
@@ -1378,11 +1378,11 @@ async function cancelBookingByClient(bookingId) {
   }
 
   if (booking.executionStatus === 'completed') {
-    showError('NÃ£o Ã© possÃ­vel anular uma marcaÃ§Ã£o concluÃ­da.')
+    showError('Não é possível anular uma marcação concluída.')
     return
   }
 
-  const shouldCancel = window.confirm('Tem a certeza que quer anular esta marcaÃ§Ã£o?')
+  const shouldCancel = window.confirm('Tem a certeza que quer anular esta marcação?')
   if (!shouldCancel) return
 
   try {
@@ -1392,22 +1392,22 @@ async function cancelBookingByClient(bookingId) {
       updatedAt: new Date().toISOString()
     })
 
-    showSuccess('MarcaÃ§Ã£o anulada com sucesso.')
+    showSuccess('Marcação anulada com sucesso.')
     await loadClientBookings()
   } catch (error) {
-    showError('NÃ£o foi possÃ­vel anular a marcaÃ§Ã£o.')
+    showError('Não foi possível anular a marcação.')
   }
 }
 
 async function saveBookingRating(bookingId, options = {}) {
   const booking = getBookingById(bookingId)
   if (!booking) {
-    showError('MarcaÃ§Ã£o nÃ£o encontrada.')
+    showError('Marcação não encontrada.')
     return
   }
 
   if (booking.executionStatus !== 'completed') {
-    showError('A avaliaÃ§Ã£o fica disponÃ­vel apÃ³s a conclusÃ£o do corte.')
+    showError('A avaliação fica disponível após a conclusão do corte.')
     return
   }
 
@@ -1427,13 +1427,13 @@ async function saveBookingRating(bookingId, options = {}) {
     try {
       await recalculateBarberStats(booking.barberId)
     } catch (statsError) {
-      console.warn('Sem permissÃ£o para atualizar agregados do barbeiro apÃ³s avaliaÃ§Ã£o:', statsError)
+      console.warn('Sem permissão para atualizar agregados do barbeiro após avaliação:', statsError)
     }
 
-    showSuccess('AvaliaÃ§Ã£o guardada com sucesso. Obrigado!')
+    showSuccess('Avaliação guardada com sucesso. Obrigado!')
     await loadClientBookings()
   } catch (error) {
-    showError('NÃ£o foi possÃ­vel guardar a avaliaÃ§Ã£o.')
+    showError('Não foi possível guardar a avaliação.')
   }
 }
 
@@ -1486,7 +1486,7 @@ function initServiceSelection() {
       const baseConfig = getServiceConfigForBarber(service) || {
         price: parseInt(card.dataset.price || '0', 10),
         duration: parseInt(card.dataset.duration || '30', 10),
-        name: serviceName || 'ServiÃ§o',
+        name: serviceName || 'Serviço',
       }
       
       bookingState.service = service
@@ -1498,7 +1498,7 @@ function initServiceSelection() {
       serviceCards.forEach(c => c.classList.remove('selected'))
       card.classList.add('selected')
       
-      // Mostrar prÃ³ximo passo
+      // Mostrar próximo passo
       setTimeout(() => {
         document.getElementById('step-services').classList.add('hidden')
         document.getElementById('step-datetime').classList.remove('hidden')
@@ -1522,7 +1522,7 @@ function renderServiceCards() {
 
   const services = getAvailableServices()
   if (!services.length) {
-    grid.innerHTML = '<div class="empty-state">Sem serviÃ§os disponÃ­veis.</div>'
+    grid.innerHTML = '<div class="empty-state">Sem serviços disponíveis.</div>'
     return
   }
 
@@ -1530,7 +1530,7 @@ function renderServiceCards() {
     .map((service) => `
       <div class="service-card" data-service="${service.id}" data-price="${service.price}" data-duration="${service.duration}">
         <h3>${service.name}</h3>
-        <p class="price">${Number(service.price || 0)}â‚¬</p>
+        <p class="price">${Number(service.price || 0)}€</p>
         <p style="color: var(--color-text-secondary); font-size: 0.875rem;">${Number(service.duration || 0)} minutos</p>
         <button class="btn btn-primary btn-small select-service">Selecionar</button>
       </div>
@@ -1548,17 +1548,17 @@ const femaleBarberImage = 'https://images.unsplash.com/photo-1494790108377-be9c2
 const barberImages = {
   'Manuel': maleBarberImage,
   'Ana': femaleBarberImage,
-  'JoÃ£o Pedro': 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=120&h=120&fit=crop',
+  'João Pedro': 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=120&h=120&fit=crop',
 }
 
-// Nomes femininos comuns em portuguÃªs
-const femaleNames = ['ana', 'maria', 'joana', 'sara', 'sofia', 'inÃªs', 'catarina', 'beatriz', 'mariana', 'carolina', 'rita', 'daniela', 'patrÃ­cia', 'sandra', 'paula', 'clÃ¡udia', 'teresa', 'helena', 'raquel', 'filipa', 'marta', 'isabel', 'lÃºcia', 'carla', 'susana', 'cristina', 'alexandra', 'fernanda', 'rosa', 'diana']
+// Nomes femininos comuns em português
+const femaleNames = ['ana', 'maria', 'joana', 'sara', 'sofia', 'inês', 'catarina', 'beatriz', 'mariana', 'carolina', 'rita', 'daniela', 'patrícia', 'sandra', 'paula', 'cláudia', 'teresa', 'helena', 'raquel', 'filipa', 'marta', 'isabel', 'lúcia', 'carla', 'susana', 'cristina', 'alexandra', 'fernanda', 'rosa', 'diana']
 
 function getBarberImage(barberName) {
-  // Primeiro verificar se existe imagem especÃ­fica
+  // Primeiro verificar se existe imagem específica
   if (barberImages[barberName]) return barberImages[barberName]
   
-  // Determinar gÃ©nero pelo primeiro nome
+  // Determinar género pelo primeiro nome
   const firstName = barberName.split(' ')[0].toLowerCase()
   if (femaleNames.includes(firstName)) {
     return femaleBarberImage
@@ -1569,7 +1569,7 @@ function getBarberImage(barberName) {
 const fallbackBarbers = [
   { id: 'manuel', name: 'Manuel', specialty: 'Barba e Sobrancelha' },
   { id: 'ana', name: 'Ana', specialty: 'Cortes Modernos' },
-  { id: 'joao-pedro', name: 'JoÃ£o Pedro', specialty: 'DegradÃ©' },
+  { id: 'joao-pedro', name: 'João Pedro', specialty: 'Degradé' },
 ]
 
 async function loadBarbers() {
@@ -1648,14 +1648,14 @@ async function loadBarbers() {
           const [matchedBarberId, matchedBarber] = preferredMatch
           const matchedBarberName = matchedBarber?.name || matchedBarber?.nome || matchedBarber?.fullName || 'Barbeiro'
           sessionStorage.removeItem('pendingBookingBarber')
-          showSuccess(`Barbeiro prÃ©-selecionado: ${matchedBarberName}`)
+          showSuccess(`Barbeiro pré-selecionado: ${matchedBarberName}`)
           await selectBarber(matchedBarberId, matchedBarberName, matchedBarber?.specialty || matchedBarber?.especialidade || '')
         } else if (pendingBarberSession) {
           sessionStorage.removeItem('pendingBookingBarber')
         }
       }
     } else {
-      barbersList.innerHTML = '<p style="text-align: center; color: var(--color-text-secondary);">Nenhum barbeiro disponÃ­vel no momento.</p>'
+      barbersList.innerHTML = '<p style="text-align: center; color: var(--color-text-secondary);">Nenhum barbeiro disponível no momento.</p>'
     }
   } catch (error) {
     console.error('Erro ao carregar barbeiros:', error)
@@ -1682,7 +1682,7 @@ async function loadStoreSettings() {
       specialSchedules: normalizeSpecialSchedules(settings.specialSchedules),
     }
   } catch (error) {
-    console.error('Erro ao carregar horÃ¡rio da loja:', error)
+    console.error('Erro ao carregar horário da loja:', error)
   }
 }
 
@@ -1698,7 +1698,7 @@ async function selectBarber(barberId, barberName, barberSpecialty = '') {
 
   await loadStoreSettings()
   
-  // Carregar horÃ¡rios do barbeiro
+  // Carregar horários do barbeiro
   try {
     const barberRef = ref(database, `barbers/${barberId}`)
     const snapshot = await get(barberRef)
@@ -1749,7 +1749,7 @@ async function selectBarber(barberId, barberName, barberSpecialty = '') {
       }
     }
   } catch (error) {
-    console.error('Erro ao carregar horÃ¡rios do barbeiro:', error)
+    console.error('Erro ao carregar horários do barbeiro:', error)
     const fallbackLunchStart = bookingState.storeSettings?.lunchBreak?.start || '13:00'
     const fallbackLunchEnd = bookingState.storeSettings?.lunchBreak?.end || '14:00'
     bookingState.barberWorkingHours = defaultWorkingHours
@@ -1771,10 +1771,10 @@ async function selectBarber(barberId, barberName, barberSpecialty = '') {
   document.querySelectorAll('.barber-card').forEach(c => c.classList.remove('selected'))
   document.querySelector(`[data-barber-id="${barberId}"]`).classList.add('selected')
   
-  // Carregar marcaÃ§Ãµes existentes
+  // Carregar marcações existentes
   await loadExistingBookings(barberId)
   
-  // Mostrar prÃ³ximo passo
+  // Mostrar próximo passo
   setTimeout(() => {
     document.getElementById('step-barber').classList.add('hidden')
     document.getElementById('step-services').classList.remove('hidden')
@@ -1786,7 +1786,7 @@ async function selectBarber(barberId, barberName, barberSpecialty = '') {
   }, 300)
 }
 
-// ===== STEP 3: CALENDÃRIO =====
+// ===== STEP 3: CALENDÁRIO =====
 async function loadExistingBookings(barberId) {
   try {
     const bookingsRef = ref(database, 'bookings')
@@ -1827,7 +1827,7 @@ async function loadExistingBookings(barberId) {
       })
     }
   } catch (error) {
-    console.error('Erro ao carregar marcaÃ§Ãµes:', error)
+    console.error('Erro ao carregar marcações:', error)
   }
 }
 
@@ -1840,7 +1840,7 @@ function initCalendar() {
   const minYear = today.getFullYear()
   const minMonth = today.getMonth()
   
-  // Preencher anos (ano atual atÃ© +2 anos)
+  // Preencher anos (ano atual até +2 anos)
   const currentYear = minYear
   yearSelect.innerHTML = ''
   for (let i = 0; i < 3; i++) {
@@ -1930,32 +1930,32 @@ function renderCalendar() {
   const today = new Date()
   const todayStr = getDateString(today)
   
-  // Dias do mÃªs anterior
+  // Dias do mês anterior
   for (let i = firstDay - 1; i >= 0; i--) {
     const day = daysInPrevMonth - i
     const dayElement = createDayElement(day, true, false, null)
     calendarDays.appendChild(dayElement)
   }
   
-  // Dias do mÃªs atual
+  // Dias do mês atual
   for (let day = 1; day <= daysInMonth; day++) {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
     const isToday = dateStr === todayStr
     const isPast = isDateBeforeToday(dateStr)
     
-    // Verificar se o barbeiro trabalha e se a loja estÃ¡ aberta no dia
+    // Verificar se o barbeiro trabalha e se a loja está aberta no dia
     const dayOfWeek = new Date(year, month, day).getDay()
     const { openDays } = getStoreRuleValues()
     const isWorkingDay = bookingState.barberWorkingDays.includes(dayOfWeek) && openDays.includes(dayOfWeek)
     
-    // Calcular slots disponÃ­veis (0 se nÃ£o Ã© dia de trabalho)
+    // Calcular slots disponíveis (0 se não é dia de trabalho)
     const availableSlots = isWorkingDay ? calculateAvailableSlots(dateStr) : 0
     
     const dayElement = createDayElement(day, false, isToday, dateStr, availableSlots, isPast || !isWorkingDay)
     calendarDays.appendChild(dayElement)
   }
   
-  // Dias do prÃ³ximo mÃªs
+  // Dias do próximo mês
   const totalCells = calendarDays.children.length
   const remainingCells = 42 - totalCells // 6 semanas * 7 dias
   
@@ -1990,7 +1990,7 @@ function createDayElement(day, isOtherMonth, isToday, dateStr, availableSlots = 
   
   dayElement.innerHTML = `
     <span class="day-number">${day}</span>
-    ${!isOtherMonth && !isPast && availableSlots > 0 ? `<span class="slots-badge">${availableSlots} espaÃ§os livres</span>` : ''}
+    ${!isOtherMonth && !isPast && availableSlots > 0 ? `<span class="slots-badge">${availableSlots} espaços livres</span>` : ''}
   `
   
   if (!isOtherMonth && !isPast && dateStr) {
@@ -2063,9 +2063,9 @@ function selectDate(dateStr, availableSlots, selectedDayElement) {
     selectedDayElement.classList.add('selected')
   }
   
-  // Formatar data para exibiÃ§Ã£o
+  // Formatar data para exibição
   const [year, month, day] = dateStr.split('-')
-  const months = ['Janeiro', 'Fevereiro', 'MarÃ§o', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+  const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
   const formattedDate = `${day} de ${months[parseInt(month) - 1]} de ${year}`
   
   document.getElementById('selectedDateDisplay').textContent = formattedDate
@@ -2074,7 +2074,7 @@ function selectDate(dateStr, availableSlots, selectedDayElement) {
     document.getElementById('timeSlotsContainer').classList.remove('hidden')
     document.getElementById('noSlotsMessage').classList.add('hidden')
     renderTimeSlots(dateStr)    
-    // Scroll automÃ¡tico para a Ã¡rea de horÃ¡rios
+    // Scroll automático para a área de horários
     setTimeout(() => {
       document.getElementById('timeSlotsContainer').scrollIntoView({ behavior: 'smooth', block: 'nearest' })
     }, 100)
@@ -2126,30 +2126,30 @@ function selectTime(time, selectedTimeSlot) {
     selectedTimeSlot.classList.add('selected')
   }
   
-  // Mostrar formulÃ¡rio de dados do cliente
+  // Mostrar formulário de dados do cliente
   setTimeout(() => {
     showClientDataForm()
   }, 300)
 }
 
-// ===== FORMULÃRIO DE DADOS DO CLIENTE =====
-// Mapeamento de paÃ­ses com cÃ³digos
+// ===== FORMULÁRIO DE DADOS DO CLIENTE =====
+// Mapeamento de países com códigos
 const countryPhoneCodes = {
   'PT': { name: 'Portugal', code: '+351' },
   'ES': { name: 'Espanha', code: '+34' },
-  'FR': { name: 'FranÃ§a', code: '+33' },
-  'IT': { name: 'ItÃ¡lia', code: '+39' },
+  'FR': { name: 'França', code: '+33' },
+  'IT': { name: 'Itália', code: '+39' },
   'DE': { name: 'Alemanha', code: '+49' },
   'UK': { name: 'Reino Unido', code: '+44' },
   'BR': { name: 'Brasil', code: '+55' },
-  'US': { name: 'EUA/CanadÃ¡', code: '+1' }
+  'US': { name: 'EUA/Canadá', code: '+1' }
 }
 
 function showClientDataForm() {
   // Ocultar passo anterior
   document.getElementById('step-datetime').classList.add('hidden')
   
-  // Criar formulÃ¡rio se nÃ£o existir
+  // Criar formulário se não existir
   let clientDataStep = document.getElementById('step-client-data')
   if (!clientDataStep) {
     clientDataStep = document.createElement('div')
@@ -2157,9 +2157,9 @@ function showClientDataForm() {
     clientDataStep.className = 'card'
     
     clientDataStep.innerHTML = `
-      <h2>4. Confirmar MarcaÃ§Ã£o</h2>
+      <h2>4. Confirmar Marcação</h2>
       <div class="selected-info">
-        <p><strong>ServiÃ§o:</strong> ${bookingState.serviceName} - ${bookingState.servicePrice}â‚¬</p>
+        <p><strong>Serviço:</strong> ${bookingState.serviceName} - ${bookingState.servicePrice}€</p>
         <p><strong>Barbeiro:</strong> ${bookingState.barberName}</p>
         <p><strong>Data:</strong> ${formatDateForDisplay(bookingState.date)}</p>
         <p><strong>Hora:</strong> ${bookingState.time}</p>
@@ -2168,28 +2168,28 @@ function showClientDataForm() {
         <p><strong>Aviso:</strong> ${getCancellationLimitText()}</p>
       </div>
       <form id="clientDataForm" class="auth-form">
-        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Confirmar MarcaÃ§Ã£o</button>
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Confirmar Marcação</button>
       </form>
     `
     document.querySelector('.booking-steps').appendChild(clientDataStep)
   }
   
-  // Mostrar formulÃ¡rio
+  // Mostrar formulário
   clientDataStep.classList.remove('hidden')
   clientDataStep.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
-  // Adicionar event listener ao formulÃ¡rio
+  // Adicionar event listener ao formulário
   const form = document.getElementById('clientDataForm')
   form.addEventListener('submit', async (e) => {
     e.preventDefault()
 
     if (!auth.currentUser) {
-      showError('SessÃ£o invÃ¡lida. FaÃ§a login novamente.')
+      showError('Sessão inválida. Faça login novamente.')
       showAuthStep()
       return
     }
     
-    // Confirmar marcaÃ§Ã£o
+    // Confirmar marcação
     await confirmBooking()
   }, { once: true })
 }
@@ -2197,7 +2197,7 @@ function showClientDataForm() {
 function formatDateForDisplay(dateStr) {
   if (!dateStr) return '-'
   const [year, month, day] = dateStr.split('-')
-  const months = ['Janeiro', 'Fevereiro', 'MarÃ§o', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+  const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
   return `${day} de ${months[parseInt(month) - 1]} de ${year}`
 }
 
@@ -2209,7 +2209,7 @@ async function confirmBooking() {
   }
 
   if (isDateBeforeToday(bookingState.date) || isPastTimeSlot(bookingState.date, bookingState.time)) {
-    showError('NÃ£o Ã© possÃ­vel confirmar horÃ¡rios no passado. Escolha um horÃ¡rio futuro.')
+    showError('Não é possível confirmar horários no passado. Escolha um horário futuro.')
     document.getElementById('step-client-data').classList.add('hidden')
     document.getElementById('step-datetime').classList.remove('hidden')
     renderCalendar()
@@ -2219,7 +2219,7 @@ async function confirmBooking() {
 
   const currentUser = auth.currentUser
   if (!currentUser) {
-    showError('SessÃ£o expirada. Entre novamente para concluir a marcaÃ§Ã£o.')
+    showError('Sessão expirada. Entre novamente para concluir a marcação.')
     showAuthStep()
     return
   }
@@ -2234,7 +2234,7 @@ async function confirmBooking() {
       !canFitSlotInSchedule(bookingState.date, bookingState.time, selectedDuration) ||
       isSlotConflictWithBookings(bookingState.date, bookingState.time, selectedDuration)
     ) {
-      showError('Este horÃ¡rio jÃ¡ nÃ£o estÃ¡ disponÃ­vel. Escolha outro horÃ¡rio.')
+      showError('Este horário já não está disponível. Escolha outro horário.')
       document.getElementById('step-client-data').classList.add('hidden')
       document.getElementById('step-datetime').classList.remove('hidden')
       renderCalendar()
@@ -2266,7 +2266,7 @@ async function confirmBooking() {
       createdAt: new Date().toISOString()
     })
     
-    // Ocultar formulÃ¡rio
+    // Ocultar formulário
     document.getElementById('step-client-data').classList.add('hidden')
     
     // Mostrar tela de sucesso
@@ -2276,18 +2276,18 @@ async function confirmBooking() {
     const errorCode = error?.code || ''
     const errorMessage = error?.message || ''
 
-    console.error('Erro ao criar marcaÃ§Ã£o:', errorCode, errorMessage, error)
+    console.error('Erro ao criar marcação:', errorCode, errorMessage, error)
 
     if (
       errorCode === 'PERMISSION_DENIED' ||
       errorCode === 'permission-denied' ||
       errorMessage.toLowerCase().includes('permission_denied')
     ) {
-      showError('Sem permissÃ£o para gravar marcaÃ§Ãµes no Firebase. Verifique as regras do Realtime Database para permitir escrita autenticada em /bookings.')
+      showError('Sem permissão para gravar marcações no Firebase. Verifique as regras do Realtime Database para permitir escrita autenticada em /bookings.')
       return
     }
 
-    showError(`Erro ao criar marcaÃ§Ã£o: ${errorMessage || 'tente novamente.'}`)
+    showError(`Erro ao criar marcação: ${errorMessage || 'tente novamente.'}`)
   }
 }
 
@@ -2295,9 +2295,9 @@ function showSuccessScreen() {
   // Ocultar passo anterior
   document.getElementById('step-datetime').classList.add('hidden')
   
-  // Formatar data para exibiÃ§Ã£o
+  // Formatar data para exibição
   const [year, month, day] = bookingState.date.split('-')
-  const months = ['Janeiro', 'Fevereiro', 'MarÃ§o', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+  const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
   const formattedDate = `${day} de ${months[parseInt(month) - 1]} de ${year}`
   
   // Preencher dados de sucesso
@@ -2309,7 +2309,7 @@ function showSuccessScreen() {
   const successBarberPhone = document.getElementById('success-barber-phone')
   if (successBarberEmail) successBarberEmail.textContent = bookingState.barberEmail || 'N/A'
   if (successBarberPhone) successBarberPhone.textContent = bookingState.barberPhone || 'N/A'
-  document.getElementById('success-price').textContent = `${bookingState.servicePrice}â‚¬`
+  document.getElementById('success-price').textContent = `${bookingState.servicePrice}€`
 
   const summary = document.querySelector('#step-success .booking-summary')
   if (summary && !document.getElementById('success-cancel-warning')) {
@@ -2336,18 +2336,18 @@ function showSuccessScreen() {
 }
 
 function buildBookingReport(formattedDate) {
-  const companyName = 'Barbearia JoÃ£o Castro'
+  const companyName = 'Barbearia João Castro'
   const companyEmail = 'joaoguilhermesftc88@gmail.com'
   const companyPhone = '937277447'
-  return `RelatÃ³rio da MarcaÃ§Ã£o\n\n` +
+  return `Relatório da Marcação\n\n` +
     `Empresa: ${companyName}\n` +
     `Email: ${companyEmail}\n` +
     `Telefone: ${companyPhone}\n\n` +
-    `ServiÃ§o: ${bookingState.serviceName} (${bookingState.serviceDuration} min)\n` +
+    `Serviço: ${bookingState.serviceName} (${bookingState.serviceDuration} min)\n` +
     `Barbeiro: ${bookingState.barberName}\n` +
     `Data: ${formattedDate}\n` +
     `Hora: ${bookingState.time}\n` +
-    `PreÃ§o: ${bookingState.servicePrice}â‚¬\n\n` +
+    `Preço: ${bookingState.servicePrice}€\n\n` +
     `Estado: Confirmada\n` +
     `Criado em: ${new Date().toLocaleString('pt-PT')}`
 }
@@ -2369,9 +2369,9 @@ function setupReportActions(reportText) {
     copyBtn.addEventListener('click', async () => {
       try {
         await navigator.clipboard.writeText(reportText)
-        showSuccess('RelatÃ³rio copiado para a Ã¡rea de transferÃªncia!')
+        showSuccess('Relatório copiado para a área de transferência!')
       } catch (error) {
-        showError('NÃ£o foi possÃ­vel copiar o relatÃ³rio.')
+        showError('Não foi possível copiar o relatório.')
       }
     })
   }
@@ -2395,7 +2395,7 @@ function setupReportActions(reportText) {
 async function sendReportByEmail(reportText) {
   const clientEmail = bookingState.clientEmail || (bookingState.client ? bookingState.client.email : '')
   if (!clientEmail) {
-    showError('Email do cliente nÃ£o encontrado para envio do relatÃ³rio.')
+    showError('Email do cliente não encontrado para envio do relatório.')
     return
   }
 
@@ -2431,18 +2431,18 @@ async function sendReportByEmail(reportText) {
     const payload = await response.json().catch(() => ({}))
 
     if (!response.ok || payload?.success !== true) {
-      throw new Error(payload?.message || 'NÃ£o foi possÃ­vel enviar o relatÃ³rio por email.')
+      throw new Error(payload?.message || 'Não foi possível enviar o relatório por email.')
     }
 
-    showEmailSentPopup(clientEmail, 'RelatÃ³rio enviado com sucesso para o seu email.')
-    showSuccess('RelatÃ³rio enviado com sucesso!')
+    showEmailSentPopup(clientEmail, 'Relatório enviado com sucesso para o seu email.')
+    showSuccess('Relatório enviado com sucesso!')
   } catch (error) {
-    console.error('Erro ao enviar relatÃ³rio por email:', error)
-    showError(error?.message || 'Falha ao enviar relatÃ³rio por email.')
+    console.error('Erro ao enviar relatório por email:', error)
+    showError(error?.message || 'Falha ao enviar relatório por email.')
   } finally {
     if (sendEmailBtn) {
       sendEmailBtn.disabled = false
-      sendEmailBtn.textContent = 'Enviar RelatÃ³rio por Email'
+      sendEmailBtn.textContent = 'Enviar Relatório por Email'
     }
   }
 }
@@ -2452,7 +2452,7 @@ function showEmailSentPopup(email, customMessage = '') {
   const message = document.getElementById('emailSentMessage')
   if (!popup || !message) return
 
-  message.textContent = customMessage || `O relatÃ³rio foi enviado para ${email}.`
+  message.textContent = customMessage || `O relatório foi enviado para ${email}.`
   popup.classList.remove('hidden')
 }
 
@@ -2471,7 +2471,7 @@ function initEmailPopup() {
 
 // ===== STEP 4: CONFIRMAÃ‡ÃƒO =====
 function initBookingConfirmation() {
-  // BotÃ£o para voltar para a Ã¡rea de cliente
+  // Botão para voltar para a área de cliente
   const exitBtn = document.getElementById('exitBtn')
   const exitToMainBtn = document.getElementById('exitToMainBtn')
   if (exitBtn) {
@@ -2494,7 +2494,7 @@ function initClientNavigation() {
       try {
         await signOut(auth)
       } catch (error) {
-        console.error('Erro ao terminar sessÃ£o:', error)
+        console.error('Erro ao terminar sessão:', error)
       }
 
       clearAppSession()
@@ -2522,11 +2522,11 @@ function resetBooking() {
   document.getElementById('step-datetime').classList.add('hidden')
   document.getElementById('step-success').classList.add('hidden')
   
-  // Remover formulÃ¡rio de dados do cliente se existir
+  // Remover formulário de dados do cliente se existir
   const clientDataStep = document.getElementById('step-client-data')
   if (clientDataStep) clientDataStep.remove()
   
-  // Limpar seleÃ§Ãµes
+  // Limpar seleções
   document.querySelectorAll('.service-card').forEach(c => c.classList.remove('selected'))
   document.querySelectorAll('.barber-card').forEach(c => c.classList.remove('selected'))
   document.querySelectorAll('.calendar-day').forEach(d => d.classList.remove('selected'))
@@ -2568,7 +2568,7 @@ function initClientBookingFilters() {
 
 document.addEventListener('DOMContentLoaded', () => {
   ensureSessionPersistence().catch((error) => {
-    console.error('Erro ao definir persistÃªncia de sessÃ£o:', error)
+    console.error('Erro ao definir persistência de sessão:', error)
   })
 
   initPageMode()

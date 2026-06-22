@@ -16,7 +16,7 @@ function clearBarberSession() {
   sessionStorage.removeItem("isBarber")
 }
 
-// Verificar autenticaÃ§Ã£o
+// Verificar autenticação
 window.addEventListener("load", () => {
   barberId = sessionStorage.getItem("barberId")
   barberName = sessionStorage.getItem("barberName")
@@ -24,7 +24,7 @@ window.addEventListener("load", () => {
   const isBarber = sessionStorage.getItem("isBarber")
 
   if (!barberId || !isBarber) {
-    showError("Acesso negado. Por favor, faÃ§a login como barbeiro.")
+    showError("Acesso negado. Por favor, faça login como barbeiro.")
     setTimeout(() => {
       window.location.href = "barber-login.html"
     }, 2000)
@@ -34,14 +34,14 @@ window.addEventListener("load", () => {
   onAuthStateChanged(auth, (user) => {
     if (!user || user.uid !== barberId) {
       clearBarberSession()
-      showError("SessÃ£o expirada. FaÃ§a login novamente.")
+      showError("Sessão expirada. Faça login novamente.")
       setTimeout(() => {
         window.location.href = "barber-login.html"
       }, 1200)
       return
     }
 
-    // Exibir informaÃ§Ãµes do barbeiro
+    // Exibir informações do barbeiro
     document.getElementById("barberNameDisplay").textContent = barberName || "Barbeiro"
     document.getElementById("barberEmailDisplay").textContent = barberEmail || ""
 
@@ -68,7 +68,7 @@ document.getElementById("logoutBtn").addEventListener("click", async () => {
   }, 900)
 })
 
-// Carregar marcaÃ§Ãµes em tempo real
+// Carregar marcações em tempo real
 function loadBookings() {
   const bookingsRef = ref(database, "bookings")
   
@@ -338,9 +338,9 @@ function normalizeText(value) {
 }
 
 function formatBookingDateLabel(dateValue) {
-  if (!dateValue) return "Data nÃ£o definida"
+  if (!dateValue) return "Data não definida"
   const dateObj = new Date(`${dateValue}T00:00:00`)
-  if (Number.isNaN(dateObj.getTime())) return "Data nÃ£o definida"
+  if (Number.isNaN(dateObj.getTime())) return "Data não definida"
   return new Intl.DateTimeFormat("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric" }).format(dateObj)
 }
 
@@ -374,7 +374,7 @@ function sortBookingsByClosestExecution(bookings) {
   })
 }
 
-// Exibir marcaÃ§Ãµes filtradas por intervalo e pesquisa
+// Exibir marcações filtradas por intervalo e pesquisa
 function displayBookings() {
   const container = document.getElementById("appointmentsContainer")
   const nameInput = document.getElementById("clientSearchName")
@@ -441,14 +441,14 @@ function displayBookings() {
   autoCancelExpiredBookings(filteredBookings)
 
   if (filteredBookings.length === 0) {
-    let emptyMessage = "NÃ£o hÃ¡ marcaÃ§Ãµes com os filtros atuais"
+    let emptyMessage = "Não há marcações com os filtros atuais"
 
     if (nameSearch || emailSearch || phoneSearch || serviceSearch) {
-      emptyMessage = "Nenhuma marcaÃ§Ã£o encontrada para a pesquisa aplicada"
+      emptyMessage = "Nenhuma marcação encontrada para a pesquisa aplicada"
     } else if (pendingOnly) {
-      emptyMessage = "NÃ£o hÃ¡ marcaÃ§Ãµes por concluir para os filtros aplicados"
+      emptyMessage = "Não há marcações por concluir para os filtros aplicados"
     } else if (dateRange) {
-      emptyMessage = "NÃ£o hÃ¡ marcaÃ§Ãµes no intervalo selecionado"
+      emptyMessage = "Não há marcações no intervalo selecionado"
     }
 
     container.innerHTML = `
@@ -468,8 +468,8 @@ function displayBookings() {
       </div>
       <div class="appointment-details">
         <h3>ðŸ‘¤ ${booking.clientName}</h3>
-        <p>ðŸ“§ ${booking.clientEmail || 'Email nÃ£o disponÃ­vel'}</p>
-        <p>ðŸ“± ${booking.clientPhone || 'Telefone nÃ£o disponÃ­vel'}</p>
+        <p>ðŸ“§ ${booking.clientEmail || 'Email não disponível'}</p>
+        <p>ðŸ“± ${booking.clientPhone || 'Telefone não disponível'}</p>
         <div class="status-badges">
           <span class="status-pill ${getExecutionClass(booking)}">${getExecutionLabel(booking)}</span>
           <span class="status-pill ${getLifecycleClass(booking)}">${getLifecycleLabel(booking)}</span>
@@ -487,9 +487,9 @@ function displayBookings() {
 
 function getExecutionLabel(booking) {
   const status = booking.executionStatus || "pending"
-  if (status === "in_progress") return "A ser concluÃ­da"
-  if (status === "completed") return "ConcluÃ­da"
-  return "NÃ£o concluÃ­da"
+  if (status === "in_progress") return "A ser concluída"
+  if (status === "completed") return "Concluída"
+  return "Não concluída"
 }
 
 function getExecutionClass(booking) {
@@ -515,15 +515,15 @@ function getLifecycleClass(booking) {
 
 function renderActions(booking) {
   if (booking.status === "expired") {
-    return `<button class="btn btn-secondary" disabled>MarcaÃ§Ã£o expirada</button>`
+    return `<button class="btn btn-secondary" disabled>Marcação expirada</button>`
   }
 
   if (booking.status === "cancelled") {
-    return `<button class="btn btn-secondary" disabled>MarcaÃ§Ã£o anulada</button>`
+    return `<button class="btn btn-secondary" disabled>Marcação anulada</button>`
   }
 
   if (booking.status === "cancel_requested") {
-    return `<button class="btn btn-secondary" disabled>A aguardar aprovaÃ§Ã£o admin</button>`
+    return `<button class="btn btn-secondary" disabled>A aguardar aprovação admin</button>`
   }
 
   const executionStatus = booking.executionStatus || "pending"
@@ -536,14 +536,14 @@ function renderActions(booking) {
     if (tooLate) {
       buttons.push(`<button class="btn btn-secondary" disabled>Prazo expirado (+1h)</button>`)
     } else if (tooEarly) {
-      buttons.push(`<button class="btn btn-secondary" disabled>DisponÃ­vel atÃ© 2h antes</button>`)
+      buttons.push(`<button class="btn btn-secondary" disabled>Disponível até 2h antes</button>`)
     } else {
       buttons.push(`<button class="btn btn-primary" onclick="startCut('${booking.id}')">Iniciar corte</button>`)
     }
   } else if (executionStatus === "in_progress") {
     buttons.push(`<button class="btn btn-primary" onclick="completeCut('${booking.id}')">Finalizar corte</button>`)
   } else {
-    buttons.push(`<button class="btn btn-secondary" disabled>Corte concluÃ­do</button>`)
+    buttons.push(`<button class="btn btn-secondary" disabled>Corte concluído</button>`)
   }
 
   if (executionStatus !== "completed") {
@@ -557,7 +557,7 @@ async function patchBooking(bookingId, partialData) {
   const snapshot = await get(bookingRef)
 
   if (!snapshot.exists()) {
-    throw new Error("MarcaÃ§Ã£o nÃ£o encontrada")
+    throw new Error("Marcação não encontrada")
   }
 
   const currentData = snapshot.val()
@@ -642,10 +642,10 @@ async function autoCancelExpiredBookings(bookings) {
       patchBooking(booking.id, {
         status: "expired",
         cancelledBy: "system",
-        cancellationReason: "NÃ£o iniciado atÃ© 1h apÃ³s o horÃ¡rio marcado",
+        cancellationReason: "Não iniciado até 1h após o horário marcado",
         cancelledAt: new Date().toISOString(),
       }).catch((error) => {
-        console.error("Erro no cancelamento automÃ¡tico:", error)
+        console.error("Erro no cancelamento automático:", error)
       }),
     ),
   )
@@ -655,22 +655,22 @@ window.startCut = async (bookingId) => {
   try {
     const booking = allBookings.find((item) => item.id === bookingId)
     if (!booking) {
-      showError("MarcaÃ§Ã£o nÃ£o encontrada.")
+      showError("Marcação não encontrada.")
       return
     }
 
     const minutesFromBooking = getMinutesFromBooking(booking)
     if (minutesFromBooking < -120) {
-      showError("SÃ³ pode iniciar atÃ© 2 horas antes da marcaÃ§Ã£o.")
+      showError("Só pode iniciar até 2 horas antes da marcação.")
       return
     }
 
     if (minutesFromBooking > 60) {
-      showError("A marcaÃ§Ã£o passou mais de 1 hora e ficou expirada.")
+      showError("A marcação passou mais de 1 hora e ficou expirada.")
       await patchBooking(bookingId, {
         status: "expired",
         cancelledBy: "system",
-        cancellationReason: "NÃ£o iniciado atÃ© 1h apÃ³s o horÃ¡rio marcado",
+        cancellationReason: "Não iniciado até 1h após o horário marcado",
         cancelledAt: new Date().toISOString(),
       })
       syncLocalBooking(bookingId, { status: "expired" })
@@ -690,7 +690,7 @@ window.startCut = async (bookingId) => {
     showSuccess("Corte iniciado.")
   } catch (error) {
     if (String(error?.message || "").toUpperCase().includes("PERMISSION_DENIED")) {
-      showError("Sem permissÃ£o no Firebase. Ã‰ necessÃ¡rio publicar as regras atualizadas da base de dados.")
+      showError("Sem permissão no Firebase. Ã‰ necessário publicar as regras atualizadas da base de dados.")
       return
     }
     showError("Erro ao iniciar corte: " + error.message)
@@ -701,7 +701,7 @@ window.completeCut = async (bookingId) => {
   try {
     const booking = allBookings.find((item) => item.id === bookingId)
     if (!booking) {
-      showError("MarcaÃ§Ã£o nÃ£o encontrada.")
+      showError("Marcação não encontrada.")
       return
     }
 
@@ -722,7 +722,7 @@ window.completeCut = async (bookingId) => {
     try {
       await recalculateBarberStats(booking.barberId || barberId)
     } catch (statsError) {
-      console.warn("Sem permissÃ£o para atualizar agregados do barbeiro:", statsError)
+      console.warn("Sem permissão para atualizar agregados do barbeiro:", statsError)
       // Fallback: increment completed cuts locally on barber record
       try {
         const targetId = booking.barberId || barberId
@@ -736,7 +736,7 @@ window.completeCut = async (bookingId) => {
           })
         }
       } catch (fallbackError) {
-        console.warn("Sem permissÃ£o para incrementar cortes concluidos:", fallbackError)
+        console.warn("Sem permissão para incrementar cortes concluidos:", fallbackError)
       }
     }
     syncLocalBooking(bookingId, {
@@ -745,10 +745,10 @@ window.completeCut = async (bookingId) => {
       actualDurationMinutes,
     })
     displayBookings()
-    showSuccess("Corte concluÃ­do.")
+    showSuccess("Corte concluído.")
   } catch (error) {
     if (String(error?.message || "").toUpperCase().includes("PERMISSION_DENIED")) {
-      showError("Sem permissÃ£o no Firebase. Ã‰ necessÃ¡rio publicar as regras atualizadas da base de dados.")
+      showError("Sem permissão no Firebase. Ã‰ necessário publicar as regras atualizadas da base de dados.")
       return
     }
     showError("Erro ao concluir corte: " + error.message)
@@ -758,10 +758,10 @@ window.completeCut = async (bookingId) => {
 window.requestCancel = async (bookingId) => {
   const booking = allBookings.find((item) => item.id === bookingId)
   if (booking?.executionStatus === "completed" || booking?.status === "expired" || booking?.status === "cancelled") {
-    showError("NÃ£o Ã© possÃ­vel cancelar uma marcaÃ§Ã£o concluÃ­da ou expirada.")
+    showError("Não é possível cancelar uma marcação concluída ou expirada.")
     return
   }
-  const shouldRequest = window.confirm("Pretende pedir cancelamento desta marcaÃ§Ã£o? O administrador precisa aprovar.")
+  const shouldRequest = window.confirm("Pretende pedir cancelamento desta marcação? O administrador precisa aprovar.")
   if (!shouldRequest) return
 
   try {
@@ -780,17 +780,17 @@ window.requestCancel = async (bookingId) => {
       },
     })
     displayBookings()
-    showSuccess("Pedido de cancelamento enviado para aprovaÃ§Ã£o do administrador.")
+    showSuccess("Pedido de cancelamento enviado para aprovação do administrador.")
   } catch (error) {
     if (String(error?.message || "").toUpperCase().includes("PERMISSION_DENIED")) {
-      showError("Sem permissÃ£o no Firebase. Ã‰ necessÃ¡rio publicar as regras atualizadas da base de dados.")
+      showError("Sem permissão no Firebase. Ã‰ necessário publicar as regras atualizadas da base de dados.")
       return
     }
     showError("Erro ao pedir cancelamento: " + error.message)
   }
 }
 
-// Atualizar estatÃ­sticas
+// Atualizar estatísticas
 function updateStats() {
   const today = new Date()
   const todayStr = today.toISOString().split("T")[0]
@@ -798,13 +798,13 @@ function updateStats() {
   const weekCountEl = document.getElementById("weekCount")
   const monthCountEl = document.getElementById("monthCount")
   
-  // MarcaÃ§Ãµes de hoje
+  // Marcações de hoje
   const todayBookings = allBookings.filter(b => b.date === todayStr)
   if (todayCountEl) {
     todayCountEl.textContent = todayBookings.length
   }
 
-  // MarcaÃ§Ãµes desta semana
+  // Marcações desta semana
   const startOfWeek = new Date(today)
   startOfWeek.setDate(today.getDate() - today.getDay())
   const endOfWeek = new Date(startOfWeek)
@@ -818,7 +818,7 @@ function updateStats() {
     weekCountEl.textContent = weekBookings.length
   }
 
-  // MarcaÃ§Ãµes deste mÃªs
+  // Marcações deste mês
   const monthBookings = allBookings.filter(b => {
     const bookingDate = new Date(b.date)
     return bookingDate.getMonth() === today.getMonth() && 
@@ -980,7 +980,7 @@ function updateViewModeLabel() {
   }
   label.textContent = "A mostrar: período entre datas"
 }
-// Formatar nome do serviÃ§o
+// Formatar nome do serviço
 function formatServiceName(service) {
   const serviceNames = {
     'corte': 'Corte de Cabelo',

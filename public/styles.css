@@ -453,9 +453,15 @@ main {
 
 .tabs-nav .container {
   display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 2rem;
   padding-top: 0;
   padding-bottom: 0;
+}
+
+.tabs-nav .cart-toggle-btn {
+  margin-left: auto;
 }
 
 .tab-link {
@@ -746,6 +752,13 @@ main {
 
 .cart-toggle-btn {
   position: relative;
+}
+
+.phone-icon-btn {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
 }
 
 .cart-badge {
@@ -2731,7 +2744,6 @@ body.barber-page {
     gap: 0.5rem;
     flex-wrap: wrap;
   }
-
   .tab-link {
     font-size: 0.875rem;
     padding: 0.75rem 0.5rem;
@@ -2839,7 +2851,6 @@ body.barber-page {
   .tabs-nav .container {
     gap: 0.25rem;
   }
-
   .tab-link {
     font-size: 0.75rem;
     padding: 0.5rem 0.25rem;
@@ -3761,5 +3772,6 @@ body.barber-page {
     width: 100%;
   }
 }
+
 
 
