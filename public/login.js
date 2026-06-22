@@ -487,7 +487,9 @@ form.addEventListener("submit", async (event) => {
       showError(LOGIN_MESSAGES.wrongPassword)
     } else if (code === "auth/user-not-found") {
       showError(LOGIN_MESSAGES.missingAccount)
-    } else if (code === "auth/invalid-credential" || code === "auth/invalid-login-credentials") {
+    } else if (code === "auth/invalid-credential" || code === "auth/invalid-login-credentials" || code === "") 
+    {
+
       const registered = await checkIfAccountExists(email)
       if (registered === false) {
         showError(LOGIN_MESSAGES.missingAccount)
