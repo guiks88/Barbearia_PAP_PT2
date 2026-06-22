@@ -491,7 +491,7 @@ form.addEventListener("submit", async (event) => {
     {
 
       const registered = await checkIfAccountExists(email)
-      if (registered === false) {
+      if (registered === false || registered === null) {
         showError(LOGIN_MESSAGES.missingAccount)
       } else {
         showError(LOGIN_MESSAGES.wrongPassword)
